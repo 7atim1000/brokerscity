@@ -1,6 +1,7 @@
 // bg-gradient-to-l from-[#a47d52] via-[#f8f7f5] to-[#a47d52]
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
+import logo from '../../../assets/images/logogo-removebg.png';
 
 import {
     clearTokens,
@@ -36,37 +37,25 @@ const Navbar = () => {
 
             try {
 
-                const BASE =
-                    import.meta.env.VITE_DJANGO_BASE_URL;
+                const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
 
-                const response = await authFetch(
-                    `${BASE}/api/me/`
-                );
+                const response = await authFetch(`${BASE}/api/me/`);
 
                 if (!response.ok) {
-                    throw new Error(
-                        "Failed to get user information"
-                    );
+                    throw new Error("Failed to get user information");
                 }
 
                 const data = await response.json();
-
                 setUser(data);
 
             } catch (error) {
 
-                console.error(
-                    "Error fetching user:",
-                    error
-                );
-
+                console.error("Error fetching user:", error);
                 clearTokens();
                 navigate("/login");
 
             } finally {
-
                 setLoading(false);
-
             }
         };
 
@@ -77,52 +66,13 @@ const Navbar = () => {
 
     // Logout
     const handleLogout = () => {
-
         clearTokens();
-
         navigate("/ar-login");
     };
 
 
-    // Convert URL to Arabic page name
-    const getPageName = () => {
-
-        const path = location.pathname;
-
-        if (path === "/ar-dashboard") {
-            return "بروكر سيتي العقارية";
-        }
-
-        if (path === "/login") {
-            return "تسجيل الدخول";
-        }
-
-        if (path === "/signup") {
-            return "إنشاء حساب";
-        }
-
-        if (path.includes("users")) {
-            return "المستخدمون";
-        }
-
-        if (path.includes("units")) {
-            return "الوحدات";
-        }
-
-        if (path.includes("orders")) {
-            return "الطلبات";
-        }
-
-        if (path.includes("finance")) {
-            return "الاداره الماليه";
-        }
-
-        return "الصفحة الرئيسية";
-    };
-
-
     return (
-
+    // via-[#e6d5c0]
         <nav
             dir="rtl"
             className="
@@ -130,15 +80,20 @@ const Navbar = () => {
                 top-0
                 left-0
                 right-0
-                h-13
-                bg-gradient-to-l from-[#f8f7f5] to-[#a47d52]
+                h-16
+                bg-gradient-to-l
+                from-[#f8f7f5]
+                via-[#a47d52]
+                to-[#a47d52]
                 border-b
-                border-[#f8f7f5]
-                shadow-[0_0_7px_rgba(0,0,0,0.4)]
+                border-[#a47d52]/30
+                shadow-[0_4px_20px_rgba(164,125,82,0.25)]
+                backdrop-blur-sm
                 z-50
                 px-4
                 sm:px-6
-                
+                transition-all
+                duration-300
             "
         >
 
@@ -152,23 +107,38 @@ const Navbar = () => {
                 "
             >
 
-                {/* Page Address */}
-                <div className="flex items-center min-w-0">
-
-                    <h1
+                {/* Logo */}
+                {/* Logo */}
+                <Link
+                    to="/ar-dashboard"
+                    className="
+        flex
+        items-center
+        min-w-0
+        shrink-0
+        transition-transform
+        duration-300
+        hover:scale-110
+    "
+                >
+                    <img
+                        src={logo}
+                        alt="Broker City"
                         className="
-                            text-base
-                            sm:text-2xl
-                            
-                            text-[#a47d52]
-                            truncate
-                            font-extrabold
-                        "
-                    >
-                        {getPageName()}
-                    </h1>
-
-                </div>
+            h-16
+            sm:h-20
+            w-auto
+            object-contain
+            scale-130
+            drop-shadow-[0_3px_8px_rgba(164,125,82,0.6)]
+            contrast-125
+            saturate-125
+        "
+                        style={{
+                            filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.25)) drop-shadow(0 3px 8px rgba(164,125,82,0.6)) contrast(1.2) saturate(1.15)'
+                        }}
+                    />
+                </Link>
 
 
                 {/* User Information */}
@@ -187,9 +157,19 @@ const Navbar = () => {
                             <Link
                                 to="/login"
                                 className="
-                                    text-gray-700
-                                    font-medium
-                                    hover:text-blue-600
+                                    px-4
+                                    py-2
+                                    rounded-lg
+                                    text-[#a47d52]
+                                    font-bold
+                                    bg-white/70
+                                    hover:bg-white
+                                    shadow-sm
+                                    hover:shadow-md
+                                    border
+                                    border-[#a47d52]/20
+                                    transition-all
+                                    duration-200
                                 "
                             >
                                 تسجيل الدخول
@@ -199,10 +179,21 @@ const Navbar = () => {
                                 to="/signup"
                                 className="
                                     hidden
-                                    sm:block
-                                    text-gray-700
-                                    font-medium
-                                    hover:text-blue-600
+                                    sm:inline-block
+                                    px-4
+                                    py-2
+                                    rounded-lg
+                                    text-white
+                                    font-bold
+                                    bg-gradient-to-l
+                                    from-[#a47d52]
+                                    to-[#b88d63]
+                                    hover:from-[#8a6a44]
+                                    hover:to-[#a47d52]
+                                    shadow-md
+                                    hover:shadow-lg
+                                    transition-all
+                                    duration-200
                                 "
                             >
                                 إنشاء حساب
@@ -221,6 +212,18 @@ const Navbar = () => {
                                         flex
                                         items-center
                                         gap-2
+                                        px-2
+                                        sm:px-3
+                                        py-1
+                                        rounded-full
+                                        bg-white/20
+                                        backdrop-blur-sm
+                                        border
+                                        border-white/30
+                                        shadow-sm
+                                        hover:bg-white/30
+                                        transition-all
+                                        duration-200
                                     "
                                 >
 
@@ -228,10 +231,7 @@ const Navbar = () => {
                                     {user.image ? (
 
                                         <img
-                                            src={`
-                                                ${import.meta.env.VITE_DJANGO_BASE_URL}
-                                                ${user.image}
-                                            `}
+                                            src={`${import.meta.env.VITE_DJANGO_BASE_URL}${user.image}`}
                                             alt={user.username}
                                             className="
                                                 w-9
@@ -240,8 +240,9 @@ const Navbar = () => {
                                                 sm:h-10
                                                 rounded-full
                                                 object-cover
-                                                border
-                                                border-[#f8f7f5]
+                                                border-2
+                                                border-white
+                                                shadow-sm
                                             "
                                         />
 
@@ -254,18 +255,21 @@ const Navbar = () => {
                                                 sm:w-10
                                                 sm:h-10
                                                 rounded-full
-                                                bg-[#f8f7f5]
+                                                bg-gradient-to-br
+                                                from-[#a47d52]
+                                                to-[#8a6a44]
                                                 flex
                                                 items-center
                                                 justify-center
+                                                border-2
+                                                border-white
+                                                shadow-sm
                                             "
                                         >
-
                                             <SlUserFollow
                                                 size={20}
-                                                className="text-gray-600"
+                                                className="text-white"
                                             />
-
                                         </div>
 
                                     )}
@@ -276,8 +280,9 @@ const Navbar = () => {
                                         className="
                                             hidden
                                             sm:block
-                                            font-medium
-                                            text-[#f8f7f5]
+                                            font-bold
+                                            text-[#5a4a3a]
+                                            pl-1
                                         "
                                     >
                                         {user.username}
@@ -289,32 +294,39 @@ const Navbar = () => {
 
 
                             {/* Vendor Dashboard */}
-                            {!loading &&
-                                user?.role === "vendor" && (
+                            {!loading && user?.role === "vendor" && (
 
-                                    <Link
-                                        to="/ar-dashboard"
-                                        className="
-                                            flex
-                                            items-center
-                                            gap-2
-                                            text-blue-600
-                                            font-medium
-                                            hover:text-blue-800
-                                        "
-                                    >
+                                <Link
+                                    to="/ar-dashboard"
+                                    className="
+                                        flex
+                                        items-center
+                                        gap-2
+                                        px-3
+                                        py-2
+                                        rounded-lg
+                                        text-[#a47d52]
+                                        font-bold
+                                        bg-white/60
+                                        hover:bg-white
+                                        border
+                                        border-[#a47d52]/20
+                                        shadow-sm
+                                        hover:shadow-md
+                                        transition-all
+                                        duration-200
+                                    "
+                                >
 
-                                        <MdDashboardCustomize
-                                            size={23}
-                                        />
+                                    <MdDashboardCustomize size={22} />
 
-                                        <span className="hidden sm:block">
-                                            الرئيسية
-                                        </span>
+                                    <span className="hidden sm:block">
+                                        الرئيسية
+                                    </span>
 
-                                    </Link>
+                                </Link>
 
-                                )}
+                            )}
 
 
                             {/* Logout */}
@@ -324,17 +336,23 @@ const Navbar = () => {
                                     flex
                                     items-center
                                     justify-center
-                                    text-[#f8f7f5]
-                                    
-                                    transition
+                                    p-2
+                                    rounded-full
+                                    text-white
+                                    bg-[#a47d52]/80
+                                    hover:bg-[#8a6a44]
+                                    shadow-md
+                                    hover:shadow-lg
+                                    hover:scale-110
+                                    active:scale-95
+                                    transition-all
+                                    duration-200
                                     cursor-pointer
                                 "
                                 title="تسجيل الخروج"
                             >
 
-                                <IoMdLogOut
-                                    size={26}
-                                />
+                                <IoMdLogOut size={22} />
 
                             </button>
 
@@ -353,3 +371,363 @@ const Navbar = () => {
 
 
 export default Navbar;
+
+
+
+// // bg-gradient-to-l from-[#a47d52] via-[#f8f7f5] to-[#a47d52]
+// import { useState, useEffect } from "react";
+// import { useNavigate, useLocation, Link } from "react-router-dom";
+// import logo from '../../../assets/images/logogo-removebg.png'
+
+
+// import {
+//     clearTokens,
+//     getAccessToken,
+//     authFetch
+// } from "../../../utils/auth";
+
+// import { SlUserFollow } from "react-icons/sl";
+// import { MdDashboardCustomize } from "react-icons/md";
+// import { IoMdLogOut } from "react-icons/io";
+
+
+// const Navbar = () => {
+
+//     const navigate = useNavigate();
+//     const location = useLocation();
+
+//     const [user, setUser] = useState(null);
+//     const [loading, setLoading] = useState(true);
+
+//     const isLoggedIn = !!getAccessToken();
+
+
+//     // Get logged-in user
+//     useEffect(() => {
+
+//         if (!isLoggedIn) {
+//             setLoading(false);
+//             return;
+//         }
+
+//         const fetchUser = async () => {
+
+//             try {
+
+//                 const BASE =
+//                     import.meta.env.VITE_DJANGO_BASE_URL;
+
+//                 const response = await authFetch(
+//                     `${BASE}/api/me/`
+//                 );
+
+//                 if (!response.ok) {
+//                     throw new Error(
+//                         "Failed to get user information"
+//                     );
+//                 }
+
+//                 const data = await response.json();
+
+//                 setUser(data);
+
+//             } catch (error) {
+
+//                 console.error(
+//                     "Error fetching user:",
+//                     error
+//                 );
+
+//                 clearTokens();
+//                 navigate("/login");
+
+//             } finally {
+
+//                 setLoading(false);
+
+//             }
+//         };
+
+//         fetchUser();
+
+//     }, [isLoggedIn, navigate]);
+
+
+//     // Logout
+//     const handleLogout = () => {
+
+//         clearTokens();
+
+//         navigate("/ar-login");
+//     };
+
+
+//     // Convert URL to Arabic page name
+//     const getPageName = () => {
+
+//         const path = location.pathname;
+
+//         if (path === "/ar-dashboard") {
+//             return "بروكر سيتي العقارية";
+//         }
+
+//         if (path === "/login") {
+//             return "تسجيل الدخول";
+//         }
+
+//         if (path === "/signup") {
+//             return "إنشاء حساب";
+//         }
+
+//         if (path.includes("users")) {
+//             return "المستخدمون";
+//         }
+
+//         if (path.includes("units")) {
+//             return "الوحدات";
+//         }
+
+//         if (path.includes("orders")) {
+//             return "الطلبات";
+//         }
+
+//         if (path.includes("finance")) {
+//             return "الاداره الماليه";
+//         }
+
+//         return "الصفحة الرئيسية";
+//     };
+
+
+//     return (
+
+//         <nav
+//             dir="rtl"
+//             className="
+//                 fixed
+//                 top-0
+//                 left-0
+//                 right-0
+//                 h-13
+//                 bg-gradient-to-l from-[#f8f7f5] to-[#a47d52]
+//                 border-b
+//                 border-[#f8f7f5]
+//                 shadow-[0_0_7px_rgba(0,0,0,0.4)]
+//                 z-50
+//                 px-4
+//                 sm:px-6
+                
+//             "
+//         >
+
+//             <div
+//                 className="
+//                     h-full
+//                     flex
+//                     items-center
+//                     justify-between
+//                     gap-4
+//                 "
+//             >
+
+//                 {/* Page Address */}
+//                 <div className="flex items-center min-w-0">
+
+//                     <h1
+//                         className="
+//                             text-base
+//                             sm:text-2xl
+                            
+//                             text-[#a47d52]
+//                             truncate
+//                             font-extrabold
+//                         "
+//                     >
+//                         {getPageName()}
+//                     </h1>
+
+//                 </div>
+
+
+//                 {/* User Information */}
+//                 <div
+//                     className="
+//                         flex
+//                         items-center
+//                         gap-3
+//                         sm:gap-5
+//                     "
+//                 >
+
+//                     {!isLoggedIn ? (
+
+//                         <>
+//                             <Link
+//                                 to="/login"
+//                                 className="
+//                                     text-gray-700
+//                                     font-medium
+//                                     hover:text-blue-600
+//                                 "
+//                             >
+//                                 تسجيل الدخول
+//                             </Link>
+
+//                             <Link
+//                                 to="/signup"
+//                                 className="
+//                                     hidden
+//                                     sm:block
+//                                     text-gray-700
+//                                     font-medium
+//                                     hover:text-blue-600
+//                                 "
+//                             >
+//                                 إنشاء حساب
+//                             </Link>
+//                         </>
+
+//                     ) : (
+
+//                         <>
+
+//                             {/* User */}
+//                             {!loading && user && (
+
+//                                 <div
+//                                     className="
+//                                         flex
+//                                         items-center
+//                                         gap-2
+//                                     "
+//                                 >
+
+//                                     {/* User Image */}
+//                                     {user.image ? (
+
+//                                         <img
+//                                             src={`
+//                                                 ${import.meta.env.VITE_DJANGO_BASE_URL}
+//                                                 ${user.image}
+//                                             `}
+//                                             alt={user.username}
+//                                             className="
+//                                                 w-9
+//                                                 h-9
+//                                                 sm:w-10
+//                                                 sm:h-10
+//                                                 rounded-full
+//                                                 object-cover
+//                                                 border
+//                                                 border-[#f8f7f5]
+//                                             "
+//                                         />
+
+//                                     ) : (
+
+//                                         <div
+//                                             className="
+//                                                 w-9
+//                                                 h-9
+//                                                 sm:w-10
+//                                                 sm:h-10
+//                                                 rounded-full
+//                                                 bg-[#f8f7f5]
+//                                                 flex
+//                                                 items-center
+//                                                 justify-center
+//                                             "
+//                                         >
+
+//                                             <SlUserFollow
+//                                                 size={20}
+//                                                 className="text-gray-600"
+//                                             />
+
+//                                         </div>
+
+//                                     )}
+
+
+//                                     {/* Username */}
+//                                     <span
+//                                         className="
+//                                             hidden
+//                                             sm:block
+//                                             font-medium
+//                                             text-[#f8f7f5]
+//                                         "
+//                                     >
+//                                         {user.username}
+//                                     </span>
+
+//                                 </div>
+
+//                             )}
+
+
+//                             {/* Vendor Dashboard */}
+//                             {!loading &&
+//                                 user?.role === "vendor" && (
+
+//                                     <Link
+//                                         to="/ar-dashboard"
+//                                         className="
+//                                             flex
+//                                             items-center
+//                                             gap-2
+//                                             text-blue-600
+//                                             font-medium
+//                                             hover:text-blue-800
+//                                         "
+//                                     >
+
+//                                         <MdDashboardCustomize
+//                                             size={23}
+//                                         />
+
+//                                         <span className="hidden sm:block">
+//                                             الرئيسية
+//                                         </span>
+
+//                                     </Link>
+
+//                                 )}
+
+
+//                             {/* Logout */}
+//                             <button
+//                                 onClick={handleLogout}
+//                                 className="
+//                                     flex
+//                                     items-center
+//                                     justify-center
+//                                     text-[#f8f7f5]
+                                    
+//                                     transition
+//                                     cursor-pointer
+//                                 "
+//                                 title="تسجيل الخروج"
+//                             >
+
+//                                 <IoMdLogOut
+//                                     size={26}
+//                                 />
+
+//                             </button>
+
+//                         </>
+
+//                     )}
+
+//                 </div>
+
+//             </div>
+
+//         </nav>
+
+//     );
+// };
+
+
+// export default Navbar;

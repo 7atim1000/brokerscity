@@ -978,13 +978,13 @@ const Transactions = () => {
                                                         >
                                                             <BiSolidShow className='text-green-600' size='22' />
                                                         </button>
-                                                        <button
+                                                        {/* <button
                                                             onClick={() => handleUpdate(transaction)}
                                                             className="cursor-pointer px-2 py-2 bg-white text-white rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-105"
                                                             title="تعديل"
                                                         >
                                                             <MdModeEdit className="text-blue-600" size="22" />
-                                                        </button>
+                                                        </button> */}
                                                         <button
                                                             onClick={() => handleDelete(transaction.id)}
                                                             className="cursor-pointer px-2 py-2 bg-white text-white rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-105"
@@ -1007,7 +1007,7 @@ const Transactions = () => {
                                         for Income / Expense / Balance (columns 9, 10, 11).
                                     */}
                                     <tfoot>
-                                        <tr className="bg-[#f8f7f6] border-t-2 border-[#BF9000]">
+                                        <tr className="bg-[#e6d5c0] border-t-2 border-[#BF9000]">
                                             <td colSpan="8" className="px-6 py-4 text-right text-sm font-extrabold text-gray-900">
                                                 الإجمالي الكلي — Gross Total
                                             </td>
@@ -1069,7 +1069,8 @@ const Transactions = () => {
                             </th>
                         </tr>
                         {/* Column headers — dark gold #BF9000 fill, bold black text, matches xlsx row 2 */}
-                        <tr style={{ background: '#BF9000' }}>
+                        {/* <tr style={{ background: '#BF9000' }}> */}
+                        <tr className = 'bg-[#e6d5c0]'>
                             <th style={thStyle}>Serial No.{'\n'}الرقم التسلسلي</th>
                             <th style={thStyle}>Date{'\n'}التاريخ</th>
                             <th style={thStyle}>Transaction No.{'\n'}رقم المعاملة</th>
@@ -1107,7 +1108,8 @@ const Transactions = () => {
                             under their own columns (9 / 10 / 11) — same layout the table footer above
                             and the Excel export both use, so all three stay visually consistent.
                         */}
-                        <tr style={{ background: '#FFE699' }}>
+                        {/* <tr style={{ background: '#FFE699' }}> */}
+                        <tr className="bg-[#e6d5c0] border-t-2 border-[#BF9000]">
                             <td colSpan={8} style={{ ...tdStyle, fontWeight: 800, textAlign: 'right' }}>
                                 Gross Total — المجموع الكلي
                             </td>

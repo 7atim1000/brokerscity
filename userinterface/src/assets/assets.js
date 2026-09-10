@@ -37,12 +37,14 @@ import { CiCalculator2 } from "react-icons/ci";
 
 import { CgTwilio } from "react-icons/cg";
 import { FaWhatsapp } from "react-icons/fa";
+import { RiDashboardFill } from "react-icons/ri";
+
 
 export const SidebarMenuLinks = [
   {
     name: "الرئيسية",
     path: "/ar-dashboard",
-    icon: MdDashboard,
+    icon: RiDashboardFill,
   },
   {
     name: "WhatsApp",
