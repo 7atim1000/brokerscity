@@ -19,6 +19,8 @@ import { ImUsers } from "react-icons/im";
 import { GiTempleGate } from "react-icons/gi";
 import { FaCalculator } from "react-icons/fa6";
 import { GrVmMaintenance } from "react-icons/gr";
+import { TbBuildingCommunity } from "react-icons/tb";
+import { RiConnectorFill } from "react-icons/ri";
 
 export const SidebarMenuLinks = [
   {
@@ -34,7 +36,7 @@ export const SidebarMenuLinks = [
   },
   
   {
-    name: "اداره العقارات",
+    name: "إدارة العقارات",
     path: "",
     icon: FaRegBuilding,
 
@@ -43,7 +45,7 @@ export const SidebarMenuLinks = [
       {
         name: "الوحدات",
         path: "",
-        icon: GiTempleGate
+        icon: TbBuildingCommunity
       },
       
       {
@@ -53,7 +55,7 @@ export const SidebarMenuLinks = [
       },
 
       {
-        name: "اداره التحصيل",
+        name: "إدارة التحصيل",
         path: "",
         icon: FaCalculator
       },
@@ -81,13 +83,13 @@ export const SidebarMenuLinks = [
       },
       
       {
-        name: "اداره تعريف الحسابات",
+        name: "إدارة تعريف الحسابات",
         path: "/ar-accounts",
         icon: CiCircleList
       },
 
       {
-        name: "اداره البنوك",
+        name: "إدارة البنوك",
         path: "/ar-bank",
         icon: PiBankBold
       },
@@ -98,6 +100,12 @@ export const SidebarMenuLinks = [
       },
       
     ]
+  },
+
+   {
+    name: "إدارة علاقات العملاء",
+    path: "",
+    icon: RiConnectorFill,
   },
   
 
