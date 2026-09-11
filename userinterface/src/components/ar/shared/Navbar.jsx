@@ -1,4 +1,3 @@
-// bg-gradient-to-l from-[#a47d52] via-[#f8f7f5] to-[#a47d52]
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import logo from '../../../assets/images/logogo-removebg.png';
@@ -72,7 +71,6 @@ const Navbar = () => {
 
 
     return (
-    // via-[#e6d5c0]
         <nav
             dir="rtl"
             className="
@@ -97,8 +95,10 @@ const Navbar = () => {
             "
         >
 
+            {/* 3-column layout: right (title) | center (logo) | left (user actions) */}
             <div
                 className="
+                    relative
                     h-full
                     flex
                     items-center
@@ -107,47 +107,99 @@ const Navbar = () => {
                 "
             >
 
-                {/* Logo */}
-                {/* Logo */}
-                <Link
-                    to="/ar-dashboard"
+                {/* RIGHT SIDE — Bilingual title */}
+                <div
                     className="
+                        flex
+                        flex-col
+                        items-start
+                        justify-center
+                        leading-tight
+                        min-w-0
+                        shrink
+                    "
+                >
+                    <span
+                        className="
+                            text-[#5a4a3a]
+                            font-black
+                            text-[11px]
+                            sm:text-sm
+                            md:text-base
+                            tracking-wide
+                            whitespace-nowrap
+                            drop-shadow-[0_1px_1px_rgba(255,255,255,0.5)]
+                        "
+                    >
+                        منصة بروكر سيتي العقارية الرقمية
+                    </span>
+                    <span
+                        className="
+                            text-[#5a4a3a]/90
+                            font-bold
+                            text-[10px]
+                            sm:text-xs
+                            md:text-sm
+                            tracking-wider
+                            whitespace-nowrap
+                        "
+                    >
+                        
+                    Broker City Real Estate
+                    </span>
+                </div>
+
+
+                {/* CENTER — Logo (absolutely centered) */}
+                <Link
+    to="/ar-dashboard"
+    className="
+        absolute
+        left-1/2
+        -translate-x-1/2
         flex
         items-center
-        min-w-0
+        justify-center
         shrink-0
+        bg-white
+        rounded-full
+        p-1
+        sm:p-1.5
+        shadow-md
+        ring-2
+        ring-white/60
         transition-transform
         duration-300
         hover:scale-110
     "
-                >
-                    <img
-                        src={logo}
-                        alt="Broker City"
-                        className="
-            h-16
-            sm:h-20
+>
+    <img
+        src={logo}
+        alt="Broker City"
+        className="
+            h-10
+            sm:h-13
             w-auto
             object-contain
-            scale-130
-            drop-shadow-[0_3px_8px_rgba(164,125,82,0.6)]
+            scale-175
             contrast-125
             saturate-125
         "
-                        style={{
-                            filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.25)) drop-shadow(0 3px 8px rgba(164,125,82,0.6)) contrast(1.2) saturate(1.15)'
-                        }}
-                    />
-                </Link>
+        style={{
+            filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.25)) contrast(1.2) saturate(1.15)'
+        }}
+    />
+</Link>
 
 
-                {/* User Information */}
+                {/* LEFT SIDE — User Information / Auth buttons */}
                 <div
                     className="
                         flex
                         items-center
                         gap-3
                         sm:gap-5
+                        shrink-0
                     "
                 >
 
