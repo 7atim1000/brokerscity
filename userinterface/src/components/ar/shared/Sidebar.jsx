@@ -1,4 +1,3 @@
-// Collapsed (icon-only) / pills or icon pills
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { SidebarMenuLinks } from "../../../assets/assets";
@@ -39,11 +38,17 @@ function Sidebar({ onHoverChange }) {
     const isExpanded = isDesktop && isHovered;
 
     const mainLinks = SidebarMenuLinks.filter(
-        (item) => item.path !== "/ar-whatsapp" && item.path !== "/email"
-    );
-    const bottomLinks = SidebarMenuLinks.filter(
-        (item) => item.path === "/ar-whatsapp" || item.path === "/email"
-    );
+    (item) =>
+        item.path !== "/ar-whatsapp" &&
+        item.path !== "/email" &&
+        item.path !== "/crm"
+);
+const bottomLinks = SidebarMenuLinks.filter(
+    (item) =>
+        item.path === "/ar-whatsapp" ||
+        item.path === "/email" ||
+        item.path === "/crm"
+);
 
     return (
         <aside
@@ -91,7 +96,7 @@ function Sidebar({ onHoverChange }) {
                                     <button
                                         onClick={() => toggleSubMenu(index)}
                                         className={`
-                                            flex items-center
+                                            flex items-center 
                                             ${isExpanded ? "justify-between w-full px-3 py-2.5 rounded-xl" : "justify-center w-10 h-10 mx-auto rounded-full p-0"}
                                             transition-all
                                             duration-300
@@ -266,61 +271,70 @@ function Sidebar({ onHoverChange }) {
             </nav>
 
             {/* Bottom pinned section: WhatsApp + Email (white pill background) */}
-            <div className="p-2 space-y-1 pb-15 shrink-0">
-                {bottomLinks.map((item, index) => {
-                    const Icon = item.icon;
-                    const isActive = location.pathname === item.path;
-                    const isWhatsApp = item.path === "/ar-whatsapp";
+<div className="p-2 space-y-1 pb-15 shrink-0">
+    {bottomLinks.map((item, index) => {
+        const Icon = item.icon;
+        const isActive = location.pathname === item.path;
+        const isWhatsApp = item.path === "/ar-whatsapp";
+        const isCrm = item.path === "/crm";
 
-                    return (
-                        <Link
-                            key={index}
-                            to={item.path}
-                            className={`
-                                flex items-center
-                                ${isExpanded ? "justify-start w-full gap-2 px-3 py-2.5 rounded-xl text-sm sm:text-base" : "justify-center w-10 h-10 mx-auto rounded-full p-0 gap-0 text-xs"}
-                                transition-all
-                                duration-300
-                                ease-in-out
-                                font-black
-                                group
-                                bg-white
-                                hover:bg-white/90
-                                shadow-sm
-                                hover:shadow-md
-                            `}
-                        >
-                            <Icon
-                                size={isExpanded ? 20 : 18}
-                                strokeWidth={1.1}
-                                className={`
-                                    shrink-0
-                                    transition-all
-                                    duration-300
-                                    ${isWhatsApp ? "text-[#25D366]" : "text-[#EA4335]"}
-                                `}
-                            />
-                            <span
-                                className={`
-                                    font-black
-                                    tracking-wide
-                                    whitespace-nowrap
-                                    transition-all
-                                    duration-300
-                                    ${
-                                        isWhatsApp
-                                            ? "text-[#128C7E]"
-                                            : "text-[#EA4335]"
-                                    }
-                                    ${isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"}
-                                `}
-                            >
-                                {item.name}
-                            </span>
-                        </Link>
-                    );
-                })}
-            </div>
+        return (
+            <Link
+                key={index}
+                to={item.path}
+                className={`
+                    flex items-center
+                    ${isExpanded ? "justify-start w-full gap-2 px-3 py-2.5 rounded-xl text-sm sm:text-base" : "justify-center w-10 h-10 mx-auto rounded-full p-0 gap-0 text-xs"}
+                    transition-all
+                    duration-300
+                    ease-in-out
+                    font-black
+                    group
+                    bg-white
+                    hover:bg-white/90
+                    shadow-sm
+                    hover:shadow-md
+                `}
+            >
+                <Icon
+                    size={isExpanded ? 20 : 18}
+                    strokeWidth={1.1}
+                    className={`
+                        shrink-0
+                        transition-all
+                        duration-300
+                        ${
+                            isWhatsApp
+                                ? "text-[#25D366]"
+                                : isCrm
+                                    ? "text-[#1D9BF0]"
+                                    : "text-[#EA4335]"
+                        }
+                    `}
+                />
+                <span
+                    className={`
+                        font-black
+                        tracking-wide
+                        whitespace-nowrap
+                        transition-all
+                        duration-300
+                        ${
+                            isWhatsApp
+                                ? "text-[#128C7E]"
+                                : isCrm
+                                    ? "text-[#1D9BF0]"
+                                    : "text-[#EA4335]"
+                        }
+                        ${isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"}
+                    `}
+                >
+                    {item.name}
+                </span>
+            </Link>
+        );
+    })}
+</div>
         </aside>
     );
 }
