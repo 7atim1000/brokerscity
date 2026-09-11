@@ -1,36 +1,10 @@
-import { 
-  FaCogs,
-  FaUser,
-  FaTags,
-  FaShoppingCart,
-  FaBuilding, 
-  FaLayerGroup
 
-} from 'react-icons/fa';
-
-import { PiCurrencyDollarLight } from "react-icons/pi";
-import { ImUsers } from "react-icons/im";
-import { FaSortAmountUp } from "react-icons/fa";
-import { FaSortAmountUpAlt } from "react-icons/fa";
 import { GrTransaction } from "react-icons/gr";
-import { FaCommentsDollar } from "react-icons/fa";
-import { AiFillContainer } from "react-icons/ai";
-import { IoSettingsSharp } from "react-icons/io5";
-
-import { FaUsers } from "react-icons/fa";
-
-import { IoIosCart } from "react-icons/io";
-import { BsUnity } from "react-icons/bs";
-import { FaSitemap } from "react-icons/fa";
-import { MdDashboard } from "react-icons/md";
-import { AiOutlinePartition } from "react-icons/ai";
-
 import { PiBankBold } from "react-icons/pi";
 import { GiMoneyStack } from "react-icons/gi";
 // fa FaAmazonPay
 import { FaAmazonPay } from "react-icons/fa";
 import { CiCircleList } from "react-icons/ci";
-
 
 import { ImCalculator } from "react-icons/im";
 import { CiCalculator2 } from "react-icons/ci";
@@ -38,7 +12,13 @@ import { CiCalculator2 } from "react-icons/ci";
 import { CgTwilio } from "react-icons/cg";
 import { FaWhatsapp } from "react-icons/fa";
 import { RiDashboardFill } from "react-icons/ri";
-
+import { SiGmail } from "react-icons/si";
+import { FaRegBuilding } from "react-icons/fa";
+import { FaUsers } from "react-icons/fa";
+import { ImUsers } from "react-icons/im";
+import { GiTempleGate } from "react-icons/gi";
+import { FaCalculator } from "react-icons/fa6";
+import { GrVmMaintenance } from "react-icons/gr";
 
 export const SidebarMenuLinks = [
   {
@@ -46,14 +26,49 @@ export const SidebarMenuLinks = [
     path: "/ar-dashboard",
     icon: RiDashboardFill,
   },
+  
   {
-    name: "WhatsApp",
-    path: "/ar-whatsapp",
-    icon: FaWhatsapp,
+    name: "شؤون الموظفين",
+    path: "",
+    icon: FaUsers,
+  },
+  
+  {
+    name: "اداره العقارات",
+    path: "",
+    icon: FaRegBuilding,
+
+    isExpanded: false,
+    subItems: [
+      {
+        name: "الوحدات",
+        path: "",
+        icon: GiTempleGate
+      },
+      
+      {
+        name: "المستأجرين",
+        path: "",
+        icon: ImUsers
+      },
+
+      {
+        name: "اداره التحصيل",
+        path: "",
+        icon: FaCalculator
+      },
+      
+      {
+        name: "الصيانة",
+        path: "",
+        icon: GrVmMaintenance
+      },
+     
+    ]
   },
 
   {
-    name: "الاداره الماليه",
+    name: "الشئون المالية",
     path: "#",
     icon: CiCalculator2,
 
@@ -82,10 +97,21 @@ export const SidebarMenuLinks = [
         icon: GiMoneyStack
       },
       
-      
     ]
   },
   
+
+ 
+  {
+    name: "WhatsApp",
+    path: "/ar-whatsapp",
+    icon: FaWhatsapp,
+  },
+  {
+    name: "Email",
+    path: "/email",
+    icon: SiGmail,
+  },
 
   
 ];
