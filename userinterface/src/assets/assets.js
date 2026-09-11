@@ -104,7 +104,7 @@ export const SidebarMenuLinks = [
 
    {
     name: " CRM / إدارة العملاء",
-    path: "",
+    path: "/crm",
     icon: RiConnectorFill,
   },
   
