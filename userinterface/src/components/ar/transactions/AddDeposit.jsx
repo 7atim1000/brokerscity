@@ -2544,7 +2544,7 @@ const AddDeposit = ({
                                             ref={
                                                 amountRef
                                             }
-                                            type="number"
+                                            type="text"
                                             name="amount"
                                             value={
                                                 formData.amount

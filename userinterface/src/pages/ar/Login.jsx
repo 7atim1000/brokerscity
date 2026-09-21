@@ -2,7 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveTokens } from "../../utils/auth";
-import logo from '../../assets/images/logo.png';
+// import logo from '../../assets/images/logo.png';
+import logo from '../../assets/images/white-logo.png';
 // import background from "../../assets/images/background.jpg";
 import background from "../../assets/images/background.jpg";
 import { FaEye, FaEyeSlash, FaBuilding, FaShieldAlt, FaUserTie, FaBalanceScale, FaChartLine, FaUsers, FaTasks } from "react-icons/fa";
@@ -547,15 +548,16 @@ function Login() {
                                             w-16 h-16 md:w-20 md:h-20
                                             object-contain
                                             rounded-2xl
-                                            mb-2 md:mb-0
+                                            mb-2 md:mb-0 md:ml-4
                                             relative
                                             z-10
                                             shadow-2xl
-                                            ring-1 ring-white/30
+                                            
                                             group-hover:ring-white/60
                                             transition-all
                                             duration-500
                                             group-hover:scale-105
+                                            scale-250
                                         "
                                     />
                                 </div>
@@ -694,7 +696,7 @@ function Login() {
                                                     <span className='font-bold text-xs md:text-sm text-white block drop-shadow'>
                                                         المدير العام
                                                     </span>
-                                                    <span className='text-[8px] md:text-[10px] text-white/70'>
+                                                    <span className='text-[8px] md:text-[4px] text-white/70'>
                                                         الاداره العليا
                                                     </span>
                                                 </div>
@@ -709,7 +711,7 @@ function Login() {
                                     </button>
 
                                     {/* Other buttons */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-2.5">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-2.5 ">
                                         {Object.entries(userRoles)
                                             .filter(([key]) => key !== 'manager')
                                             .map(([key, role]) => {
@@ -723,7 +725,7 @@ function Login() {
                                                         className={`
                                                             relative
                                                             w-full
-                                                            h-12 md:h-[54px]
+                                                            h-12 md:h-[63px]
                                                             bg-gradient-to-r ${role.color}
                                                             bg-[length:200%_100%]
                                                             hover:bg-[length:100%_100%]
@@ -1224,8 +1226,9 @@ function Login() {
                                 drop-shadow-2xl
                                 transition-transform duration-500
                                 hover:scale-105
+                                scale-220
                                 rounded-2xl
-                                ring-1 ring-white/20
+                                
                             "
                         />
                     </div>

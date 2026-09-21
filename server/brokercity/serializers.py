@@ -976,6 +976,15 @@ class TransactionListSerializer(serializers.ModelSerializer):
     bank_name = serializers.CharField(source='bank.name', read_only=True, default=None)
     cashbox_name = serializers.CharField(source='cashbox.name', read_only=True, default=None)
     
+    # ✅ NEW: Display the transaction user's username instead of the raw user ID
+    # NOTE: change `username` below to `name`, `full_name`, or `get_full_name` if that's your User field
+    transaction_user_name = serializers.CharField(
+        source='transaction_user.username',  # pulls the username from the related User
+        read_only=True,
+        default=None                         # returns None if transaction_user is NULL
+    )
+    
+    
     class Meta:
         model = Transaction
         # ADDED: 'user_signature', 'manager_signature', 'second_person_signature' to fields list
@@ -988,7 +997,9 @@ class TransactionListSerializer(serializers.ModelSerializer):
             'statement', 'has_check', 'check_no', 'check_bank', 'check_date',
             'person_deliver', 'person_receipt', 'notes',
             'has_document', 'document', 'document_no',
-            'transaction_user', 'created_at', 'updated_at',
+            'transaction_user', 
+            'transaction_user_name',   # ✅ NEW: username instead of / alongside the ID
+            'created_at', 'updated_at',
             'amount_to_arabic', 'amount_to_english',
             # NEW: Signature fields added for transaction list view
             'user_signature',      # Signature of the transaction user
@@ -1006,6 +1017,7 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
     # Nested serializers for related objects
     bank_detail = serializers.SerializerMethodField()
     cashbox_detail = serializers.SerializerMethodField()
+
     
     class Meta:
         model = Transaction
@@ -1024,6 +1036,15 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
         ]
         # OR use tuple:
         # read_only_fields = ('id', 'transaction_no', 'created_at', 'updated_at', 'transaction_user')
+
+    # ✅ NEW: inject username into the output without declaring a serializer field,
+    # so `fields = '__all__'` keeps working unchanged.
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['transaction_user_name'] = (
+            instance.transaction_user.username if instance.transaction_user else None
+        )
+        return data
     
     def get_bank_detail(self, obj):
         if obj.bank:

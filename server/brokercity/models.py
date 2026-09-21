@@ -246,19 +246,19 @@ class Account(models.Model):
 ###############################################################
 # Transaction Model
 ###############################################################
-def generate_default_transaction_no():
-    """Generate default transaction number starting from 101"""
-    try:
-        last_transaction = Transaction.objects.order_by('-id').first()
-        if last_transaction and last_transaction.transaction_no:
-            try:
-                last_no = int(last_transaction.transaction_no)
-                return str(last_no + 1)
-            except (ValueError, TypeError):
-                return '101'
-        return '101'
-    except Exception:
-        return '101'
+# def generate_default_transaction_no():
+#     """Generate default transaction number starting from 101"""
+#     try:
+#         last_transaction = Transaction.objects.order_by('-id').first()
+#         if last_transaction and last_transaction.transaction_no:
+#             try:
+#                 last_no = int(last_transaction.transaction_no)
+#                 return str(last_no + 1)
+#             except (ValueError, TypeError):
+#                 return '101'
+#         return '101'
+#     except Exception:
+#         return '101'
 
 
 
@@ -474,6 +474,7 @@ class Transaction(models.Model):
         blank=True,
         help_text="Signature of the person who received the amount (base64 encoded)"
     )
+    # Frontend sends only the Base64 string (or the full data:image/...;base64, prefix — pick one convention and stick to it).
     
     # Document fields
     has_document = models.BooleanField(

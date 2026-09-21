@@ -94,3 +94,12 @@
 
 # powershell
 # git check-ignore -v .env
+
+############################################
+# Then continue
+# git add .
+# git diff --cached --name-only   # make sure .env is NOT listed
+# git commit -m "Initial commit"
+# git branch -M main
+# git remote add origin https://github.com/yourusername/your-repo.git
+# git push -u origin main

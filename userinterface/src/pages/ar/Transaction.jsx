@@ -951,9 +951,10 @@ const Transactions = () => {
             {/* Header */}
             <div className="no-print flex flex-col shadow-lg sm:flex-row justify-between items-center max-w-full mx-auto px-4 md:px-3 mb-5 md:mb-5 lg:mb-5 gap-4 bg-white rounded-lg">
                 <div className="flex items-center gap-4 text-center sm:text-right">
-                    <img src={logogo} alt="Broker City Properties" className="hidden sm:block h-14 w-14 rounded-full object-cover shadow" />
+                    {/* <img src={logogo} alt="Broker City Properties" className="hidden sm:block h-14 w-14 rounded-full object-cover shadow" />
+                     */}
                     <div>
-                        <h2 className="text-2xl md:text-2xl lg:text-2xl font-extrabold text-gray-800 tracking-wide">
+                        <h2 className="text-2xl md:text-2xl font-bold lg:text-2xl font-extrabold text-gray-800 tracking-wide">
                             المعاملات المالية
                         </h2>
                         <p className="text-base md:text-md text-gray-600 mt-1">
