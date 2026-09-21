@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveTokens } from "../../utils/auth";
-import logo from '../../assets/images/logo.png';
+import logo from '../../assets/images/white-logo.png';
 // import background from "../../assets/images/background.jpg";
 import background from "../../assets/images/background.jpg";
 import { FaEye, FaEyeSlash, FaBuilding, FaShieldAlt, FaUserTie, FaBalanceScale, FaChartLine, FaUsers, FaTasks } from "react-icons/fa";
@@ -504,8 +504,8 @@ function Login() {
                     "
                 >
                     {/* Premium Top Bar */}
-                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-white to-white/40 relative overflow-hidden flex-shrink-0">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer"></div>
+                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-[#8a6a44] to-white/40 relative overflow-hidden flex-shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#8a6a44] via-white/60 to-transparent animate-shimmer"></div>
                     </div>
 
                     {/* Inner content wrapper */}
@@ -551,11 +551,12 @@ function Login() {
                                             relative
                                             z-10
                                             shadow-2xl
-                                            ring-1 ring-white/30
+                                           
                                             group-hover:ring-white/60
                                             transition-all
                                             duration-500
                                             group-hover:scale-105
+                                            scale-250 md:ml-4
                                         "
                                     />
                                 </div>
@@ -639,7 +640,7 @@ function Login() {
 
                                     <div className="flex items-center gap-2">
                                         <IoSparkles className="text-white/90 text-xs md:text-sm" />
-                                        <span className="text-[10px] md:text-xs text-white font-medium tracking-wider">
+                                        <span className="text-[10px] md:text-xs text-[#f8f7f5] font-medium tracking-wider">
                                             Management
                                         </span>
                                         <IoSparkles className="text-white/90 text-xs md:text-sm" />
@@ -723,7 +724,7 @@ function Login() {
                                                         className={`
                                                             relative
                                                             w-full
-                                                            h-12 md:h-[54px]
+                                                            h-12 md:h-[75px]
                                                             bg-gradient-to-r ${role.color}
                                                             bg-[length:200%_100%]
                                                             hover:bg-[length:100%_100%]
@@ -1202,8 +1203,11 @@ function Login() {
                     </div>
 
                     {/* Premium Bottom Bar */}
-                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-white to-white/40 relative overflow-hidden flex-shrink-0">
+                    {/* <div className="h-1.5 bg-gradient-to-r from-white/40 via-white to-white/40 relative overflow-hidden flex-shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer"></div>
+                    </div> */}
+                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-[#8a6a44] to-white/40 relative overflow-hidden flex-shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#8a6a44] via-white/60 to-transparent animate-shimmer"></div>
                     </div>
                 </div>
 

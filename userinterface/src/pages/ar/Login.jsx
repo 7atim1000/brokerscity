@@ -505,8 +505,8 @@ function Login() {
                     "
                 >
                     {/* Premium Top Bar */}
-                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-white to-white/40 relative overflow-hidden flex-shrink-0">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer"></div>
+                    <div className="h-1.5 bg-gradient-to-r from-[#a47d52] via-white to-[#8a6a44] relative overflow-hidden flex-shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-r from-white via-[#8a6a44] to-white animate-shimmer"></div>
                     </div>
 
                     {/* Inner content wrapper */}
@@ -725,7 +725,7 @@ function Login() {
                                                         className={`
                                                             relative
                                                             w-full
-                                                            h-12 md:h-[63px]
+                                                            h-12 md:h-[73px]
                                                             bg-gradient-to-r ${role.color}
                                                             bg-[length:200%_100%]
                                                             hover:bg-[length:100%_100%]
@@ -1204,8 +1204,8 @@ function Login() {
                     </div>
 
                     {/* Premium Bottom Bar */}
-                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-white to-white/40 relative overflow-hidden flex-shrink-0">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer"></div>
+                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-[#8a6a44] to-white/40 relative overflow-hidden flex-shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#8a6a44] via-white/60 to-transparent animate-shimmer"></div>
                     </div>
                 </div>
 
