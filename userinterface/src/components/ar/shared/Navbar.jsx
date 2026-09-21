@@ -84,6 +84,9 @@ const Navbar = () => {
                 from-[#f8f7f5]
                 via-[#a47d52]
                 to-[#a47d52]
+
+        
+                
                 border-b
                 border-[#a47d52]/30
                 shadow-[0_4px_20px_rgba(164,125,82,0.25)]
@@ -126,7 +129,8 @@ const Navbar = () => {
                             text-white/90
                             font-black
                             text-[11px]
-                            sm:text-sm
+                            sm:text-lg
+                            md:text-lg
                             md:text-base
                             tracking-wide
                             whitespace-nowrap
@@ -137,11 +141,13 @@ const Navbar = () => {
                     </span>
                     <span
                         className="
-                            text-black/90
-                            font-bold
+                            text-[#a47d59]
+                            
+                            font-extrabold
                             text-[10px]
-                            sm:text-xs
+                            sm:text-sm
                             md:text-sm
+                            
                             tracking-wider
                             whitespace-nowrap
                         "
