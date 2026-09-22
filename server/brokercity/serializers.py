@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile, Bank, CashBox, Transaction, AccountCategory, Account, Customer, WhatsAppMessage, Owner, Building, Unit
+from .models import Profile, Bank, CashBox, Transaction, AccountCategory, Account, Customer, WhatsAppMessage, Owner, Building, Unit, Slider
 from decimal import Decimal
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Sum, Count
@@ -1384,6 +1384,33 @@ class UnitSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+###############################################################
+###############################################################
+# Website 
+###############################################################
+from rest_framework import serializers
+from .models import Slider
+
+
+class SliderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Slider
+        fields = [
+            'id',
+            'name',
+            'image',
+          
+        ]
+
+    # def validate(self, attrs):
+    #     # Optional: require at least one image
+    #     images = ['image_1', 'image_2', 'image_3', 'image_4']
+    #     if not any(attrs.get(img) for img in images):
+    #         raise serializers.ValidationError(
+    #             "At least one image is required."
+    #         )
+    #     return attrs
 
 
         

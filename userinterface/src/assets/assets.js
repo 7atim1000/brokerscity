@@ -21,6 +21,11 @@ import { FaCalculator } from "react-icons/fa6";
 import { GrVmMaintenance } from "react-icons/gr";
 import { TbBuildingCommunity } from "react-icons/tb";
 import { RiConnectorFill } from "react-icons/ri";
+import { BsBrowserEdge } from "react-icons/bs";
+import { SiGooglechrome } from "react-icons/si";
+
+import ChromeLogo from "../components/ar/shared/ChromeLogo";
+
 
 export const SidebarMenuLinks = [
   {
@@ -109,7 +114,15 @@ export const SidebarMenuLinks = [
     ]
   },
 
-   {
+  
+  
+  {
+    name: "الموقع اللاكتروني",
+    path: "/ar-website",
+    icon: ChromeLogo,
+  },
+  
+  {
     name: " CRM / إدارة العملاء",
     path: "/crm",
     icon: RiConnectorFill,

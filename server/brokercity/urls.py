@@ -180,6 +180,13 @@ urlpatterns = [
     # Delete unit
     path('units/<int:pk>/delete/', views.delete_unit, name='delete-unit'),
 
+
+    #########################################################################
+    # website
+    #########################################################################
+    path('sliders/', views.SliderListCreateView.as_view(), name='slider-list-create'),
+    path('sliders/<int:pk>/', views.SliderDetailView.as_view(), name='slider-detail'),
+
 ]
 
 

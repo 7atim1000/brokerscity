@@ -38,17 +38,19 @@ function Sidebar({ onHoverChange }) {
     const isExpanded = isDesktop && isHovered;
 
     const mainLinks = SidebarMenuLinks.filter(
-    (item) =>
-        item.path !== "/ar-whatsapp" &&
-        item.path !== "/email" &&
-        item.path !== "/crm"
-);
-const bottomLinks = SidebarMenuLinks.filter(
-    (item) =>
-        item.path === "/ar-whatsapp" ||
-        item.path === "/email" ||
-        item.path === "/crm"
-);
+        (item) =>
+            item.path !== "/ar-whatsapp" &&
+            item.path !== "/email" &&
+            item.path !== "/crm" &&
+            item.path !== "/ar-website"
+    );
+    const bottomLinks = SidebarMenuLinks.filter(
+        (item) =>
+            item.path === "/ar-whatsapp" ||
+            item.path === "/email" ||
+            item.path === "/crm" ||
+            item.path === "/ar-website"
+    );
 
     return (
         <aside
@@ -61,7 +63,6 @@ const bottomLinks = SidebarMenuLinks.filter(
                 right-0
                 top-5
                 h-screen
-                
                 border-l
                 border-[#8a6a44]/40
                 shadow-[0_0_25px_rgba(0,0,0,0.5)]
@@ -95,7 +96,6 @@ const bottomLinks = SidebarMenuLinks.filter(
                                         onClick={() => toggleSubMenu(index)}
                                         className={`
                                             border-b-3 border-[#a47d59]
-
                                             flex items-center 
                                             ${isExpanded ? "justify-between w-full px-3 py-2.5 rounded-xl" : "justify-center w-10 h-10 mx-auto rounded-full p-0"}
                                             transition-all
@@ -127,7 +127,6 @@ const bottomLinks = SidebarMenuLinks.filter(
                                             />
                                             <span
                                                 className={`
-                                                    
                                                     font-black
                                                     text-white
                                                     tracking-wide
@@ -142,7 +141,6 @@ const bottomLinks = SidebarMenuLinks.filter(
                                         </div>
                                         <span
                                             className={`
-                                                
                                                 transition-all
                                                 duration-300
                                                 ${isExpanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"}
@@ -151,7 +149,6 @@ const bottomLinks = SidebarMenuLinks.filter(
                                             <MdExpandCircleDown
                                                 size={22}
                                                 className={`
-                                                    
                                                     text-white
                                                     transition-transform
                                                     duration-300
@@ -213,7 +210,6 @@ const bottomLinks = SidebarMenuLinks.filter(
                                 {item.subItems && isExpandedItem && isExpanded && (
                                     <ul
                                         className="
-                                           
                                             mt-1 mr-1 space-y-1
                                             border-r-2 border-[#d4a574]/40
                                             pr-2
@@ -232,7 +228,6 @@ const bottomLinks = SidebarMenuLinks.filter(
                                                     <Link
                                                         to={subItem.path}
                                                         className={`
-                                                            
                                                             flex items-center
                                                             justify-start
                                                             gap-2
@@ -251,11 +246,9 @@ const bottomLinks = SidebarMenuLinks.filter(
                                                         `}
                                                     >
                                                         <SubIcon
-
                                                             size={16}
                                                             strokeWidth={2.5}
                                                             className="
-                                                            
                                                                 text-white
                                                                 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]
                                                                 transition-colors
@@ -278,78 +271,82 @@ const bottomLinks = SidebarMenuLinks.filter(
                 </ul>
             </nav>
 
-{/* Bottom pinned section: WhatsApp + Email (white pill background) */}
-<div className="p-2 space-y-1 pb-15 shrink-0">
-    {bottomLinks.map((item, index) => {
-        const Icon = item.icon;
-        const isActive = location.pathname === item.path;
-        const isWhatsApp = item.path === "/ar-whatsapp";
-        const isCrm = item.path === "/crm";
+            {/* Bottom pinned section: WhatsApp + Email + CRM + Website */}
+            <div className="p-2 space-y-1 pb-15 shrink-0">
+                {bottomLinks.map((item, index) => {
+                    const Icon = item.icon;
+                    const isActive = location.pathname === item.path;
+                    const isWhatsApp = item.path === "/ar-whatsapp";
+                    const isCrm = item.path === "/crm";
+                    const isWebsite = item.path === "/website";
 
-        return (
-            <Link
-                key={index}
-                to={item.path}
-                className={`
-                    border-b-3 border-white
-                    flex items-center
-                    ${isExpanded ? "justify-start w-full gap-2 px-3 py-2.5 rounded-xl text-sm sm:text-base" : "justify-center w-10 h-10 mx-auto rounded-full p-0 gap-0 text-xs"}
-                    transition-all
-                    duration-300
-                    ease-in-out
-                    font-black
-                    group
-                    
-                    hover:bg-white/90
-                    shadow-sm
-                    hover:shadow-md
-                `}
-            >
-                <Icon
-                    size={isExpanded ? 20 : 18}
-                    strokeWidth={1.1}
-                    className={`
-                        shrink-0
-                        transition-all
-                        duration-300
-                        ${
-                            isWhatsApp
-                                ? "text-[#25D366]"
-                                : isCrm
-                                    ? "text-[#1D9BF0]"
-                                    : "text-[#EA4335]"
-                        }
-                    `}
-                />
-                <span
-                    className={`
-                        font-black
-                        tracking-wide
-                        whitespace-nowrap
-                        transition-all
-                        duration-300
-                        ${
-                            isWhatsApp
-                                ? "text-[#128C7E]"
-                                : isCrm
-                                    ? "text-[#1D9BF0]"
-                                    : "text-[#EA4335]"
-                        }
-                        ${isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"}
-                    `}
-                >
-                    {item.name}
-                </span>
-            </Link>
-        );
-    })}
-</div>
+                    // Color resolution
+                    const iconColor = isWhatsApp
+                        ? "text-[#25D366]"
+                        : isCrm
+                            ? "text-[#1D9BF0]"
+                            : isWebsite
+                                ? "text-[#4285F4]"
+                                : "text-[#EA4335]";
+
+                    const labelColor = isWhatsApp
+                        ? "text-[#128C7E]"
+                        : isCrm
+                            ? "text-[#1D9BF0]"
+                            : isWebsite
+                                ? "text-[#4285F4]"
+                                : "text-[#EA4335]";
+
+                    return (
+                        <Link
+                            key={index}
+                            to={item.path}
+                            className={`
+                                border-b-3 border-white
+                                flex items-center
+                                ${isExpanded ? "justify-start w-full gap-2 px-3 py-2.5 rounded-xl text-sm sm:text-base" : "justify-center w-10 h-10 mx-auto rounded-full p-0 gap-0 text-xs"}
+                                transition-all
+                                duration-300
+                                ease-in-out
+                                font-black
+                                group
+                                hover:bg-white/90
+                                shadow-sm
+                                hover:shadow-md
+                            `}
+                        >
+                            <Icon
+                                size={isExpanded ? 20 : 18}
+                                strokeWidth={1.1}
+                                className={`
+                                    shrink-0
+                                    transition-all
+                                    duration-300
+                                    ${iconColor}
+                                `}
+                            />
+                            <span
+                                className={`
+                                    font-black
+                                    tracking-wide
+                                    whitespace-nowrap
+                                    transition-all
+                                    duration-300
+                                    ${labelColor}
+                                    ${isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"}
+                                `}
+                            >
+                                {item.name}
+                            </span>
+                        </Link>
+                    );
+                })}
+            </div>
         </aside>
     );
 }
 
 export default Sidebar;
-
 
 
 

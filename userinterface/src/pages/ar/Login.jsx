@@ -545,10 +545,11 @@ function Login() {
                                         src={logo}
                                         alt="شعار بروكر سيتي"
                                         className="
-                                            w-16 h-16 md:w-20 md:h-20
+                                            w-16 h-16 md:w-20 md:h-8
+                                            
                                             object-contain
                                             rounded-2xl
-                                            mb-2 md:mb-0 md:ml-4
+                                            mb-2 md:mb-0 md:ml-14
                                             relative
                                             z-10
                                             shadow-2xl
@@ -557,7 +558,7 @@ function Login() {
                                             transition-all
                                             duration-500
                                             group-hover:scale-105
-                                            scale-250
+                                            scale-300
                                         "
                                     />
                                 </div>
@@ -658,7 +659,7 @@ function Login() {
                                         className="
                                             relative
                                             w-full
-                                            h-14 md:h-16
+                                            h-14 md:h-18
                                             bg-gradient-to-r from-white/25 via-white/15 to-white/25
                                             bg-[length:200%_100%]
                                             hover:bg-[length:100%_100%]
@@ -673,8 +674,8 @@ function Login() {
                                             hover:scale-[1.02]
                                             group
                                             overflow-hidden
-                                            border
-                                            border-white/40
+                                            border-b-2
+                                            border-[#8a6a44]
                                             hover:border-white/70
                                             animate-gradient-x
                                             backdrop-blur-md
@@ -740,7 +741,7 @@ function Login() {
                                                             hover:scale-[1.02]
                                                             group
                                                             overflow-hidden
-                                                            border ${role.borderColor}
+                                                            border-b-2 border-[#8a6a44]
                                                             hover:border-white/60
                                                             backdrop-blur-md
                                                             animate-gradient-x
@@ -875,8 +876,8 @@ function Login() {
                                             className="
                                                 w-full
                                                 rounded-2xl
-                                                border-2
-                                                border-white/30
+                                                border-b-2
+                                                border-[#8a6a44]
                                                 bg-white/10
                                                 backdrop-blur-md
                                                 px-4 md:px-5
@@ -896,7 +897,20 @@ function Login() {
                                             "
                                         />
 
-                                        <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors duration-300">
+                                        <div className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors duration-300">
+                                            {/* <svg
+                                                className="w-4 h-4 md:w-5 md:h-5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth="2"
+                                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                                />
+                                            </svg> */}
                                             <svg
                                                 className="w-4 h-4 md:w-5 md:h-5"
                                                 fill="none"
@@ -911,6 +925,7 @@ function Login() {
                                                 />
                                             </svg>
                                         </div>
+                                        
                                     </div>
                                 </div>
                             )}
@@ -945,12 +960,12 @@ function Login() {
                                         className={`
                                             w-full
                                             rounded-2xl
-                                            border-2
+                                            border-b-2
                                             ${form.password.length >= 4 && !isLoggingIn
                                                 ? 'border-emerald-300/60 bg-emerald-500/10'
                                                 : form.password.length > 0 && form.password.length < 4
                                                 ? 'border-yellow-300/60 bg-yellow-500/10'
-                                                : 'border-white/30 bg-white/10'}
+                                                : 'border-[#8a6a44] bg-white/10'}
                                             backdrop-blur-md
                                             px-4 md:px-5
                                             py-2.5 md:py-3
@@ -1243,7 +1258,7 @@ function Login() {
                         منصتك العقارية الرقمية المتكاملة
                     </p>
 
-                    <div className="mt-8 xl:mt-10 2xl:mt-12 grid grid-cols-3 gap-5 xl:gap-6 2xl:gap-8 w-full max-w-md xl:max-w-lg">
+                    <div className="mt-8 xl:mt-10 2xl:mt-12 grid grid-cols-3 gap-5 xl:gap-6 2xl:gap-8 w-full max-w-md xl:max-w-lg ">
                         {[
                             { Icon: IoBusiness, label: "العقارات" },
                             { Icon: IoPeople, label: "العملاء" },
@@ -1256,13 +1271,15 @@ function Login() {
                                     animationDelay: `${300 + i * 120}ms`,
                                 }}
                                 className="
-                                    bg-white/10 backdrop-blur-md rounded-2xl p-5 xl:p-7 2xl:p-8
+                                    bg-white/10 backdrop-blur-md rounded-sm p-5 xl:p-7 2xl:p-8
                                     text-center border border-white/25
                                     transition-all duration-500
                                     hover:bg-white/20 hover:border-white/50
                                     hover:-translate-y-1.5 
                                     hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.35)]
                                     cursor-default
+                                    
+                                    border-b-5 border-red-500
                                     group
                                 "
                             >

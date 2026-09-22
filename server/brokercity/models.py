@@ -848,8 +848,54 @@ class Unit(models.Model):
 
 
 
-    
 
+#######################################################
+#######################################################
+# WEBSITE 
+
+from django.db import models
+
+
+class Slider(models.Model):
+    name = models.CharField(max_length=200, help_text="Slider name", null=True,)
+    location = models.CharField(max_length=100, help_text="Slider location", null=True,)
+
+    image = models.ImageField(
+        upload_to='slider/', blank=True, null=True, help_text="Main slider image"
+    )
+    image_1 = models.ImageField(
+        upload_to='slider/', blank=True, null=True, help_text="First slider image"
+    )
+    image_2 = models.ImageField(
+        upload_to='slider/', blank=True, null=True, help_text="Second slider image"
+    )
+    image_3 = models.ImageField(
+        upload_to='slider/', blank=True, null=True, help_text="Third slider image"
+    )
+    image_4 = models.ImageField(
+        upload_to='slider/', blank=True, null=True, help_text="Fourth slider image"
+    )
+
+    starting_price = models.CharField(max_length=100, help_text="Starting price", null=True,)
+    payment_plan = models.CharField(max_length=100, help_text="Payment plan", null=True,)
+    booking_fee = models.CharField(max_length=100, help_text="Booking fee", null=True,)
+    handover = models.CharField(max_length=100, help_text="Handover", null=True,)
+
+    developer = models.CharField(max_length=100, help_text="Developer", null=True,)
+    area_from = models.CharField(max_length=100, help_text="Area from", null=True,)
+    studios = models.CharField(max_length=100, help_text="Studios", null=True,)
+    apartments = models.CharField(max_length=100, help_text="Apartments", null=True,)
+    townhouses = models.CharField(max_length=100, help_text="Townhouses", null=True,)
+    duplexes = models.CharField(max_length=100, help_text="Duplexes", null=True,)
+    penthouses = models.CharField(max_length=100, help_text="Penthouses", null=True,)
+
+    license_number = models.CharField(max_length=100, help_text="License number", null=True,)
+    project_number = models.CharField(max_length=100, help_text="Project number", null=True,)
+
+    description = models.TextField(help_text="Slider description", null=True,)
+
+    def __str__(self):
+        return self.name
         
 # created_at field WHEN migrations: 
 # It is impossible to add the field 'created_at' with 'auto_now_add=True' to paymentmethod without providing a default.

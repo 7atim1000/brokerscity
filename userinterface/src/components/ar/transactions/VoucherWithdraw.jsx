@@ -2026,8 +2026,7 @@ const VoucherWithdraw = ({ transaction = {}, onClose }) => {
                                     "
                                 >
                                     <span dir="ltr">
-                                        :
-                                        وذلك عن
+                                        وذلك: عن
                                     </span>
 
                                     <span
@@ -2041,8 +2040,8 @@ const VoucherWithdraw = ({ transaction = {}, onClose }) => {
                                         dir="rtl"
                                         className="font-black"
                                     >
-                                        :
-                                        Being
+                                        
+                                        :Being
                                     </span>
                                 </div>
                                 <div className ='text-center'>

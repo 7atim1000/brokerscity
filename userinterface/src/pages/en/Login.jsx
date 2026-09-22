@@ -337,7 +337,7 @@ function Login() {
             icon: FaUserTie,
             color: 'from-white/20 to-white/5',
             bgColor: 'bg-white/10',
-            borderColor: 'border-white/30',
+            borderColor: 'border-[#8a6a44]',
             badgeColor: 'bg-white/15 text-white',
             glowColor: 'shadow-white/20',
             gradient: 'from-white/15 via-white/5 to-transparent',
@@ -349,7 +349,7 @@ function Login() {
             icon: FaUsers,
             color: 'from-white/20 to-white/5',
             bgColor: 'bg-white/10',
-            borderColor: 'border-white/30',
+            borderColor: 'border-[#8a6a44]',
             badgeColor: 'bg-white/15 text-white',
             glowColor: 'shadow-white/20',
             gradient: 'from-white/15 via-white/5 to-transparent',
@@ -361,7 +361,7 @@ function Login() {
             icon: FaChartLine,
             color: 'from-white/20 to-white/5',
             bgColor: 'bg-white/10',
-            borderColor: 'border-white/30',
+            borderColor: 'border-[#8a6a44]',
             badgeColor: 'bg-white/15 text-white',
             glowColor: 'shadow-white/20',
             gradient: 'from-white/15 via-white/5 to-transparent',
@@ -373,7 +373,7 @@ function Login() {
             icon: FaBalanceScale,
             color: 'from-white/20 to-white/5',
             bgColor: 'bg-white/10',
-            borderColor: 'border-white/30',
+            borderColor: 'border-[#8a6a44]',
             badgeColor: 'bg-white/15 text-white',
             glowColor: 'shadow-white/20',
             gradient: 'from-white/15 via-white/5 to-transparent',
@@ -539,7 +539,7 @@ function Login() {
                         {/* Logo Section — Logo on LEFT, Title on RIGHT (flipped for LTR) */}
                         <div className="flex flex-col items-center justify-center mb-5 md:mb-6 relative flex-shrink-0">
                             <div className='flex flex-col justify-center md:flex md:flex-row md:justify-between items-center w-full gap-3'>
-                                <div className="relative group order-2 md:order-1">
+                                <div className="relative group order-2 md:order-1 md:ml-11 ">
                                     <img
                                         src={logo}
                                         alt="Broker City Logo"
@@ -570,7 +570,7 @@ function Login() {
                                         drop-shadow-lg
                                         tracking-wide
                                     ">
-                                        Broker City Real Estate
+                                        Broker City Properties
                                     </h1>
 
                                     <div className="flex items-center justify-center md:justify-start gap-2">
@@ -657,7 +657,7 @@ function Login() {
                                         className="
                                             relative
                                             w-full
-                                            h-14 md:h-16
+                                            h-14 md:h-20
                                             bg-gradient-to-r from-white/25 via-white/15 to-white/25
                                             bg-[length:200%_100%]
                                             hover:bg-[length:100%_100%]
@@ -672,8 +672,8 @@ function Login() {
                                             hover:scale-[1.02]
                                             group
                                             overflow-hidden
-                                            border
-                                            border-white/40
+                                            border-b-3
+                                            border-[#8a6a44]
                                             hover:border-white/70
                                             animate-gradient-x
                                             backdrop-blur-md
@@ -682,7 +682,7 @@ function Login() {
                                         <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/25 to-white/0 -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                                         <div className="absolute -inset-1 bg-white/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-                                        <div className='flex items-center gap-2 justify-between relative z-10'>
+                                        <div className='flex items-center gap-2 justify-between relative z-10 '>
                                             <div className="flex items-center gap-2 md:gap-2.5">
                                                 <div className="relative">
                                                     <div className="absolute -inset-1 bg-white/30 rounded-full blur-sm animate-pulse"></div>
@@ -739,19 +739,20 @@ function Login() {
                                                             hover:scale-[1.02]
                                                             group
                                                             overflow-hidden
-                                                            border ${role.borderColor}
+                                                            border-b-3 ${role.borderColor}
                                                             hover:border-white/60
                                                             backdrop-blur-md
                                                             animate-gradient-x
                                                         `}
                                                     >
                                                         <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                                                        
                                                         <div className="absolute -inset-1 bg-white/15 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                                                         <div className='flex items-center gap-2 justify-between relative z-10'>
-                                                            <div className="flex items-center gap-2 md:gap-2">
-                                                                <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full ${role.badgeColor} border border-white/30 flex items-center justify-center backdrop-blur-sm flex-shrink-0`}>
-                                                                    <Icon className='text-white text-xs md:text-sm' />
+                                                            <div className="flex items-center gap-2 md:gap-2 bg-">
+                                                                <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full ${role.badgeColor} border border-white/30 flex items-center justify-center backdrop-blur-sm flex-shrink-0 `}>
+                                                                    <Icon className='text-white text-xs md:text-sm ' />
                                                                 </div>
 
                                                                 <div className="text-left flex flex-col gap-0">
@@ -764,9 +765,9 @@ function Login() {
                                                                 </div>
                                                             </div>
 
-                                                            <div className="text-white text-xs md:text-base flex-shrink-0">
+                                                            {/* <div className="text-white text-xs md:text-base flex-shrink-0 mb-5">
                                                                 {role.emoji}
-                                                            </div>
+                                                            </div> */}
                                                         </div>
                                                     </button>
                                                 );
@@ -874,8 +875,8 @@ function Login() {
                                             className="
                                                 w-full
                                                 rounded-2xl
-                                                border-2
-                                                border-white/30
+                                                border-b-2
+                                                border-[#8a6a44]
                                                 bg-white/10
                                                 backdrop-blur-md
                                                 px-4 md:px-5
@@ -944,12 +945,12 @@ function Login() {
                                         className={`
                                             w-full
                                             rounded-2xl
-                                            border-2
+                                            border-b-2
                                             ${form.password.length >= 4 && !isLoggingIn
                                                 ? 'border-emerald-300/60 bg-emerald-500/10'
                                                 : form.password.length > 0 && form.password.length < 4
                                                 ? 'border-yellow-300/60 bg-yellow-500/10'
-                                                : 'border-white/30 bg-white/10'}
+                                                : 'border-[#8a6a44] bg-white/10'}
                                             backdrop-blur-md
                                             px-4 md:px-5
                                             py-2.5 md:py-3
@@ -1224,12 +1225,13 @@ function Login() {
                             alt="Broker City"
                             className="
                                 relative
+                                scale-220
                                 w-32 xl:w-40 2xl:w-48 h-auto mb-6 xl:mb-8 2xl:mb-10 
                                 drop-shadow-2xl
                                 transition-transform duration-500
                                 hover:scale-105
                                 rounded-2xl
-                                ring-1 ring-white/20
+                                
                             "
                         />
                     </div>
@@ -1244,7 +1246,7 @@ function Login() {
                         Your integrated digital real estate platform
                     </p>
 
-                    <div className="mt-8 xl:mt-10 2xl:mt-12 grid grid-cols-3 gap-5 xl:gap-6 2xl:gap-8 w-full max-w-md xl:max-w-lg">
+                    <div className="mt-8 xl:mt-10 2xl:mt-12 grid grid-cols-3 gap-5 xl:gap-6 2xl:gap-8 w-full max-w-md xl:max-w-lg ">
                         {[
                             { Icon: IoBusiness, label: "Properties" },
                             { Icon: IoPeople, label: "Clients" },
@@ -1257,7 +1259,7 @@ function Login() {
                                     animationDelay: `${300 + i * 120}ms`,
                                 }}
                                 className="
-                                    bg-white/10 backdrop-blur-md rounded-2xl p-5 xl:p-7 2xl:p-8
+                                    bg-white/10 backdrop-blur-md rounded-sm p-5 xl:p-7 2xl:p-8
                                     text-center border border-white/25
                                     transition-all duration-500
                                     hover:bg-white/20 hover:border-white/50
@@ -1265,6 +1267,7 @@ function Login() {
                                     hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.35)]
                                     cursor-default
                                     group
+                                    border-b-5
                                 "
                             >
                                 <Icon className="text-2xl xl:text-3xl 2xl:text-4xl mx-auto mb-2 xl:mb-3 text-white/95 transition-all duration-300 group-hover:scale-110 group-hover:text-white" />

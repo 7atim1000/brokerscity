@@ -14,6 +14,9 @@ import ArWhatsApp from './pages/ar/WhatsApp' ;
 import ArOwner from './pages/ar/Owner'
 import ArCategory from './pages/ar/Category'
 import ArUnit from './pages/ar/Unit'
+// Website 
+import ArWebSiteLink from './pages/ar/WebSiteLink' ;
+import ArSlider from './pages/ar/Slider' ;
 
 
 import Login from './pages/en/Login'
@@ -49,6 +52,10 @@ function App() {
                 <Route path="/ar-owner" element={<ArOwner />}/>
                 <Route path="/ar-unit" element={<ArUnit />}/>
                 <Route path="/ar-category" element={<ArCategory />}/>
+
+
+                <Route path="/ar-website" element={<ArWebSiteLink />}/>
+                <Route path="/ar-slider" element={<ArSlider />}/>
               
             </Route>
 

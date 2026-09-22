@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
-from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit
+from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider
 from rest_framework.response import Response
 from rest_framework import status, generics, filters
 from django.shortcuts import render, get_object_or_404
@@ -34,6 +34,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 import os
 import subprocess
 from django.http import JsonResponse
+
+# Website
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser  #
 
 
 
@@ -70,7 +73,9 @@ from .serializers import (
     # Properties Management 
     OwnerSerializer,
     BuildingSerializer,
-    UnitSerializer
+    UnitSerializer,
+
+    SliderSerializer
     )
 
 # Dashboard
@@ -2162,3 +2167,19 @@ def delete_unit(request, pk):
         },
         status=status.HTTP_200_OK
     )
+
+
+
+
+############################WEBSITE###########################
+#############################################################
+class SliderListCreateView(generics.ListCreateAPIView):
+    queryset = Slider.objects.all().order_by('-id')
+    serializer_class = SliderSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+
+class SliderDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Slider.objects.all()
+    serializer_class = SliderSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
