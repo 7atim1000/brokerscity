@@ -517,8 +517,8 @@ function Login() {
                         md:px-8
                         lg:px-10
                         pt-8
-                        md:pt-10
-                        lg:pt-12
+                        md:pt-35
+                        lg:pt-10
                         pb-5
                         md:pb-7
                         lg:pb-8
