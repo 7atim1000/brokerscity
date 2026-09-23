@@ -180,6 +180,17 @@ urlpatterns = [
     # Delete unit
     path('units/<int:pk>/delete/', views.delete_unit, name='delete-unit'),
 
+    # ========================================================
+    # RENTAL APIs
+    # ========================================================
+
+
+    path('rentals/', views.get_all_rentals, name='get_all_rentals', ),
+    path('rentals/create/', views.create_rental, name='create_rental', ),
+    path('rentals/<int:pk>/', views.get_rental_details, name='get_rental_details',),
+    path('rentals/<int:pk>/update/', views.update_rental, name='update_rental', ),
+    path('rentals/<int:pk>/delete/', views.delete_rental, name='delete_rental', ),
+
 
     #########################################################################
     # website

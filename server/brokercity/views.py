@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
-from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider
+from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental
 from rest_framework.response import Response
 from rest_framework import status, generics, filters
 from django.shortcuts import render, get_object_or_404
@@ -74,6 +74,7 @@ from .serializers import (
     OwnerSerializer,
     BuildingSerializer,
     UnitSerializer,
+    RentalSerializer,
 
     SliderSerializer
     )
@@ -2165,6 +2166,182 @@ def delete_unit(request, pk):
         {
             'message': 'Unit deleted successfully.'
         },
+        status=status.HTTP_200_OK
+    )
+
+
+###################################
+# Rental 
+###################################
+# from rest_framework.decorators import (
+#     api_view,
+#     permission_classes,
+# )
+# from rest_framework.permissions import IsAuthenticated
+# from rest_framework.response import Response
+# from rest_framework import status
+
+# from .models import Rental
+# from .serializers import RentalSerializer
+
+
+# ============================================================
+# CREATE RENTAL
+# POST /api/rentals/create/
+# ============================================================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_rental(request):
+
+    serializer = RentalSerializer(data=request.data)
+
+    if serializer.is_valid():
+
+        rental = serializer.save()
+
+        return Response(
+            {
+                'message': 'Rental created successfully.',
+                'rental': RentalSerializer(rental).data,
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+    return Response(
+        {
+            'message': 'Failed to create rental.',
+            'errors': serializer.errors,
+        },
+        status=status.HTTP_400_BAD_REQUEST
+    )
+
+
+# ============================================================
+# FETCH ALL RENTALS
+# GET /api/rentals/
+# ============================================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_rentals(request):
+
+    rentals = (
+        Rental.objects
+        .all()
+        .order_by('-id')
+    )
+
+    serializer = RentalSerializer(rentals, many=True)
+
+    return Response(
+        {
+            'count': rentals.count(),
+            'rentals': serializer.data,
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+# ============================================================
+# FETCH RENTAL DETAILS
+# GET /api/rentals/<pk>/
+# ============================================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_rental_details(request, pk):
+
+    try:
+        rental = Rental.objects.get(pk=pk)
+
+    except Rental.DoesNotExist:
+
+        return Response(
+            {'message': 'Rental not found.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    serializer = RentalSerializer(rental)
+
+    return Response(
+        {'rental': serializer.data},
+        status=status.HTTP_200_OK
+    )
+
+
+# ============================================================
+# UPDATE RENTAL
+# PUT /api/rentals/<pk>/update/
+# PATCH /api/rentals/<pk>/update/
+# ============================================================
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_rental(request, pk):
+
+    try:
+        rental = Rental.objects.get(pk=pk)
+
+    except Rental.DoesNotExist:
+
+        return Response(
+            {'message': 'Rental not found.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    partial = request.method == 'PATCH'
+
+    serializer = RentalSerializer(
+        rental,
+        data=request.data,
+        partial=partial,
+    )
+
+    if serializer.is_valid():
+
+        rental = serializer.save()
+
+        return Response(
+            {
+                'message': 'Rental updated successfully.',
+                'rental': RentalSerializer(rental).data,
+            },
+            status=status.HTTP_200_OK
+        )
+
+    return Response(
+        {
+            'message': 'Failed to update rental.',
+            'errors': serializer.errors,
+        },
+        status=status.HTTP_400_BAD_REQUEST
+    )
+
+
+# ============================================================
+# DELETE RENTAL
+# DELETE /api/rentals/<pk>/delete/
+# ============================================================
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_rental(request, pk):
+
+    try:
+        rental = Rental.objects.get(pk=pk)
+
+    except Rental.DoesNotExist:
+
+        return Response(
+            {'message': 'Rental not found.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    rental.delete()
+
+    return Response(
+        {'message': 'Rental deleted successfully.'},
         status=status.HTTP_200_OK
     )
 

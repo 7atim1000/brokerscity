@@ -715,6 +715,19 @@ class Unit(models.Model):
         ('occupied', 'Occupied'),
         ('available', 'Available'),
     ]
+    
+    FLOOR_CHOICES = [
+        ('first', 'First'),
+        ('second', 'Second'),
+        ('third', 'Third'),
+        ('forth', 'Forth'),
+        ('fifth', 'Fifth'),
+        ('sixth', 'Sixth'),
+        ('seventh', 'Seventh'),
+        ('eighth', 'Eighth'),
+        ('ninth', 'Ninth'),
+        ('tenth', 'Tenth')
+    ]
 
     category = models.ForeignKey(
         Building,
@@ -732,6 +745,14 @@ class Unit(models.Model):
         blank=True,
         null=True,
         help_text="Name of unit"
+    )
+    
+    floor = models.CharField(
+        max_length=100,
+        choices=FLOOR_CHOICES,
+        default='first',
+        blank=True,
+        null=True
     )
 
     type = models.CharField(
@@ -853,9 +874,6 @@ class Unit(models.Model):
 #######################################################
 # WEBSITE 
 
-from django.db import models
-
-
 class Slider(models.Model):
     name = models.CharField(max_length=200, help_text="Slider name", null=True,)
     location = models.CharField(max_length=100, help_text="Slider location", null=True,)
@@ -897,6 +915,39 @@ class Slider(models.Model):
     def __str__(self):
         return self.name
         
+
+
+class Rental(models.Model):
+    name = models.CharField(max_length=100, help_text="Rental name", null=True,)
+    nationality = models.CharField(max_length=100, help_text="Rental location", null=True,)
+    phone_1 = models.CharField(max_length=100, help_text="Rental phone number", null=True,)
+    phone_2 = models.CharField(max_length=100, help_text="Rental second phone number", null=True,)
+    id_number = models.CharField(max_length=100, help_text="Rental phone number", null=True,)
+    email = models.CharField(max_length=100, help_text="Rental email address", null=True,)
+    insurance_balance = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(0)],
+        blank=True,
+        null=True,
+        help_text="Current balance of the owner"
+    )
+    balance = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(0)],
+        blank=True,
+        null=True,
+        help_text="Current balance of the owner"
+    )
+
+    
+    def __str__(self):
+        return self.name
+
+
 # created_at field WHEN migrations: 
 # It is impossible to add the field 'created_at' with 'auto_now_add=True' to paymentmethod without providing a default.
 # Please select a fix:

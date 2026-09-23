@@ -20,6 +20,19 @@ import { MdClose } from "react-icons/md";
 
 const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
 
+const FLOOR_OPTIONS = [
+    { value: "first", label: "الأول" },
+    { value: "second", label: "الثاني" },
+    { value: "third", label: "الثالث" },
+    { value: "forth", label: "الرابع" },
+    { value: "fifth", label: "الخامس" },
+    { value: "sixth", label: "السادس" },
+    { value: "seventh", label: "السابع" },
+    { value: "eighth", label: "الثامن" },
+    { value: "ninth", label: "التاسع" },
+    { value: "tenth", label: "العاشر" },
+];
+
 const EditUnit = ({
     unitId,
     onClose,
@@ -54,6 +67,7 @@ const EditUnit = ({
         name: "",
         type: "apartment",
         status: "occupied",
+        floor: "first",
 
         price: "",
         area: "",
@@ -227,6 +241,10 @@ const EditUnit = ({
                     status:
                         unit?.status ??
                         "occupied",
+
+                    floor:
+                        unit?.floor ??
+                        "first",
 
                     price:
                         unit?.price ?? "",
@@ -1416,6 +1434,60 @@ const EditUnit = ({
                                                 mt-1
                                             ">
                                                 {errors.name}
+                                            </p>
+                                        )}
+
+                                    </div>
+
+                                    <div>
+
+                                        <label className="
+                                            block
+                                            mb-2
+                                            font-bold
+                                            text-gray-700
+                                        ">
+                                            الطابق
+                                        </label>
+
+                                        <select
+                                            name="floor"
+                                            value={
+                                                formData.floor
+                                            }
+                                            onChange={
+                                                handleChange
+                                            }
+                                            disabled={loading}
+                                            className={
+                                                inputClass("floor")
+                                            }
+                                        >
+                                            {FLOOR_OPTIONS.map(
+                                                (option) => (
+                                                    <option
+                                                        key={
+                                                            option.value
+                                                        }
+                                                        value={
+                                                            option.value
+                                                        }
+                                                    >
+                                                        {
+                                                            option.label
+                                                        }
+                                                    </option>
+                                                )
+                                            )}
+                                        </select>
+
+                                        {errors.floor && (
+                                            <p className="
+                                                text-red-500
+                                                text-xs
+                                                mt-1
+                                            ">
+                                                {errors.floor}
                                             </p>
                                         )}
 

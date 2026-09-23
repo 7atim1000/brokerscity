@@ -20,6 +20,19 @@ import { MdClose } from "react-icons/md";
 
 const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
 
+const FLOOR_OPTIONS = [
+    { value: "first", label: "الأول" },
+    { value: "second", label: "الثاني" },
+    { value: "third", label: "الثالث" },
+    { value: "forth", label: "الرابع" },
+    { value: "fifth", label: "الخامس" },
+    { value: "sixth", label: "السادس" },
+    { value: "seventh", label: "السابع" },
+    { value: "eighth", label: "الثامن" },
+    { value: "ninth", label: "التاسع" },
+    { value: "tenth", label: "العاشر" },
+];
+
 const AddUnit = ({ onClose, onSuccess }) => {
     /* =========================================================
        TABS
@@ -48,6 +61,7 @@ const AddUnit = ({ onClose, onSuccess }) => {
         name: "",
         type: "apartment",
         status: "available",
+        floor: "first",
 
         price: "",
 
@@ -1193,65 +1207,6 @@ const AddUnit = ({ onClose, onSuccess }) => {
                                     gap-5
                                 ">
 
-                                    {/* Category */}
-
-                                    {/* <div>
-                                        <label className="
-                                            block
-                                            mb-2
-                                            font-bold
-                                            text-gray-700
-                                        ">
-                                            التصنيف
-                                        </label>
-
-                                        <select
-                                            name="category"
-                                            value={
-                                                formData.category
-                                            }
-                                            onChange={
-                                                handleChange
-                                            }
-                                            disabled={
-                                                loading ||
-                                                loadingData
-                                            }
-                                            className={inputClass(
-                                                "category"
-                                            )}
-                                        >
-                                            <option value="">
-                                                اختر التصنيف
-                                            </option>
-
-                                            {categories.map(
-                                                (category) => (
-                                                    <option
-                                                        key={
-                                                            category.id
-                                                        }
-                                                        value={
-                                                            category.id
-                                                        }
-                                                    >
-                                                        {getCategoryName(
-                                                            category
-                                                        )}
-                                                    </option>
-                                                )
-                                            )}
-                                        </select>
-
-                                        {errors.category && (
-                                            <p className="text-red-500 text-xs mt-1">
-                                                {
-                                                    errors.category
-                                                }
-                                            </p>
-                                        )}
-                                    </div> */}
-
                                     {/* Name */}
 
                                     <div>
@@ -1284,6 +1239,58 @@ const AddUnit = ({ onClose, onSuccess }) => {
                                             <p className="text-red-500 text-xs mt-1">
                                                 {
                                                     errors.name
+                                                }
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Floor */}
+
+                                    <div>
+                                        <label className="
+                                            block
+                                            mb-2
+                                            font-bold
+                                            text-gray-700
+                                        ">
+                                            الطابق
+                                        </label>
+
+                                        <select
+                                            name="floor"
+                                            value={
+                                                formData.floor
+                                            }
+                                            onChange={
+                                                handleChange
+                                            }
+                                            disabled={loading}
+                                            className={inputClass(
+                                                "floor"
+                                            )}
+                                        >
+                                            {FLOOR_OPTIONS.map(
+                                                (option) => (
+                                                    <option
+                                                        key={
+                                                            option.value
+                                                        }
+                                                        value={
+                                                            option.value
+                                                        }
+                                                    >
+                                                        {
+                                                            option.label
+                                                        }
+                                                    </option>
+                                                )
+                                            )}
+                                        </select>
+
+                                        {errors.floor && (
+                                            <p className="text-red-500 text-xs mt-1">
+                                                {
+                                                    errors.floor
                                                 }
                                             </p>
                                         )}
@@ -2316,42 +2323,6 @@ const AddUnit = ({ onClose, onSuccess }) => {
 
                                     <div>
 
-                                        {/* <label className="
-                                            block
-                                            mb-2
-                                            font-bold
-                                            text-gray-700
-                                        ">
-                                            المساحة
-                                        </label>
-
-                                        <input
-                                            type="text"
-                                            name="area"
-                                            value={
-                                                formData.area
-                                            }
-                                            readOnly
-                                            disabled={
-                                                loading
-                                            }
-                                            placeholder="يتم جلب المساحة من التصنيف"
-                                            className="
-                                                w-full
-                                                rounded-lg
-                                                border
-                                                border-gray-200
-                                                border-r-4
-                                                border-r-[#a47d52]
-                                                bg-gray-50
-                                                px-4
-                                                py-3
-                                                outline-none
-                                                cursor-not-allowed
-                                                text-gray-600
-                                            "
-                                        /> */}
-
                                         {errors.area && (
                                             <p className="text-red-500 text-xs mt-1">
                                                 {
@@ -2363,122 +2334,6 @@ const AddUnit = ({ onClose, onSuccess }) => {
                                     </div>
 
                                 </div>
-
-                                {/* Location Information */}
-
-                                {/* <div className="
-                                    rounded-xl
-                                    bg-white
-                                    border
-                                    border-gray-200
-                                    p-6
-                                ">
-
-                                    <div className="
-                                        flex
-                                        items-center
-                                        gap-3
-                                        mb-4
-                                    ">
-
-                                        <div className="
-                                            w-10
-                                            h-10
-                                            rounded-lg
-                                            bg-[#e9e6e1]
-                                            text-[#a47d52]
-                                            flex
-                                            items-center
-                                            justify-center
-                                        ">
-                                            <FaMapMarkerAlt />
-                                        </div>
-
-                                        <div>
-
-                                            <h4 className="font-extrabold text-gray-800">
-                                                معلومات الموقع
-                                            </h4>
-
-                                            <p className="text-xs text-gray-500">
-                                                الموقع يتم جلبه تلقائياً من التصنيف المحدد
-                                            </p>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div className="
-                                        grid
-                                        grid-cols-1
-                                        md:grid-cols-2
-                                        gap-4
-                                    ">
-
-                                        <div className="
-                                            bg-[#f8f7f5]
-                                            border
-                                            border-dashed
-                                            border-gray-300
-                                            rounded-lg
-                                            p-5
-                                        ">
-
-                                            <p className="
-                                                text-xs
-                                                text-gray-400
-                                                mb-1
-                                            ">
-                                                الموقع
-                                            </p>
-
-                                            <p className="
-                                                font-extrabold
-                                                text-gray-700
-                                            ">
-                                                {
-                                                    formData.location ||
-                                                    "لم يتم اختيار تصنيف"
-                                                }
-                                            </p>
-
-                                        </div>
-
-                                        <div className="
-                                            bg-[#f8f7f5]
-                                            border
-                                            border-dashed
-                                            border-gray-300
-                                            rounded-lg
-                                            p-5
-                                        ">
-
-                                            <p className="
-                                                text-xs
-                                                text-gray-400
-                                                mb-1
-                                            ">
-                                                المالك
-                                            </p>
-
-                                            <p className="
-                                                font-extrabold
-                                                text-gray-700
-                                            ">
-                                                {
-                                                    selectedCategory
-                                                        ? getOwnerName(
-                                                              selectedCategory
-                                                          )
-                                                        : "لم يتم اختيار تصنيف"
-                                                }
-                                            </p>
-
-                                        </div>
-
-                                    </div>
-
-                                </div> */}
 
                             </div>
                         )}

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile, Bank, CashBox, Transaction, AccountCategory, Account, Customer, WhatsAppMessage, Owner, Building, Unit, Slider
+from .models import Profile, Bank, CashBox, Transaction, AccountCategory, Account, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental
 from decimal import Decimal
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Sum, Count
@@ -1259,6 +1259,7 @@ class BuildingSerializer(serializers.ModelSerializer):
 class UnitSerializer(serializers.ModelSerializer):
     category_details = serializers.SerializerMethodField()
     owner_details = serializers.SerializerMethodField()
+    floor_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Unit
@@ -1271,6 +1272,8 @@ class UnitSerializer(serializers.ModelSerializer):
             'name',
             'type',
             'status',
+            'floor',
+            'floor_display',
             'price',
 
             'area',
@@ -1296,9 +1299,15 @@ class UnitSerializer(serializers.ModelSerializer):
             'id',
             'category_details',
             'owner_details',
+            'floor_display',
             'created_at',
             'updated_at',
         ]
+
+    def get_floor_display(self, obj):
+        if not obj.floor:
+            return None
+        return obj.get_floor_display()
 
     def get_category_details(self, obj):
         if not obj.category:
@@ -1344,13 +1353,11 @@ class UnitSerializer(serializers.ModelSerializer):
     def validate_name(self, value):
         if value:
             value = value.strip()
-
         return value or None
 
     def validate_area(self, value):
         if value:
             value = value.strip()
-
         return value or None
 
     def validate_price(self, value):
@@ -1358,7 +1365,6 @@ class UnitSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Price cannot be negative."
             )
-
         return value
 
     def validate_bedrooms(self, value):
@@ -1366,7 +1372,6 @@ class UnitSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Bedrooms cannot be negative."
             )
-
         return value
 
     def validate_bathrooms(self, value):
@@ -1374,7 +1379,6 @@ class UnitSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Bathrooms cannot be negative."
             )
-
         return value
 
     def validate_parking(self, value):
@@ -1382,17 +1386,98 @@ class UnitSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Parking spaces cannot be negative."
             )
-
         return value
+    # ... rest of your methods unchanged
+
+
+class RentalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rental
+        fields = [
+            'id',
+            'name',
+            'nationality',
+            'phone_1',
+            'phone_2',
+            'id_number',
+            'email',
+            'insurance_balance',
+            'balance',
+        ]
+        read_only_fields = ['id']
+
+    # ---------------------------------------------------------
+    # Field-level validation
+    # ---------------------------------------------------------
+    def validate_name(self, value):
+        if value is not None:
+            value = value.strip()
+        return value or None
+
+    def validate_nationality(self, value):
+        if value is not None:
+            value = value.strip()
+        return value or None
+
+    def validate_phone_1(self, value):
+        if value is not None:
+            value = value.strip()
+        return value or None
+
+    def validate_phone_2(self, value):
+        if value is not None:
+            value = value.strip()
+        return value or None
+
+    def validate_id_number(self, value):
+        if value is not None:
+            value = value.strip()
+        return value or None
+
+    def validate_email(self, value):
+        if value is not None:
+            value = value.strip().lower()
+        return value or None
+
+    def validate_insurance_balance(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError(
+                "Insurance balance cannot be negative."
+            )
+        return value
+
+    def validate_balance(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError(
+                "Balance cannot be negative."
+            )
+        return value
+
+
+class RentalListSerializer(serializers.ModelSerializer):
+    """
+    Lighter serializer for list endpoints (if you don't
+    need all fields on the list page).
+    """
+
+    class Meta:
+        model = Rental
+        fields = [
+            'id',
+            'name',
+            'phone_1',
+            'phone_2',
+            'email',
+            'balance',
+        ]
+        read_only_fields = ['id']
+
+
 
 ###############################################################
 ###############################################################
 # Website 
 ###############################################################
-from rest_framework import serializers
-from .models import Slider
-
-
 class SliderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Slider
@@ -1402,6 +1487,7 @@ class SliderSerializer(serializers.ModelSerializer):
             'image',
           
         ]
+
 
     # def validate(self, attrs):
     #     # Optional: require at least one image

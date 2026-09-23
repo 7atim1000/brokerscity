@@ -58,3 +58,13 @@ body {
 ::-webkit-scrollbar-corner {
     background: #f8f7f5;
 }
+
+
+@layer utilities {
+    .border-sheen-gold {
+        border: 2px solid transparent;
+        border:
+            linear-gradient(#a47d52, #a47d52) padding-box,
+            linear-gradient(135deg, #e0c496 0%, #c9a878 50%, #8a6a44 100%) border-box;
+    }
+}

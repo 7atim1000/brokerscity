@@ -506,7 +506,7 @@ function Login() {
                 >
                     {/* Premium Top Bar */}
                     <div className="h-1.5 bg-gradient-to-r from-[#a47d52] via-white to-[#8a6a44] relative overflow-hidden flex-shrink-0">
-                        <div className="absolute inset-0 bg-gradient-to-r from-white via-[#8a6a44] to-white animate-shimmer"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#d4a574] via-white to-[#b88d63]    animate-shimmer"></div>
                     </div>
 
                     {/* Inner content wrapper */}
@@ -539,7 +539,7 @@ function Login() {
 
                         {/* Logo Section */}
                         <div className="flex flex-col items-center justify-center mb-5 md:mb-6 relative flex-shrink-0">
-                            <div className='flex flex-col justify-center md:flex md:flex-row md:justify-between items-center w-full gap-3'>
+                            <div className='flex flex-col justify-center md:flex md:flex-row md:justify-between items-center w-full gap-3 md:mt-20 lg:mt-0'>
                                 <div className="relative group order-2 md:order-2">
                                     <img
                                         src={logo}
@@ -563,7 +563,7 @@ function Login() {
                                     />
                                 </div>
 
-                                <div className="text-center md:text-right relative order-1 md:order-1">
+                                <div className="text-center md:text-right relative order-1 md:order-1 ">
                                     <h1 className="
                                         text-xl md:text-3xl lg:text-4xl
                                         font-extrabold
@@ -659,7 +659,7 @@ function Login() {
                                         className="
                                             relative
                                             w-full
-                                            h-14 md:h-18
+                                            h-20 md:h-18
                                             bg-gradient-to-r from-white/25 via-white/15 to-white/25
                                             bg-[length:200%_100%]
                                             hover:bg-[length:100%_100%]
@@ -674,8 +674,8 @@ function Login() {
                                             hover:scale-[1.02]
                                             group
                                             overflow-hidden
-                                            border-b-2
-                                            border-[#8a6a44]
+                                            border-b-4
+                                            border-[#a47d52]
                                             hover:border-white/70
                                             animate-gradient-x
                                             backdrop-blur-md
@@ -726,7 +726,7 @@ function Login() {
                                                         className={`
                                                             relative
                                                             w-full
-                                                            h-12 md:h-[73px]
+                                                            h-20 md:h-[73px]
                                                             bg-gradient-to-r ${role.color}
                                                             bg-[length:200%_100%]
                                                             hover:bg-[length:100%_100%]
@@ -741,7 +741,7 @@ function Login() {
                                                             hover:scale-[1.02]
                                                             group
                                                             overflow-hidden
-                                                            border-b-2 border-[#8a6a44]
+                                                            border-b-3 border-[#a47d52]
                                                             hover:border-white/60
                                                             backdrop-blur-md
                                                             animate-gradient-x
@@ -817,7 +817,7 @@ function Login() {
 
                                         <div className="flex items-center gap-1">
                                             <IoSparkles className="text-white/80 text-[10px] md:text-xs" />
-                                            <span className="text-[8px] md:text-[10px] text-white/60">
+                                            <span className="text-[8px] md:text-[10px] text-green-400">
                                                 متصل
                                             </span>
                                         </div>
@@ -877,7 +877,7 @@ function Login() {
                                                 w-full
                                                 rounded-2xl
                                                 border-b-2
-                                                border-[#8a6a44]
+                                                border-[#a47d52]
                                                 bg-white/10
                                                 backdrop-blur-md
                                                 px-4 md:px-5
@@ -965,7 +965,7 @@ function Login() {
                                                 ? 'border-emerald-300/60 bg-emerald-500/10'
                                                 : form.password.length > 0 && form.password.length < 4
                                                 ? 'border-yellow-300/60 bg-yellow-500/10'
-                                                : 'border-[#8a6a44] bg-white/10'}
+                                                : 'border-[#a47d52] bg-white/10'}
                                             backdrop-blur-md
                                             px-4 md:px-5
                                             py-2.5 md:py-3
@@ -1219,7 +1219,7 @@ function Login() {
                     </div>
 
                     {/* Premium Bottom Bar */}
-                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-[#8a6a44] to-white/40 relative overflow-hidden flex-shrink-0">
+                    <div className="h-1.5 bg-gradient-to-r from-[#d4a574] via-white to-[#b88d63] relative overflow-hidden flex-shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#8a6a44] via-white/60 to-transparent animate-shimmer"></div>
                     </div>
                 </div>
@@ -1252,7 +1252,7 @@ function Login() {
                         بروكر سيتي العقارية
                     </h1>
 
-                    <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-white/80 to-transparent mb-4 xl:mb-5"></div>
+                    <div className="w-24 h-0.5 bg-gradient-to-r from-[#b88d63] via-white/80 to-[#b88d63] mb-4 xl:mb-5"></div>
 
                     <p className="text-base xl:text-lg 2xl:text-xl text-center text-white/85 leading-relaxed max-w-md">
                         منصتك العقارية الرقمية المتكاملة
@@ -1272,14 +1272,14 @@ function Login() {
                                 }}
                                 className="
                                     bg-white/10 backdrop-blur-md rounded-sm p-5 xl:p-7 2xl:p-8
-                                    text-center border border-white/25
+                                    text-center border border-white/25   
                                     transition-all duration-500
                                     hover:bg-white/20 hover:border-white/50
                                     hover:-translate-y-1.5 
                                     hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.35)]
                                     cursor-default
+                                    border-b-5
                                     
-                                    border-b-5 border-red-500
                                     group
                                 "
                             >
@@ -1311,6 +1311,7 @@ function Login() {
                     to   { opacity: 1; transform: translateY(0); }
                 }
 
+                
                 @keyframes float {
                     0%, 100% { transform: translateY(0px) translateX(0px); }
                     25% { transform: translateY(-20px) translateX(-10px); }

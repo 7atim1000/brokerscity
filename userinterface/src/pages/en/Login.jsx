@@ -361,7 +361,7 @@ function Login() {
             icon: FaChartLine,
             color: 'from-white/20 to-white/5',
             bgColor: 'bg-white/10',
-            borderColor: 'border-[#8a6a44]',
+            borderColor: 'border-[#a47d52]  ',
             badgeColor: 'bg-white/15 text-white',
             glowColor: 'shadow-white/20',
             gradient: 'from-white/15 via-white/5 to-transparent',
@@ -504,7 +504,7 @@ function Login() {
                     "
                 >
                     {/* Premium Top Bar */}
-                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-[#8a6a44] to-white/40 relative overflow-hidden flex-shrink-0">
+                    <div className="h-1.5 bg-gradient-to-r from-[#d4a574] via-white to-[#b88d63] relative overflow-hidden flex-shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#8a6a44] via-white/60 to-transparent animate-shimmer"></div>
                     </div>
 
@@ -538,7 +538,7 @@ function Login() {
 
                         {/* Logo Section — Logo on LEFT, Title on RIGHT (flipped for LTR) */}
                         <div className="flex flex-col items-center justify-center mb-5 md:mb-6 relative flex-shrink-0">
-                            <div className='flex flex-col justify-center md:flex md:flex-row md:justify-between items-center w-full gap-3'>
+                            <div className='flex flex-col justify-center md:flex md:flex-row md:justify-between items-center w-full gap-3 md:mt-20 lg:mt-0'>
                                 <div className="relative group order-2 md:order-1 md:ml-11 ">
                                     <img
                                         src={logo}
@@ -636,7 +636,7 @@ function Login() {
                         {!loginMode && (
                             <div className="mb-3 md:mb-4 flex-shrink-0">
                                 <div className="flex items-center gap-3 mb-2.5 md:mb-3">
-                                    <div className="flex-1 h-px bg-gradient-to-r from-transparent to-white/40"></div>
+                                    <div className="flex-1 h-px bg-gradient-to-r from-transparent to-white/80"></div>
 
                                     <div className="flex items-center gap-2">
                                         <IoSparkles className="text-white/90 text-xs md:text-sm" />
@@ -646,7 +646,7 @@ function Login() {
                                         <IoSparkles className="text-white/90 text-xs md:text-sm" />
                                     </div>
 
-                                    <div className="flex-1 h-px bg-gradient-to-l from-transparent to-white/40"></div>
+                                    <div className="flex-1 h-px bg-gradient-to-l from-transparent to-white/80"></div>
                                 </div>
 
                                 <div className="flex flex-col gap-2 md:gap-2.5">
@@ -657,7 +657,7 @@ function Login() {
                                         className="
                                             relative
                                             w-full
-                                            h-14 md:h-20
+                                            h-20 md:h-20
                                             bg-gradient-to-r from-white/25 via-white/15 to-white/25
                                             bg-[length:200%_100%]
                                             hover:bg-[length:100%_100%]
@@ -672,8 +672,8 @@ function Login() {
                                             hover:scale-[1.02]
                                             group
                                             overflow-hidden
-                                            border-b-3
-                                            border-[#8a6a44]
+                                            border-b-4
+                                            border-[#a47d52]
                                             hover:border-white/70
                                             animate-gradient-x
                                             backdrop-blur-md
@@ -724,7 +724,7 @@ function Login() {
                                                         className={`
                                                             relative
                                                             w-full
-                                                            h-12 md:h-[75px]
+                                                            h-20 md:h-[75px]
                                                             bg-gradient-to-r ${role.color}
                                                             bg-[length:200%_100%]
                                                             hover:bg-[length:100%_100%]
@@ -739,7 +739,7 @@ function Login() {
                                                             hover:scale-[1.02]
                                                             group
                                                             overflow-hidden
-                                                            border-b-3 ${role.borderColor}
+                                                            border-b-4 ${role.borderColor}
                                                             hover:border-white/60
                                                             backdrop-blur-md
                                                             animate-gradient-x
@@ -816,7 +816,7 @@ function Login() {
 
                                         <div className="flex items-center gap-1">
                                             <IoSparkles className="text-white/80 text-[10px] md:text-xs" />
-                                            <span className="text-[8px] md:text-[10px] text-white/60">
+                                            <span className="text-[8px] md:text-[10px] text-green-400">
                                                 Online
                                             </span>
                                         </div>
@@ -876,7 +876,7 @@ function Login() {
                                                 w-full
                                                 rounded-2xl
                                                 border-b-2
-                                                border-[#8a6a44]
+                                                border-[#a47d52]
                                                 bg-white/10
                                                 backdrop-blur-md
                                                 px-4 md:px-5
@@ -950,7 +950,7 @@ function Login() {
                                                 ? 'border-emerald-300/60 bg-emerald-500/10'
                                                 : form.password.length > 0 && form.password.length < 4
                                                 ? 'border-yellow-300/60 bg-yellow-500/10'
-                                                : 'border-[#8a6a44] bg-white/10'}
+                                                : 'border-[#a47d52] bg-white/10'}
                                             backdrop-blur-md
                                             px-4 md:px-5
                                             py-2.5 md:py-3
@@ -1207,7 +1207,7 @@ function Login() {
                     {/* <div className="h-1.5 bg-gradient-to-r from-white/40 via-white to-white/40 relative overflow-hidden flex-shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer"></div>
                     </div> */}
-                    <div className="h-1.5 bg-gradient-to-r from-white/40 via-[#8a6a44] to-white/40 relative overflow-hidden flex-shrink-0">
+                    <div className="h-1.5 bg-gradient-to-r from-[#d4a574] via-white to-[#b88d63] relative overflow-hidden flex-shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#8a6a44] via-white/60 to-transparent animate-shimmer"></div>
                     </div>
                 </div>
@@ -1237,10 +1237,10 @@ function Login() {
                     </div>
 
                     <h1 className="text-3xl xl:text-4xl 2xl:text-5xl font-extrabold text-center mb-3 xl:mb-4 drop-shadow-lg tracking-wide">
-                        Broker City Real Estate
+                        Broker City Properties
                     </h1>
 
-                    <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-white/80 to-transparent mb-4 xl:mb-5"></div>
+                    <div className="w-24 h-0.5 bg-gradient-to-r from-[#b88d63] via-white/80 to-[#b88d63] to-transparent mb-4 xl:mb-5"></div>
 
                     <p className="text-base xl:text-lg 2xl:text-xl text-center text-white/85 leading-relaxed max-w-md">
                         Your integrated digital real estate platform

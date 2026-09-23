@@ -62,7 +62,7 @@ export const SidebarMenuLinks = [
       
       {
         name: "المستأجرين",
-        path: "",
+        path: "/ar-rentals",
         icon: ImUsers
       },
 
