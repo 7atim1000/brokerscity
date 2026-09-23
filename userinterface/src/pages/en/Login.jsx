@@ -538,6 +538,14 @@ function Login() {
 
                         {/* Logo Section — Logo on LEFT, Title on RIGHT (flipped for LTR) */}
                         <div className="flex flex-col items-center justify-center mb-5 md:mb-6 relative flex-shrink-0">
+                            {/* =============================================
+                                ✅ CHANGE: Responsive top margin for the
+                                logo + title row.
+                                - md:mt-20 → pushes it down on tablet
+                                  and small-laptop screens (768px–1023px)
+                                - lg:mt-0  → resets to 0 on large screens
+                                - (mobile has no mt → unchanged)
+                            ============================================= */}
                             <div className='flex flex-col justify-center md:flex md:flex-row md:justify-between items-center w-full gap-3 md:mt-20 lg:mt-0'>
                                 <div className="relative group order-2 md:order-1 md:ml-11 ">
                                     <img
@@ -764,10 +772,6 @@ function Login() {
                                                                     </span>
                                                                 </div>
                                                             </div>
-
-                                                            {/* <div className="text-white text-xs md:text-base flex-shrink-0 mb-5">
-                                                                {role.emoji}
-                                                            </div> */}
                                                         </div>
                                                     </button>
                                                 );
@@ -1204,9 +1208,6 @@ function Login() {
                     </div>
 
                     {/* Premium Bottom Bar */}
-                    {/* <div className="h-1.5 bg-gradient-to-r from-white/40 via-white to-white/40 relative overflow-hidden flex-shrink-0">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer"></div>
-                    </div> */}
                     <div className="h-1.5 bg-gradient-to-r from-[#d4a574] via-white to-[#b88d63] relative overflow-hidden flex-shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#8a6a44] via-white/60 to-transparent animate-shimmer"></div>
                     </div>
@@ -1231,7 +1232,6 @@ function Login() {
                                 transition-transform duration-500
                                 hover:scale-105
                                 rounded-2xl
-                                
                             "
                         />
                     </div>
@@ -1240,7 +1240,7 @@ function Login() {
                         Broker City Properties
                     </h1>
 
-                    <div className="w-24 h-0.5 bg-gradient-to-r from-[#b88d63] via-white/80 to-[#b88d63] to-transparent mb-4 xl:mb-5"></div>
+                    <div className="w-24 h-0.5 bg-gradient-to-r from-[#b88d63] via-white/80 to-[#b88d63] mb-4 xl:mb-5"></div>
 
                     <p className="text-base xl:text-lg 2xl:text-xl text-center text-white/85 leading-relaxed max-w-md">
                         Your integrated digital real estate platform

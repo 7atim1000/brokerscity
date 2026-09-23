@@ -505,8 +505,8 @@ function Login() {
                     "
                 >
                     {/* Premium Top Bar */}
-                    <div className="h-1.5 bg-gradient-to-r from-[#a47d52] via-white to-[#8a6a44] relative overflow-hidden flex-shrink-0">
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#d4a574] via-white to-[#b88d63]    animate-shimmer"></div>
+                    <div className="h-1.5 bg-gradient-to-r from-[#a47d52] via-white to-[#8a6a44] relative overflow-hidden flex-shrink-0 ">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#d4a574] via-white to-[#b88d63] animate-shimmer "></div>
                     </div>
 
                     {/* Inner content wrapper */}
@@ -898,19 +898,6 @@ function Login() {
                                         />
 
                                         <div className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors duration-300">
-                                            {/* <svg
-                                                className="w-4 h-4 md:w-5 md:h-5"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth="2"
-                                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                                />
-                                            </svg> */}
                                             <svg
                                                 className="w-4 h-4 md:w-5 md:h-5"
                                                 fill="none"
