@@ -1485,7 +1485,6 @@ class SliderSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'image',
-          
         ]
 
 
