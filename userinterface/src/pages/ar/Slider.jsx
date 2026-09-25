@@ -241,7 +241,7 @@ const Slider = () => {
                             </div>
 
                             <h3 className="text-lg font-extrabold text-gray-800 mb-4 line-clamp-2">
-                                {slider.description}
+                                {slider.name}
                             </h3>
 
                             <div className="w-full border-t border-gray-300 pt-5 mt-auto">

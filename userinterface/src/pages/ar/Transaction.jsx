@@ -15,6 +15,7 @@ import {
     FaRotateRight,
     FaMagnifyingGlass,
 } from "react-icons/fa6";
+
 import { FaFileSignature } from "react-icons/fa6";
 
 import html2canvas from 'html2canvas';

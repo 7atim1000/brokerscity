@@ -1484,9 +1484,36 @@ class SliderSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'name',
-            'image',
-        ]
+            'location',
 
+            'image',
+            'image_1',
+            'image_2',
+            'image_3',
+            'image_4',
+
+            'starting_price',
+            'payment_plan',
+            'booking_fee',
+            'handover',
+
+            'developer',
+            'area_from',
+            'studios',
+            'apartments',
+            'townhouses',
+            'duplexes',
+            'penthouses',
+
+            'license_number',
+            'project_number',
+
+            'description',
+        ]
+        extra_kwargs = {
+            field: {'required': False, 'allow_null': True}
+            for field in fields if field != 'id'
+        }
 
     # def validate(self, attrs):
     #     # Optional: require at least one image
