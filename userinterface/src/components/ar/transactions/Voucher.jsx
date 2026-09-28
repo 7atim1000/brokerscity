@@ -372,7 +372,7 @@ const Voucher = ({ transaction = {}, onClose }) => {
             method === 'banks' ||
             method === 'bank'
         ) {
-            return 'Cheque | شيك';
+            return 'Banks | بنوك';
         }
 
         if (method === 'cash') {
