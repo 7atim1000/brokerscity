@@ -343,12 +343,40 @@ const Voucher = ({ transaction = {}, onClose }) => {
     // BANK
     // =========================================================
 
+    // const getBankName = () => {
+    //     return getObjectName(
+    //         transaction.bank ||
+    //         transaction.bank_name
+    //     );
+    // };
+
     const getBankName = () => {
-        return getObjectName(
-            transaction.bank ||
-            transaction.bank_name
+    // 1. Prefer explicit bank_name field
+    if (transaction.bank_name) {
+        return getObjectName(transaction.bank_name);
+    }
+
+    // 2. If bank is an object, prefer its name
+    if (
+        transaction.bank &&
+        typeof transaction.bank === 'object'
+    ) {
+        return (
+            transaction.bank.name ||
+            transaction.bank.bank_name ||
+            transaction.bank.title ||
+            transaction.bank.id ||
+            '-'
         );
-    };
+    }
+
+    // 3. If bank is a primitive value
+    if (transaction.bank) {
+        return transaction.bank;
+    }
+
+    return '-';
+};
 
     // =========================================================
     // CASHBOX
