@@ -1996,7 +1996,7 @@ const Voucher = ({ transaction = {}, onClose }) => {
                             py-3
                         "
                     >
-                        <div className="text-right">
+                        <div className="text-righ w-full bg-[#f8f7f6]">
                             <h2
                                 className="
                                     text-base
