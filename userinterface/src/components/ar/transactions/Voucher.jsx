@@ -1,7 +1,7 @@
 // Voucher.jsx
 // npm install framer-motion react-icons jspdf html2canvas
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import logo from '../../../assets/images/logogo-removebg.png';
 import { formatAmountInWords } from '../../../utils/numberToArabic';
@@ -14,6 +14,8 @@ import {
 
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+
+const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
 
 // =============================================================
 // PRINT STYLES
@@ -199,6 +201,73 @@ const PRINT_STYLES = `
 
 const Voucher = ({ transaction = {}, onClose }) => {
     const printRef = useRef(null);
+    const [fetchedBankName, setFetchedBankName] = useState('');
+
+    // =========================================================
+    // FETCH BANK NAME
+    // =========================================================
+
+    useEffect(() => {
+        const bankValue = transaction?.bank;
+        const bankId =
+            bankValue && typeof bankValue === 'object'
+                ? bankValue.id
+                : bankValue;
+
+        if (!bankId) {
+            setFetchedBankName('');
+            return;
+        }
+
+        // If the transaction already contains the bank object/name, use it directly.
+        if (typeof bankValue === 'object') {
+            const existingName =
+                bankValue.name ||
+                bankValue.bank_name ||
+                bankValue.title;
+
+            if (existingName) {
+                setFetchedBankName(existingName);
+                return;
+            }
+        }
+
+        const fetchBankName = async () => {
+            try {
+                const token = localStorage.getItem('access_token');
+
+                const response = await fetch(
+                    `${BASE}/api/banks/${bankId}/`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token
+                                ? { Authorization: `Bearer ${token}` }
+                                : {}),
+                        },
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                setFetchedBankName(
+                    data?.name ||
+                    data?.bank_name ||
+                    data?.title ||
+                    ''
+                );
+            } catch (error) {
+                console.error('Error fetching bank name:', error);
+                setFetchedBankName('');
+            }
+        };
+
+        fetchBankName();
+    }, [transaction?.bank]);
 
     // =========================================================
     // BASIC HELPERS
@@ -344,7 +413,12 @@ const Voucher = ({ transaction = {}, onClose }) => {
     // =========================================================
 
     const getBankName = () => {
-        // 1. Prefer explicit bank_name field (same as TransactionDetails)
+        // 1. Prefer the fetched bank name when transaction.bank contains an ID.
+        if (fetchedBankName) {
+            return fetchedBankName;
+        }
+
+        // 2. Prefer explicit bank_name field.
         if (
             transaction.bank_name &&
             typeof transaction.bank_name !== 'object'
@@ -352,7 +426,7 @@ const Voucher = ({ transaction = {}, onClose }) => {
             return transaction.bank_name;
         }
 
-        // 2. If bank_name is an object, extract its name
+        // 3. If bank_name is an object, extract its name.
         if (
             transaction.bank_name &&
             typeof transaction.bank_name === 'object'
@@ -365,7 +439,7 @@ const Voucher = ({ transaction = {}, onClose }) => {
             );
         }
 
-        // 3. If bank is an object, prefer its name (NOT its id)
+        // 4. If bank is already an object, prefer its name.
         if (
             transaction.bank &&
             typeof transaction.bank === 'object'
@@ -378,14 +452,7 @@ const Voucher = ({ transaction = {}, onClose }) => {
             );
         }
 
-        // 4. If bank is a primitive value (string), use it as-is
-        if (
-            transaction.bank &&
-            typeof transaction.bank !== 'object'
-        ) {
-            return transaction.bank;
-        }
-
+        // 5. Do not display the bank ID. The name is fetched above.
         return '-';
     };
 
@@ -3196,6 +3263,9 @@ const Voucher = ({ transaction = {}, onClose }) => {
 
 export default Voucher;
 
+
+
+
 // // Voucher.jsx
 // // npm install framer-motion react-icons jspdf html2canvas
 
@@ -3426,13 +3496,13 @@ export default Voucher;
 //         if (typeof value === 'object') {
 //             return (
 //                 value.name ||
+//                 value.bank_name ||
+//                 value.cashbox_name ||
+//                 value.account_name ||
 //                 value.title ||
 //                 value.username ||
 //                 value.full_name ||
 //                 value.fullName ||
-//                 value.account_name ||
-//                 value.bank_name ||
-//                 value.cashbox_name ||
 //                 value.description ||
 //                 value.id ||
 //                 '-'
@@ -3501,7 +3571,7 @@ export default Voucher;
 //             method === 'banks' ||
 //             method === 'bank'
 //         ) {
-//             return 'Cheque | شيك';
+//             return 'banks | بنوك';
 //         }
 
 //         if (method === 'cash') {
@@ -3541,40 +3611,51 @@ export default Voucher;
 //     // BANK
 //     // =========================================================
 
-//     // const getBankName = () => {
-//     //     return getObjectName(
-//     //         transaction.bank ||
-//     //         transaction.bank_name
-//     //     );
-//     // };
-
 //     const getBankName = () => {
-//     // 1. Prefer explicit bank_name field
-//     if (transaction.bank_name) {
-//         return getObjectName(transaction.bank_name);
-//     }
+//         // 1. Prefer explicit bank_name field (same as TransactionDetails)
+//         if (
+//             transaction.bank_name &&
+//             typeof transaction.bank_name !== 'object'
+//         ) {
+//             return transaction.bank_name;
+//         }
 
-//     // 2. If bank is an object, prefer its name
-//     if (
-//         transaction.bank &&
-//         typeof transaction.bank === 'object'
-//     ) {
-//         return (
-//             transaction.bank.name ||
-//             transaction.bank.bank_name ||
-//             transaction.bank.title ||
-//             transaction.bank.id ||
-//             '-'
-//         );
-//     }
+//         // 2. If bank_name is an object, extract its name
+//         if (
+//             transaction.bank_name &&
+//             typeof transaction.bank_name === 'object'
+//         ) {
+//             return (
+//                 transaction.bank_name.name ||
+//                 transaction.bank_name.bank_name ||
+//                 transaction.bank_name.title ||
+//                 '-'
+//             );
+//         }
 
-//     // 3. If bank is a primitive value
-//     if (transaction.bank) {
-//         return transaction.bank;
-//     }
+//         // 3. If bank is an object, prefer its name (NOT its id)
+//         if (
+//             transaction.bank &&
+//             typeof transaction.bank === 'object'
+//         ) {
+//             return (
+//                 transaction.bank.name ||
+//                 transaction.bank.bank_name ||
+//                 transaction.bank.title ||
+//                 '-'
+//             );
+//         }
 
-//     return '-';
-// };
+//         // 4. If bank is a primitive value (string), use it as-is
+//         if (
+//             transaction.bank &&
+//             typeof transaction.bank !== 'object'
+//         ) {
+//             return transaction.bank;
+//         }
+
+//         return '-';
+//     };
 
 //     // =========================================================
 //     // CASHBOX
@@ -4145,15 +4226,64 @@ export default Voucher;
 //         );
 //     };
 
+//     // =========================================================
+//     // ROW BANK — mirrors getBankName() logic for row data
+//     // =========================================================
+
 //     const getRowBank = (row) => {
-//         return (
-//             getObjectName(
-//                 row.bank ||
-//                 row.bank_name ||
-//                 row.check_bank ||
-//                 row.cheque_bank
-//             ) || getBankName()
-//         );
+//         // 1. Prefer row.bank_name (string)
+//         if (
+//             row.bank_name &&
+//             typeof row.bank_name !== 'object'
+//         ) {
+//             return row.bank_name;
+//         }
+
+//         // 2. row.bank_name as object
+//         if (
+//             row.bank_name &&
+//             typeof row.bank_name === 'object'
+//         ) {
+//             return (
+//                 row.bank_name.name ||
+//                 row.bank_name.bank_name ||
+//                 row.bank_name.title ||
+//                 getBankName()
+//             );
+//         }
+
+//         // 3. row.bank as object → use .name (NOT .id)
+//         if (
+//             row.bank &&
+//             typeof row.bank === 'object'
+//         ) {
+//             return (
+//                 row.bank.name ||
+//                 row.bank.bank_name ||
+//                 row.bank.title ||
+//                 getBankName()
+//             );
+//         }
+
+//         // 4. row.bank as string
+//         if (
+//             row.bank &&
+//             typeof row.bank !== 'object'
+//         ) {
+//             return row.bank;
+//         }
+
+//         // 5. row.check_bank / row.cheque_bank
+//         if (row.check_bank) {
+//             return getObjectName(row.check_bank);
+//         }
+
+//         if (row.cheque_bank) {
+//             return getObjectName(row.cheque_bank);
+//         }
+
+//         // 6. Fallback to transaction-level bank
+//         return getBankName();
 //     };
 
 //     // =========================================================
@@ -4580,9 +4710,6 @@ export default Voucher;
 //         let tempContainer = null;
 
 //         try {
-//             // =====================================================
-//             // Clone the exact voucher that is currently displayed.
-//             // =====================================================
 //             const voucherElement = printRef.current.cloneNode(true);
 
 //             if (!voucherElement) {
@@ -4597,17 +4724,6 @@ export default Voucher;
 
 //             voucherElement.id = 'voucher-pdf-copy';
 
-//             // =====================================================
-//             // Create a real, visible rendering surface.
-//             //
-//             // The previous PDF renderer used:
-//             //     opacity: 0
-//             //     z-index: -1
-//             //
-//             // html2canvas can therefore receive an empty/transparent
-//             // rendering in some browsers. Keep the cloned voucher
-//             // in the document layout while rendering it off-screen.
-//             // =====================================================
 //             tempContainer = document.createElement('div');
 //             tempContainer.id = 'voucher-pdf-temp-root';
 
@@ -4626,11 +4742,6 @@ export default Voucher;
 //                 direction: 'rtl',
 //             });
 
-//             // =====================================================
-//             // PDF-specific styles.
-//             // Keep the same voucher design and only make the
-//             // cloned voucher render reliably for html2canvas.
-//             // =====================================================
 //             const styleElement = document.createElement('style');
 
 //             styleElement.textContent = PRINT_STYLES + `
@@ -4788,9 +4899,6 @@ export default Voucher;
 //             tempContainer.appendChild(voucherElement);
 //             document.body.appendChild(tempContainer);
 
-//             // =====================================================
-//             // Wait for every image used by the voucher.
-//             // =====================================================
 //             const images = Array.from(
 //                 tempContainer.querySelectorAll('img')
 //             );
@@ -4807,25 +4915,17 @@ export default Voucher;
 //                         img.onload = finish;
 //                         img.onerror = finish;
 
-//                         // Prevent a broken external image from
-//                         // blocking PDF generation forever.
 //                         setTimeout(finish, 3000);
 //                     });
 //                 })
 //             );
 
-//             // Let the browser finish layout before html2canvas reads it.
 //             await new Promise((resolve) => {
 //                 requestAnimationFrame(() => {
 //                     requestAnimationFrame(resolve);
 //                 });
 //             });
 
-//             // =====================================================
-//             // Capture the actual voucher element, not the temporary
-//             // wrapper. This guarantees that the PDF contains the
-//             // same data currently visible in the component.
-//             // =====================================================
 //             const canvas = await html2canvas(voucherElement, {
 //                 scale: 2,
 //                 useCORS: true,
@@ -4850,11 +4950,6 @@ export default Voucher;
 //                     clonedVoucher.style.visibility = 'visible';
 //                     clonedVoucher.style.opacity = '1';
 
-//                     // =================================================
-//                     // html2canvas does not support oklch() in some
-//                     // browser/html2canvas combinations. Replace any
-//                     // remaining computed oklch colors with safe values.
-//                     // =================================================
 //                     const clonedWindow = clonedDoc.defaultView;
 
 //                     if (clonedWindow) {
@@ -4915,7 +5010,6 @@ export default Voucher;
 //                         });
 //                     }
 
-//                     // Make the cloned root itself fully visible.
 //                     clonedVoucher.querySelectorAll('*').forEach((el) => {
 //                         el.style.setProperty(
 //                             'visibility',
@@ -4932,9 +5026,6 @@ export default Voucher;
 //                 },
 //             });
 
-//             // =====================================================
-//             // Remove temporary DOM after the canvas is ready.
-//             // =====================================================
 //             if (
 //                 tempContainer &&
 //                 tempContainer.parentNode
@@ -4946,9 +5037,6 @@ export default Voucher;
 
 //             tempContainer = null;
 
-//             // =====================================================
-//             // Create A4 PDF while preserving the voucher design.
-//             // =====================================================
 //             const pdf = new jsPDF({
 //                 orientation: 'portrait',
 //                 unit: 'mm',
@@ -4964,13 +5052,10 @@ export default Voucher;
 //             const imgWidth = canvas.width;
 //             const imgHeight = canvas.height;
 
-//             // Fit the voucher to the printable A4 width.
 //             const ratio = pdfWidth / imgWidth;
 
 //             const renderedHeight = imgHeight * ratio;
 
-//             // If the voucher is taller than one A4 page,
-//             // split the rendered canvas into multiple pages.
 //             const totalPages = Math.max(
 //                 1,
 //                 Math.ceil(renderedHeight / pdfHeight)
@@ -6378,6 +6463,3 @@ export default Voucher;
 // };
 
 // export default Voucher;
-
-
-
