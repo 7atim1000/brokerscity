@@ -2509,7 +2509,7 @@ const Voucher = ({ transaction = {}, onClose }) => {
                                             dir="rtl"
                                             className="font-black"
                                         >
-                                            :
+                                            
                                             Being
                                         </span>
                                     </div>
