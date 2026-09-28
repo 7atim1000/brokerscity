@@ -1351,9 +1351,11 @@ const Voucher = ({ transaction = {}, onClose }) => {
             return;
         }
 
+        let tempContainer = null;
+
         try {
             // =====================================================
-            // Clone the voucher element
+            // Clone the exact voucher that is currently displayed.
             // =====================================================
             const voucherElement = printRef.current.cloneNode(true);
 
@@ -1361,52 +1363,58 @@ const Voucher = ({ transaction = {}, onClose }) => {
                 return;
             }
 
-            // Remove print-only buttons
             voucherElement
                 .querySelectorAll('.voucher-no-print')
                 .forEach((element) => {
                     element.remove();
                 });
 
-            // Keep the id for reference in onclone
             voucherElement.id = 'voucher-pdf-copy';
 
             // =====================================================
-            // Build a temp container that stays in the layout flow
-            // so all Tailwind styles compute correctly.
+            // Create a real, visible rendering surface.
             //
-            // IMPORTANT: Do NOT use left: -9999px because that
-            // breaks some computed styles during html2canvas.
-            // Instead, place it fixed at top:0/left:0 with opacity:0
-            // and pointer-events:none.
+            // The previous PDF renderer used:
+            //     opacity: 0
+            //     z-index: -1
+            //
+            // html2canvas can therefore receive an empty/transparent
+            // rendering in some browsers. Keep the cloned voucher
+            // in the document layout while rendering it off-screen.
             // =====================================================
-            const tempContainer = document.createElement('div');
+            tempContainer = document.createElement('div');
             tempContainer.id = 'voucher-pdf-temp-root';
-            tempContainer.setAttribute('dir', 'rtl');
-            tempContainer.style.position = 'fixed';
-            tempContainer.style.top = '0';
-            tempContainer.style.left = '0';
-            tempContainer.style.width = '794px';
-            tempContainer.style.background = '#ffffff';
-            tempContainer.style.zIndex = '-1';
-            tempContainer.style.opacity = '0';
-            tempContainer.style.pointerEvents = 'none';
-            tempContainer.style.overflow = 'visible';
+
+            Object.assign(tempContainer.style, {
+                position: 'fixed',
+                top: '0',
+                left: '-10000px',
+                width: '794px',
+                minHeight: '1123px',
+                background: '#ffffff',
+                zIndex: '2147483647',
+                opacity: '1',
+                visibility: 'visible',
+                pointerEvents: 'none',
+                overflow: 'visible',
+                direction: 'rtl',
+            });
 
             // =====================================================
-            // Inject styles: PRINT_STYLES + oklch overrides + layout
+            // PDF-specific styles.
+            // Keep the same voucher design and only make the
+            // cloned voucher render reliably for html2canvas.
             // =====================================================
             const styleElement = document.createElement('style');
+
             styleElement.textContent = PRINT_STYLES + `
-                /* ==========================================
-                   Base voucher layout (mirrors on-screen preview)
-                   ========================================== */
                 #voucher-pdf-copy {
                     display: block !important;
                     position: static !important;
-                    width: 100% !important;
-                    max-width: none !important;
-                    margin: 0 auto !important;
+                    width: 794px !important;
+                    max-width: 794px !important;
+                    min-height: 0 !important;
+                    margin: 0 !important;
                     padding: 16px 16px 20px 16px !important;
                     background: #ffffff !important;
                     color: #111111 !important;
@@ -1414,6 +1422,7 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     box-shadow: none !important;
                     overflow: visible !important;
                     visibility: visible !important;
+                    opacity: 1 !important;
                     box-sizing: border-box !important;
                     direction: rtl !important;
                     font-family: Arial, Helvetica, sans-serif !important;
@@ -1421,13 +1430,10 @@ const Voucher = ({ transaction = {}, onClose }) => {
 
                 #voucher-pdf-copy * {
                     visibility: visible !important;
+                    opacity: 1 !important;
                     box-sizing: border-box !important;
                 }
 
-                /* ==========================================
-                   FIX: Override oklch() color functions
-                   (html2canvas does NOT support oklch())
-                   ========================================== */
                 #voucher-pdf-copy .bg-white,
                 #voucher-pdf-copy.receipt-paper,
                 #voucher-pdf-copy .receipt-paper {
@@ -1442,30 +1448,67 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     background-color: rgba(164, 125, 82, 0.1) !important;
                 }
 
-                #voucher-pdf-copy .bg-slate-200 { background-color: #e2e8f0 !important; }
-                #voucher-pdf-copy .bg-slate-300 { background-color: #cbd5e1 !important; }
-                #voucher-pdf-copy .bg-slate-100 { background-color: #f1f5f9 !important; }
-                #voucher-pdf-copy .bg-slate-50  { background-color: #f8fafc !important; }
-                #voucher-pdf-copy .bg-red-600   { background-color: #dc2626 !important; }
+                #voucher-pdf-copy .bg-slate-200 {
+                    background-color: #e2e8f0 !important;
+                }
 
-                /* Text colors */
+                #voucher-pdf-copy .bg-slate-300 {
+                    background-color: #cbd5e1 !important;
+                }
+
+                #voucher-pdf-copy .bg-slate-100 {
+                    background-color: #f1f5f9 !important;
+                }
+
+                #voucher-pdf-copy .bg-slate-50 {
+                    background-color: #f8fafc !important;
+                }
+
+                #voucher-pdf-copy .bg-red-600 {
+                    background-color: #dc2626 !important;
+                }
+
                 #voucher-pdf-copy .text-white {
                     color: #ffffff !important;
                     -webkit-text-fill-color: #ffffff !important;
                 }
-                #voucher-pdf-copy .text-black     { color: #000000 !important; }
-                #voucher-pdf-copy .text-slate-800 { color: #1e293b !important; }
-                #voucher-pdf-copy .text-slate-700 { color: #334155 !important; }
-                #voucher-pdf-copy .text-slate-600 { color: #475569 !important; }
-                #voucher-pdf-copy .text-slate-500 { color: #64748b !important; }
-                #voucher-pdf-copy .text-gray-300  { color: #d1d5db !important; }
 
-                /* Border colors */
-                #voucher-pdf-copy .border-slate-200 { border-color: #e2e8f0 !important; }
-                #voucher-pdf-copy .border-slate-300 { border-color: #cbd5e1 !important; }
-                #voucher-pdf-copy .border-black     { border-color: #000000 !important; }
+                #voucher-pdf-copy .text-black {
+                    color: #000000 !important;
+                }
 
-                /* Make sure hr is visible */
+                #voucher-pdf-copy .text-slate-800 {
+                    color: #1e293b !important;
+                }
+
+                #voucher-pdf-copy .text-slate-700 {
+                    color: #334155 !important;
+                }
+
+                #voucher-pdf-copy .text-slate-600 {
+                    color: #475569 !important;
+                }
+
+                #voucher-pdf-copy .text-slate-500 {
+                    color: #64748b !important;
+                }
+
+                #voucher-pdf-copy .text-gray-300 {
+                    color: #d1d5db !important;
+                }
+
+                #voucher-pdf-copy .border-slate-200 {
+                    border-color: #e2e8f0 !important;
+                }
+
+                #voucher-pdf-copy .border-slate-300 {
+                    border-color: #cbd5e1 !important;
+                }
+
+                #voucher-pdf-copy .border-black {
+                    border-color: #000000 !important;
+                }
+
                 #voucher-pdf-copy hr {
                     border: 0 !important;
                     border-top: 1px solid #d1d5db !important;
@@ -1474,7 +1517,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     height: 1px !important;
                 }
 
-                /* Tables */
                 #voucher-pdf-copy .receipt-table {
                     width: 100% !important;
                     border-collapse: collapse !important;
@@ -1492,7 +1534,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     background-color: #f8f7f5 !important;
                 }
 
-                /* Signatures */
                 #voucher-pdf-copy .receipt-signature-image {
                     display: block !important;
                     max-width: 125px !important;
@@ -1507,7 +1548,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     font-weight: 700 !important;
                 }
 
-                /* Images */
                 #voucher-pdf-copy img {
                     max-width: 100% !important;
                 }
@@ -1517,52 +1557,87 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     margin-right: auto !important;
                 }
             `;
+
             tempContainer.appendChild(styleElement);
             tempContainer.appendChild(voucherElement);
             document.body.appendChild(tempContainer);
 
             // =====================================================
-            // Wait for images to load
+            // Wait for every image used by the voucher.
             // =====================================================
-            const images = Array.from(tempContainer.querySelectorAll('img'));
+            const images = Array.from(
+                tempContainer.querySelectorAll('img')
+            );
+
             await Promise.all(
                 images.map((img) => {
-                    if (img.complete) return Promise.resolve();
+                    if (img.complete && img.naturalWidth > 0) {
+                        return Promise.resolve();
+                    }
+
                     return new Promise((resolve) => {
-                        img.onload = resolve;
-                        img.onerror = resolve;
+                        const finish = () => resolve();
+
+                        img.onload = finish;
+                        img.onerror = finish;
+
+                        // Prevent a broken external image from
+                        // blocking PDF generation forever.
+                        setTimeout(finish, 3000);
                     });
                 })
             );
 
-            // Give the browser time to compute layout & styles
-            await new Promise((resolve) => setTimeout(resolve, 700));
+            // Let the browser finish layout before html2canvas reads it.
+            await new Promise((resolve) => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(resolve);
+                });
+            });
 
             // =====================================================
-            // Capture with html2canvas
+            // Capture the actual voucher element, not the temporary
+            // wrapper. This guarantees that the PDF contains the
+            // same data currently visible in the component.
             // =====================================================
-            const canvas = await html2canvas(tempContainer, {
+            const canvas = await html2canvas(voucherElement, {
                 scale: 2,
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
                 logging: false,
                 width: 794,
-                height: tempContainer.scrollHeight,
                 windowWidth: 794,
+                scrollX: 0,
+                scrollY: 0,
                 onclone: (clonedDoc) => {
-                    const clonedContainer = clonedDoc.getElementById('voucher-pdf-copy');
-                    if (clonedContainer) {
-                        clonedContainer.style.width = '794px';
-                        clonedContainer.style.direction = 'rtl';
+                    const clonedVoucher =
+                        clonedDoc.getElementById('voucher-pdf-copy');
 
-                        // ==========================================
-                        // FINAL SAFETY NET: strip any remaining oklch
-                        // ==========================================
-                        const allElements = clonedContainer.querySelectorAll('*');
+                    if (!clonedVoucher) {
+                        return;
+                    }
+
+                    clonedVoucher.style.width = '794px';
+                    clonedVoucher.style.maxWidth = '794px';
+                    clonedVoucher.style.direction = 'rtl';
+                    clonedVoucher.style.visibility = 'visible';
+                    clonedVoucher.style.opacity = '1';
+
+                    // =================================================
+                    // html2canvas does not support oklch() in some
+                    // browser/html2canvas combinations. Replace any
+                    // remaining computed oklch colors with safe values.
+                    // =================================================
+                    const clonedWindow = clonedDoc.defaultView;
+
+                    if (clonedWindow) {
+                        const allElements =
+                            clonedVoucher.querySelectorAll('*');
 
                         allElements.forEach((el) => {
-                            const computed = window.getComputedStyle(el);
+                            const computed =
+                                clonedWindow.getComputedStyle(el);
 
                             const colorProps = [
                                 'color',
@@ -1580,13 +1655,20 @@ const Voucher = ({ transaction = {}, onClose }) => {
                             colorProps.forEach((prop) => {
                                 const value = computed[prop];
 
-                                if (value && value.includes('oklch')) {
+                                if (
+                                    value &&
+                                    value.includes('oklch')
+                                ) {
                                     let fallback = '#111111';
 
-                                    if (prop === 'backgroundColor') {
+                                    if (
+                                        prop === 'backgroundColor'
+                                    ) {
                                         fallback = 'transparent';
                                     } else if (
-                                        prop.toLowerCase().includes('border') ||
+                                        prop
+                                            .toLowerCase()
+                                            .includes('border') ||
                                         prop === 'outlineColor' ||
                                         prop === 'columnRuleColor'
                                     ) {
@@ -1594,59 +1676,52 @@ const Voucher = ({ transaction = {}, onClose }) => {
                                     }
 
                                     try {
-                                        el.style.setProperty(prop, fallback, 'important');
-                                    } catch (e) {
-                                        // ignore
+                                        el.style.setProperty(
+                                            prop,
+                                            fallback,
+                                            'important'
+                                        );
+                                    } catch (error) {
+                                        // Ignore individual style errors.
                                     }
                                 }
                             });
-
-                            if (el.style && el.style.cssText) {
-                                if (el.style.cssText.includes('oklch')) {
-                                    el.style.cssText = el.style.cssText.replace(
-                                        /oklch\([^)]+\)/g,
-                                        '#111111'
-                                    );
-                                }
-                            }
                         });
-
-                        // Remove oklch rules from stylesheets
-                        try {
-                            const sheets = clonedDoc.styleSheets;
-                            for (let i = 0; i < sheets.length; i++) {
-                                try {
-                                    const rules = sheets[i].cssRules || sheets[i].rules;
-                                    if (!rules) continue;
-
-                                    for (let j = rules.length - 1; j >= 0; j--) {
-                                        const rule = rules[j];
-                                        if (rule.cssText && rule.cssText.includes('oklch')) {
-                                            try {
-                                                sheets[i].deleteRule(j);
-                                            } catch (e) {
-                                                // ignore
-                                            }
-                                        }
-                                    }
-                                } catch (e) {
-                                    // cross-origin sheet
-                                }
-                            }
-                        } catch (e) {
-                            // ignore
-                        }
                     }
+
+                    // Make the cloned root itself fully visible.
+                    clonedVoucher.querySelectorAll('*').forEach((el) => {
+                        el.style.setProperty(
+                            'visibility',
+                            'visible',
+                            'important'
+                        );
+
+                        el.style.setProperty(
+                            'opacity',
+                            '1',
+                            'important'
+                        );
+                    });
                 },
             });
 
             // =====================================================
-            // Clean up temp container
+            // Remove temporary DOM after the canvas is ready.
             // =====================================================
-            document.body.removeChild(tempContainer);
+            if (
+                tempContainer &&
+                tempContainer.parentNode
+            ) {
+                tempContainer.parentNode.removeChild(
+                    tempContainer
+                );
+            }
+
+            tempContainer = null;
 
             // =====================================================
-            // Create PDF
+            // Create A4 PDF while preserving the voucher design.
             // =====================================================
             const pdf = new jsPDF({
                 orientation: 'portrait',
@@ -1654,36 +1729,65 @@ const Voucher = ({ transaction = {}, onClose }) => {
                 format: 'a4',
             });
 
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const pdfWidth =
+                pdf.internal.pageSize.getWidth();
+
+            const pdfHeight =
+                pdf.internal.pageSize.getHeight();
 
             const imgWidth = canvas.width;
             const imgHeight = canvas.height;
 
-            // Calculate the ratio to fit the page
-            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-            const imgX = (pdfWidth - imgWidth * ratio) / 2;
-            const imgY = 0;
+            // Fit the voucher to the printable A4 width.
+            const ratio = pdfWidth / imgWidth;
 
-            // If content is taller than one page, split into multiple pages
-            const totalPages = Math.ceil((imgHeight * ratio) / pdfHeight);
+            const renderedHeight = imgHeight * ratio;
 
-            for (let page = 0; page < totalPages; page++) {
+            // If the voucher is taller than one A4 page,
+            // split the rendered canvas into multiple pages.
+            const totalPages = Math.max(
+                1,
+                Math.ceil(renderedHeight / pdfHeight)
+            );
+
+            for (
+                let page = 0;
+                page < totalPages;
+                page++
+            ) {
                 if (page > 0) {
                     pdf.addPage();
                 }
 
-                const sourceY = page * (pdfHeight / ratio);
+                const sourceY =
+                    page * (pdfHeight / ratio);
+
                 const sourceHeight = Math.min(
                     pdfHeight / ratio,
                     imgHeight - sourceY
                 );
 
-                const pageCanvas = document.createElement('canvas');
-                pageCanvas.width = imgWidth;
-                pageCanvas.height = sourceHeight;
+                if (sourceHeight <= 0) {
+                    continue;
+                }
 
-                const pageCtx = pageCanvas.getContext('2d');
+                const pageCanvas =
+                    document.createElement('canvas');
+
+                pageCanvas.width = imgWidth;
+                pageCanvas.height = Math.ceil(sourceHeight);
+
+                const pageCtx =
+                    pageCanvas.getContext('2d');
+
+                pageCtx.fillStyle = '#ffffff';
+                pageCtx.fillRect(
+                    0,
+                    0,
+                    pageCanvas.width,
+                    pageCanvas.height
+                );
+
                 pageCtx.drawImage(
                     canvas,
                     0,
@@ -1696,24 +1800,43 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     sourceHeight
                 );
 
-                const pageImgData = pageCanvas.toDataURL('image/png');
-                const pageImgHeight = sourceHeight * ratio;
+                const pageImgData =
+                    pageCanvas.toDataURL('image/png');
+
+                const pageImgHeight =
+                    sourceHeight * ratio;
 
                 pdf.addImage(
                     pageImgData,
                     'PNG',
-                    imgX,
-                    imgY,
-                    imgWidth * ratio,
+                    0,
+                    0,
+                    pdfWidth,
                     pageImgHeight
                 );
             }
 
-            // Save the PDF
-            pdf.save(`Receipt-Voucher-${getTransactionNumber()}.pdf`);
+            pdf.save(
+                `Receipt-Voucher-${getTransactionNumber()}.pdf`
+            );
         } catch (error) {
-            console.error('PDF download error:', error);
-            alert('An error occurred while generating the PDF. Please try again.');
+            console.error(
+                'PDF download error:',
+                error
+            );
+
+            alert(
+                'An error occurred while generating the PDF. Please try again.'
+            );
+
+            if (
+                tempContainer &&
+                tempContainer.parentNode
+            ) {
+                tempContainer.parentNode.removeChild(
+                    tempContainer
+                );
+            }
         }
     };
 
@@ -3031,6 +3154,8 @@ const Voucher = ({ transaction = {}, onClose }) => {
 export default Voucher;
 
 
+
+
 // // Voucher.jsx
 // // npm install framer-motion react-icons jspdf html2canvas
 
@@ -4018,19 +4143,6 @@ export default Voucher;
 //             return;
 //         }
 
-//         /*
-//          * IMPORTANT:
-//          *
-//          * Do NOT use window.print() directly here.
-//          *
-//          * The voucher is inside a fixed modal and scrollable
-//          * containers. Browser print can therefore render the
-//          * structure but lose/hide the actual rendered content.
-//          *
-//          * We instead clone the already-rendered voucher and
-//          * print that exact DOM in a clean A4 document.
-//          */
-
 //         const voucherElement =
 //             printRef.current.cloneNode(true);
 
@@ -4038,20 +4150,13 @@ export default Voucher;
 //             return;
 //         }
 
-//         // Make sure print-only buttons/elements never enter print.
 //         voucherElement
 //             .querySelectorAll('.voucher-no-print')
 //             .forEach((element) => {
 //                 element.remove();
 //             });
 
-//         // Remove the id temporarily from the clone so there
-//         // cannot be any collision with the original document.
 //         voucherElement.id = 'voucher-print-copy';
-
-//         // -----------------------------------------------------
-//         // Create dedicated print window
-//         // -----------------------------------------------------
 
 //         const printWindow = window.open(
 //             '',
@@ -4060,20 +4165,11 @@ export default Voucher;
 //         );
 
 //         if (!printWindow) {
-//             /*
-//              * This can happen if the browser blocks popups.
-//              * Because the user clicked the Print button,
-//              * normally this will be allowed.
-//              */
 //             window.alert(
 //                 'Please allow pop-ups for this website to print the voucher.'
 //             );
 //             return;
 //         }
-
-//         // -----------------------------------------------------
-//         // Copy all application styles
-//         // -----------------------------------------------------
 
 //         const styleElements = Array.from(
 //             document.querySelectorAll(
@@ -4084,10 +4180,6 @@ export default Voucher;
 //         const copiedStyles = styleElements
 //             .map((element) => element.outerHTML)
 //             .join('\n');
-
-//         // -----------------------------------------------------
-//         // Dedicated print CSS
-//         // -----------------------------------------------------
 
 //         const printWindowStyles = `
 //             html,
@@ -4118,21 +4210,15 @@ export default Voucher;
 //             #voucher-print-copy {
 //                 display: block !important;
 //                 position: static !important;
-
 //                 width: 100% !important;
 //                 max-width: none !important;
-
 //                 margin: 0 !important;
 //                 padding: 0 !important;
-
 //                 background: #ffffff !important;
 //                 color: #111111 !important;
-
 //                 border: none !important;
 //                 box-shadow: none !important;
-
 //                 overflow: visible !important;
-
 //                 visibility: visible !important;
 //             }
 
@@ -4147,33 +4233,25 @@ export default Voucher;
 //             .voucher-paper {
 //                 display: block !important;
 //                 position: static !important;
-
 //                 width: 100% !important;
 //                 max-width: none !important;
-
 //                 margin: 0 !important;
 //                 padding: 0 !important;
-
 //                 background: #ffffff !important;
-
 //                 border: none !important;
 //                 box-shadow: none !important;
-
 //                 overflow: visible !important;
 //             }
 
 //             .receipt-paper {
 //                 display: block !important;
 //                 width: 100% !important;
-
 //                 font-family:
 //                     Arial,
 //                     Helvetica,
 //                     sans-serif !important;
-
 //                 color: #111111 !important;
 //                 background: #ffffff !important;
-
 //                 visibility: visible !important;
 //             }
 
@@ -4186,7 +4264,6 @@ export default Voucher;
 //                 width: 100% !important;
 //                 border-collapse: collapse !important;
 //                 table-layout: fixed !important;
-
 //                 page-break-inside: auto !important;
 //             }
 
@@ -4225,13 +4302,6 @@ export default Voucher;
 //                 max-width: 100% !important;
 //             }
 
-//             /*
-//              * The original preview has Tailwind classes such
-//              * as mx-auto, w-full, shadow-xl, etc.
-//              *
-//              * These print overrides guarantee that the actual
-//              * paper fills the printable A4 width.
-//              */
 //             .mx-auto {
 //                 margin-left: auto !important;
 //                 margin-right: auto !important;
@@ -4334,10 +4404,6 @@ export default Voucher;
 //             }
 //         `;
 
-//         // -----------------------------------------------------
-//         // Build print document
-//         // -----------------------------------------------------
-
 //         printWindow.document.open();
 
 //         printWindow.document.write(`
@@ -4373,10 +4439,6 @@ export default Voucher;
 
 //         printWindow.document.close();
 
-//         // -----------------------------------------------------
-//         // Wait until the cloned DOM is completely loaded
-//         // -----------------------------------------------------
-
 //         const startPrinting = () => {
 //             const images =
 //                 Array.from(
@@ -4398,12 +4460,6 @@ export default Voucher;
 
 //             Promise.all(imagePromises)
 //                 .then(() => {
-//                     /*
-//                      * Small delay allows:
-//                      * - Tailwind styles to apply
-//                      * - logo/signatures to finish loading
-//                      * - browser layout to finish
-//                      */
 //                     setTimeout(() => {
 //                         try {
 //                             printWindow.focus();
@@ -4418,10 +4474,6 @@ export default Voucher;
 //                 });
 //         };
 
-//         /*
-//          * If document is already ready, start immediately.
-//          * Otherwise wait for the print document to load.
-//          */
 //         if (
 //             printWindow.document.readyState ===
 //             'complete'
@@ -4436,10 +4488,6 @@ export default Voucher;
 //                 }
 //             );
 //         }
-
-//         // -----------------------------------------------------
-//         // Close print window after printing
-//         // -----------------------------------------------------
 
 //         printWindow.onafterprint = () => {
 //             setTimeout(() => {
@@ -4456,409 +4504,376 @@ export default Voucher;
 //     // DOWNLOAD PDF
 //     // =========================================================
 
-//     // =========================================================
-// // DOWNLOAD PDF
-// // =========================================================
-
-// const handleDownloadPDF = async () => {
-//     if (!printRef.current) {
-//         return;
-//     }
-
-//     try {
-//         // Clone the voucher element
-//         const voucherElement = printRef.current.cloneNode(true);
-
-//         if (!voucherElement) {
+//     const handleDownloadPDF = async () => {
+//         if (!printRef.current) {
 //             return;
 //         }
 
-//         // Remove print-only buttons
-//         voucherElement
-//             .querySelectorAll('.voucher-no-print')
-//             .forEach((element) => {
-//                 element.remove();
-//             });
+//         try {
+//             // =====================================================
+//             // Clone the voucher element
+//             // =====================================================
+//             const voucherElement = printRef.current.cloneNode(true);
 
-//         // Remove the id temporarily
-//         voucherElement.id = 'voucher-pdf-copy';
-
-//         // Create a temporary container
-//         const tempContainer = document.createElement('div');
-//         tempContainer.style.position = 'absolute';
-//         tempContainer.style.left = '-9999px';
-//         tempContainer.style.top = '0';
-//         tempContainer.style.width = '794px';
-//         tempContainer.style.background = '#ffffff';
-//         tempContainer.style.zIndex = '-1';
-
-//         // =========================================================
-//         // CRITICAL FIX: Override oklch colors with RGB equivalents
-//         // =========================================================
-//         const styleElement = document.createElement('style');
-//         styleElement.textContent = PRINT_STYLES + `
-//             /* ==========================================
-//                FIX: Override oklch() color functions
-//                html2canvas does NOT support oklch()
-//                ========================================== */
-
-//             /* Reset all Tailwind oklch-based colors to safe RGB/HEX */
-//             #voucher-pdf-copy,
-//             #voucher-pdf-copy * {
-//                 /* Force safe color defaults */
-//                 color: #111111 !important;
-//                 background-color: transparent !important;
-//                 border-color: #9ca3af !important;
-//                 outline-color: #9ca3af !important;
-//                 text-decoration-color: #111111 !important;
-//                 caret-color: #111111 !important;
-//                 column-rule-color: #9ca3af !important;
-//                 -webkit-text-fill-color: #111111 !important;
-//                 -webkit-text-stroke-color: #111111 !important;
+//             if (!voucherElement) {
+//                 return;
 //             }
 
-//             /* Preserve intentional background colors */
-//             #voucher-pdf-copy .bg-white,
-//             #voucher-pdf-copy.receipt-paper,
-//             #voucher-pdf-copy .receipt-paper {
-//                 background-color: #ffffff !important;
-//             }
-
-//             #voucher-pdf-copy .bg-\\[\\#f8f7f5\\],
-//             #voucher-pdf-copy [class*="bg-[#f8f7f5]"] {
-//                 background-color: #f8f7f5 !important;
-//             }
-
-//             #voucher-pdf-copy .bg-\\[\\#a47d52\\]\\/10,
-//             #voucher-pdf-copy [class*="bg-[#a47d52]/10"] {
-//                 background-color: rgba(164, 125, 82, 0.1) !important;
-//             }
-
-//             #voucher-pdf-copy .bg-slate-200 {
-//                 background-color: #e2e8f0 !important;
-//             }
-
-//             #voucher-pdf-copy .bg-slate-300 {
-//                 background-color: #cbd5e1 !important;
-//             }
-
-//             #voucher-pdf-copy .bg-slate-100 {
-//                 background-color: #f1f5f9 !important;
-//             }
-
-//             #voucher-pdf-copy .bg-slate-50 {
-//                 background-color: #f8fafc !important;
-//             }
-
-//             #voucher-pdf-copy .bg-red-600 {
-//                 background-color: #dc2626 !important;
-//             }
-
-//             /* Text colors */
-//             #voucher-pdf-copy .text-white {
-//                 color: #ffffff !important;
-//                 -webkit-text-fill-color: #ffffff !important;
-//             }
-
-//             #voucher-pdf-copy .text-slate-800 {
-//                 color: #1e293b !important;
-//             }
-
-//             #voucher-pdf-copy .text-slate-600 {
-//                 color: #475569 !important;
-//             }
-
-//             #voucher-pdf-copy .text-slate-500 {
-//                 color: #64748b !important;
-//             }
-
-//             #voucher-pdf-copy .text-gray-300 {
-//                 color: #d1d5db !important;
-//             }
-
-//             #voucher-pdf-copy .text-black {
-//                 color: #000000 !important;
-//             }
-
-//             /* Border colors */
-//             #voucher-pdf-copy .border-slate-200 {
-//                 border-color: #e2e8f0 !important;
-//             }
-
-//             #voucher-pdf-copy .border-slate-300 {
-//                 border-color: #cbd5e1 !important;
-//             }
-
-//             #voucher-pdf-copy .border-black {
-//                 border-color: #000000 !important;
-//             }
-
-//             /* Base voucher styles */
-//             #voucher-pdf-copy {
-//                 display: block !important;
-//                 position: static !important;
-//                 width: 100% !important;
-//                 max-width: none !important;
-//                 margin: 0 !important;
-//                 padding: 0 !important;
-//                 background: #ffffff !important;
-//                 color: #111111 !important;
-//                 border: none !important;
-//                 box-shadow: none !important;
-//                 overflow: visible !important;
-//                 visibility: visible !important;
-//             }
-
-//             #voucher-pdf-copy * {
-//                 visibility: visible !important;
-//             }
-
-//             .voucher-no-print {
-//                 display: none !important;
-//             }
-
-//             .voucher-paper {
-//                 display: block !important;
-//                 position: static !important;
-//                 width: 100% !important;
-//                 max-width: none !important;
-//                 margin: 0 !important;
-//                 padding: 0 !important;
-//                 background: #ffffff !important;
-//                 border: none !important;
-//                 box-shadow: none !important;
-//                 overflow: visible !important;
-//             }
-
-//             .receipt-paper {
-//                 display: block !important;
-//                 width: 100% !important;
-//                 font-family: Arial, Helvetica, sans-serif !important;
-//                 color: #111111 !important;
-//                 background: #ffffff !important;
-//                 visibility: visible !important;
-//             }
-
-//             .receipt-paper * {
-//                 visibility: visible !important;
-//                 box-sizing: border-box;
-//             }
-
-//             .receipt-table {
-//                 width: 100% !important;
-//                 border-collapse: collapse !important;
-//                 table-layout: fixed !important;
-//             }
-
-//             .receipt-table th,
-//             .receipt-table td {
-//                 border: 1px solid #9ca3af !important;
-//                 vertical-align: middle !important;
-//             }
-
-//             .receipt-signature-image {
-//                 display: block !important;
-//                 max-width: 125px !important;
-//                 max-height: 55px !important;
-//                 object-fit: contain !important;
-//                 margin: 0 auto !important;
-//             }
-
-//             img {
-//                 max-width: 100% !important;
-//             }
-
-//             .mx-auto {
-//                 margin-left: auto !important;
-//                 margin-right: auto !important;
-//             }
-//         `;
-//         tempContainer.appendChild(styleElement);
-//         tempContainer.appendChild(voucherElement);
-//         document.body.appendChild(tempContainer);
-
-//         // Wait for images to load
-//         const images = Array.from(tempContainer.querySelectorAll('img'));
-//         await Promise.all(
-//             images.map((img) => {
-//                 if (img.complete) return Promise.resolve();
-//                 return new Promise((resolve) => {
-//                     img.onload = resolve;
-//                     img.onerror = resolve;
+//             // Remove print-only buttons
+//             voucherElement
+//                 .querySelectorAll('.voucher-no-print')
+//                 .forEach((element) => {
+//                     element.remove();
 //                 });
-//             })
-//         );
 
-//         // Small delay for layout
-//         await new Promise((resolve) => setTimeout(resolve, 500));
+//             // Keep the id for reference in onclone
+//             voucherElement.id = 'voucher-pdf-copy';
 
-//         // =========================================================
-//         // CRITICAL FIX: Pass `onclone` to strip unsupported colors
-//         // =========================================================
-//         const canvas = await html2canvas(tempContainer, {
-//             scale: 2,
-//             useCORS: true,
-//             allowTaint: true,
-//             backgroundColor: '#ffffff',
-//             logging: false,
-//             width: 794,
-//             windowWidth: 794,
-//             onclone: (clonedDoc) => {
-//                 const clonedContainer = clonedDoc.getElementById('voucher-pdf-copy');
-//                 if (clonedContainer) {
-//                     clonedContainer.style.width = '794px';
+//             // =====================================================
+//             // Build a temp container that stays in the layout flow
+//             // so all Tailwind styles compute correctly.
+//             //
+//             // IMPORTANT: Do NOT use left: -9999px because that
+//             // breaks some computed styles during html2canvas.
+//             // Instead, place it fixed at top:0/left:0 with opacity:0
+//             // and pointer-events:none.
+//             // =====================================================
+//             const tempContainer = document.createElement('div');
+//             tempContainer.id = 'voucher-pdf-temp-root';
+//             tempContainer.setAttribute('dir', 'rtl');
+//             tempContainer.style.position = 'fixed';
+//             tempContainer.style.top = '0';
+//             tempContainer.style.left = '0';
+//             tempContainer.style.width = '794px';
+//             tempContainer.style.background = '#ffffff';
+//             tempContainer.style.zIndex = '-1';
+//             tempContainer.style.opacity = '0';
+//             tempContainer.style.pointerEvents = 'none';
+//             tempContainer.style.overflow = 'visible';
 
-//                     // ==========================================
-//                     // FINAL SAFETY NET: Walk all elements and
-//                     // replace any oklch() color with a fallback
-//                     // ==========================================
-//                     const allElements = clonedContainer.querySelectorAll('*');
+//             // =====================================================
+//             // Inject styles: PRINT_STYLES + oklch overrides + layout
+//             // =====================================================
+//             const styleElement = document.createElement('style');
+//             styleElement.textContent = PRINT_STYLES + `
+//                 /* ==========================================
+//                    Base voucher layout (mirrors on-screen preview)
+//                    ========================================== */
+//                 #voucher-pdf-copy {
+//                     display: block !important;
+//                     position: static !important;
+//                     width: 100% !important;
+//                     max-width: none !important;
+//                     margin: 0 auto !important;
+//                     padding: 16px 16px 20px 16px !important;
+//                     background: #ffffff !important;
+//                     color: #111111 !important;
+//                     border: none !important;
+//                     box-shadow: none !important;
+//                     overflow: visible !important;
+//                     visibility: visible !important;
+//                     box-sizing: border-box !important;
+//                     direction: rtl !important;
+//                     font-family: Arial, Helvetica, sans-serif !important;
+//                 }
 
-//                     allElements.forEach((el) => {
-//                         const computed = window.getComputedStyle(el);
+//                 #voucher-pdf-copy * {
+//                     visibility: visible !important;
+//                     box-sizing: border-box !important;
+//                 }
 
-//                         // Check each color-related property
-//                         const colorProps = [
-//                             'color',
-//                             'backgroundColor',
-//                             'borderTopColor',
-//                             'borderRightColor',
-//                             'borderBottomColor',
-//                             'borderLeftColor',
-//                             'outlineColor',
-//                         ];
+//                 /* ==========================================
+//                    FIX: Override oklch() color functions
+//                    (html2canvas does NOT support oklch())
+//                    ========================================== */
+//                 #voucher-pdf-copy .bg-white,
+//                 #voucher-pdf-copy.receipt-paper,
+//                 #voucher-pdf-copy .receipt-paper {
+//                     background-color: #ffffff !important;
+//                 }
 
-//                         colorProps.forEach((prop) => {
-//                             const value = computed[prop];
+//                 #voucher-pdf-copy [class*="bg-[#f8f7f5]"] {
+//                     background-color: #f8f7f5 !important;
+//                 }
 
-//                             // If the value contains oklch, replace with a safe fallback
-//                             if (value && value.includes('oklch')) {
-//                                 if (prop === 'color') {
-//                                     el.style.setProperty(prop, '#111111', 'important');
-//                                 } else if (prop === 'backgroundColor') {
-//                                     el.style.setProperty(prop, 'transparent', 'important');
-//                                 } else {
-//                                     el.style.setProperty(prop, '#9ca3af', 'important');
+//                 #voucher-pdf-copy [class*="bg-[#a47d52]/10"] {
+//                     background-color: rgba(164, 125, 82, 0.1) !important;
+//                 }
+
+//                 #voucher-pdf-copy .bg-slate-200 { background-color: #e2e8f0 !important; }
+//                 #voucher-pdf-copy .bg-slate-300 { background-color: #cbd5e1 !important; }
+//                 #voucher-pdf-copy .bg-slate-100 { background-color: #f1f5f9 !important; }
+//                 #voucher-pdf-copy .bg-slate-50  { background-color: #f8fafc !important; }
+//                 #voucher-pdf-copy .bg-red-600   { background-color: #dc2626 !important; }
+
+//                 /* Text colors */
+//                 #voucher-pdf-copy .text-white {
+//                     color: #ffffff !important;
+//                     -webkit-text-fill-color: #ffffff !important;
+//                 }
+//                 #voucher-pdf-copy .text-black     { color: #000000 !important; }
+//                 #voucher-pdf-copy .text-slate-800 { color: #1e293b !important; }
+//                 #voucher-pdf-copy .text-slate-700 { color: #334155 !important; }
+//                 #voucher-pdf-copy .text-slate-600 { color: #475569 !important; }
+//                 #voucher-pdf-copy .text-slate-500 { color: #64748b !important; }
+//                 #voucher-pdf-copy .text-gray-300  { color: #d1d5db !important; }
+
+//                 /* Border colors */
+//                 #voucher-pdf-copy .border-slate-200 { border-color: #e2e8f0 !important; }
+//                 #voucher-pdf-copy .border-slate-300 { border-color: #cbd5e1 !important; }
+//                 #voucher-pdf-copy .border-black     { border-color: #000000 !important; }
+
+//                 /* Make sure hr is visible */
+//                 #voucher-pdf-copy hr {
+//                     border: 0 !important;
+//                     border-top: 1px solid #d1d5db !important;
+//                     margin: 8px 0 !important;
+//                     display: block !important;
+//                     height: 1px !important;
+//                 }
+
+//                 /* Tables */
+//                 #voucher-pdf-copy .receipt-table {
+//                     width: 100% !important;
+//                     border-collapse: collapse !important;
+//                     table-layout: fixed !important;
+//                 }
+
+//                 #voucher-pdf-copy .receipt-table th,
+//                 #voucher-pdf-copy .receipt-table td {
+//                     border: 1px solid #9ca3af !important;
+//                     vertical-align: middle !important;
+//                     padding: 4px 4px !important;
+//                 }
+
+//                 #voucher-pdf-copy .receipt-table thead tr {
+//                     background-color: #f8f7f5 !important;
+//                 }
+
+//                 /* Signatures */
+//                 #voucher-pdf-copy .receipt-signature-image {
+//                     display: block !important;
+//                     max-width: 125px !important;
+//                     max-height: 55px !important;
+//                     object-fit: contain !important;
+//                     margin: 0 auto !important;
+//                 }
+
+//                 #voucher-pdf-copy .receipt-signature-text {
+//                     display: block !important;
+//                     font-size: 10px !important;
+//                     font-weight: 700 !important;
+//                 }
+
+//                 /* Images */
+//                 #voucher-pdf-copy img {
+//                     max-width: 100% !important;
+//                 }
+
+//                 .mx-auto {
+//                     margin-left: auto !important;
+//                     margin-right: auto !important;
+//                 }
+//             `;
+//             tempContainer.appendChild(styleElement);
+//             tempContainer.appendChild(voucherElement);
+//             document.body.appendChild(tempContainer);
+
+//             // =====================================================
+//             // Wait for images to load
+//             // =====================================================
+//             const images = Array.from(tempContainer.querySelectorAll('img'));
+//             await Promise.all(
+//                 images.map((img) => {
+//                     if (img.complete) return Promise.resolve();
+//                     return new Promise((resolve) => {
+//                         img.onload = resolve;
+//                         img.onerror = resolve;
+//                     });
+//                 })
+//             );
+
+//             // Give the browser time to compute layout & styles
+//             await new Promise((resolve) => setTimeout(resolve, 700));
+
+//             // =====================================================
+//             // Capture with html2canvas
+//             // =====================================================
+//             const canvas = await html2canvas(tempContainer, {
+//                 scale: 2,
+//                 useCORS: true,
+//                 allowTaint: true,
+//                 backgroundColor: '#ffffff',
+//                 logging: false,
+//                 width: 794,
+//                 height: tempContainer.scrollHeight,
+//                 windowWidth: 794,
+//                 onclone: (clonedDoc) => {
+//                     const clonedContainer = clonedDoc.getElementById('voucher-pdf-copy');
+//                     if (clonedContainer) {
+//                         clonedContainer.style.width = '794px';
+//                         clonedContainer.style.direction = 'rtl';
+
+//                         // ==========================================
+//                         // FINAL SAFETY NET: strip any remaining oklch
+//                         // ==========================================
+//                         const allElements = clonedContainer.querySelectorAll('*');
+
+//                         allElements.forEach((el) => {
+//                             const computed = window.getComputedStyle(el);
+
+//                             const colorProps = [
+//                                 'color',
+//                                 'backgroundColor',
+//                                 'borderTopColor',
+//                                 'borderRightColor',
+//                                 'borderBottomColor',
+//                                 'borderLeftColor',
+//                                 'outlineColor',
+//                                 'textDecorationColor',
+//                                 'caretColor',
+//                                 'columnRuleColor',
+//                             ];
+
+//                             colorProps.forEach((prop) => {
+//                                 const value = computed[prop];
+
+//                                 if (value && value.includes('oklch')) {
+//                                     let fallback = '#111111';
+
+//                                     if (prop === 'backgroundColor') {
+//                                         fallback = 'transparent';
+//                                     } else if (
+//                                         prop.toLowerCase().includes('border') ||
+//                                         prop === 'outlineColor' ||
+//                                         prop === 'columnRuleColor'
+//                                     ) {
+//                                         fallback = '#9ca3af';
+//                                     }
+
+//                                     try {
+//                                         el.style.setProperty(prop, fallback, 'important');
+//                                     } catch (e) {
+//                                         // ignore
+//                                     }
+//                                 }
+//                             });
+
+//                             if (el.style && el.style.cssText) {
+//                                 if (el.style.cssText.includes('oklch')) {
+//                                     el.style.cssText = el.style.cssText.replace(
+//                                         /oklch\([^)]+\)/g,
+//                                         '#111111'
+//                                     );
 //                                 }
 //                             }
 //                         });
 
-//                         // Also handle any inline style with oklch
-//                         if (el.style && el.style.cssText) {
-//                             if (el.style.cssText.includes('oklch')) {
-//                                 el.style.cssText = el.style.cssText.replace(
-//                                     /oklch\([^)]+\)/g,
-//                                     '#111111'
-//                                 );
-//                             }
-//                         }
-//                     });
+//                         // Remove oklch rules from stylesheets
+//                         try {
+//                             const sheets = clonedDoc.styleSheets;
+//                             for (let i = 0; i < sheets.length; i++) {
+//                                 try {
+//                                     const rules = sheets[i].cssRules || sheets[i].rules;
+//                                     if (!rules) continue;
 
-//                     // Also scan stylesheets for any oklch rules and remove them
-//                     try {
-//                         const sheets = clonedDoc.styleSheets;
-//                         for (let i = 0; i < sheets.length; i++) {
-//                             try {
-//                                 const rules = sheets[i].cssRules || sheets[i].rules;
-//                                 if (!rules) continue;
-
-//                                 for (let j = rules.length - 1; j >= 0; j--) {
-//                                     const rule = rules[j];
-//                                     if (
-//                                         rule.cssText &&
-//                                         rule.cssText.includes('oklch')
-//                                     ) {
-//                                         try {
-//                                             sheets[i].deleteRule(j);
-//                                         } catch (e) {
-//                                             // Ignore if we can't delete
+//                                     for (let j = rules.length - 1; j >= 0; j--) {
+//                                         const rule = rules[j];
+//                                         if (rule.cssText && rule.cssText.includes('oklch')) {
+//                                             try {
+//                                                 sheets[i].deleteRule(j);
+//                                             } catch (e) {
+//                                                 // ignore
+//                                             }
 //                                         }
 //                                     }
+//                                 } catch (e) {
+//                                     // cross-origin sheet
 //                                 }
-//                             } catch (e) {
-//                                 // Cross-origin stylesheet, skip
 //                             }
+//                         } catch (e) {
+//                             // ignore
 //                         }
-//                     } catch (e) {
-//                         // Ignore stylesheet access errors
 //                     }
+//                 },
+//             });
+
+//             // =====================================================
+//             // Clean up temp container
+//             // =====================================================
+//             document.body.removeChild(tempContainer);
+
+//             // =====================================================
+//             // Create PDF
+//             // =====================================================
+//             const pdf = new jsPDF({
+//                 orientation: 'portrait',
+//                 unit: 'mm',
+//                 format: 'a4',
+//             });
+
+//             const pdfWidth = pdf.internal.pageSize.getWidth();
+//             const pdfHeight = pdf.internal.pageSize.getHeight();
+
+//             const imgWidth = canvas.width;
+//             const imgHeight = canvas.height;
+
+//             // Calculate the ratio to fit the page
+//             const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+//             const imgX = (pdfWidth - imgWidth * ratio) / 2;
+//             const imgY = 0;
+
+//             // If content is taller than one page, split into multiple pages
+//             const totalPages = Math.ceil((imgHeight * ratio) / pdfHeight);
+
+//             for (let page = 0; page < totalPages; page++) {
+//                 if (page > 0) {
+//                     pdf.addPage();
 //                 }
-//             },
-//         });
 
-//         // Clean up temp container
-//         document.body.removeChild(tempContainer);
+//                 const sourceY = page * (pdfHeight / ratio);
+//                 const sourceHeight = Math.min(
+//                     pdfHeight / ratio,
+//                     imgHeight - sourceY
+//                 );
 
-//         // Create PDF
-//         const pdf = new jsPDF({
-//             orientation: 'portrait',
-//             unit: 'mm',
-//             format: 'a4',
-//         });
+//                 const pageCanvas = document.createElement('canvas');
+//                 pageCanvas.width = imgWidth;
+//                 pageCanvas.height = sourceHeight;
 
-//         const pdfWidth = pdf.internal.pageSize.getWidth();
-//         const pdfHeight = pdf.internal.pageSize.getHeight();
+//                 const pageCtx = pageCanvas.getContext('2d');
+//                 pageCtx.drawImage(
+//                     canvas,
+//                     0,
+//                     sourceY,
+//                     imgWidth,
+//                     sourceHeight,
+//                     0,
+//                     0,
+//                     imgWidth,
+//                     sourceHeight
+//                 );
 
-//         const imgData = canvas.toDataURL('image/png');
-//         const imgWidth = canvas.width;
-//         const imgHeight = canvas.height;
+//                 const pageImgData = pageCanvas.toDataURL('image/png');
+//                 const pageImgHeight = sourceHeight * ratio;
 
-//         // Calculate the ratio to fit the page
-//         const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-//         const imgX = (pdfWidth - imgWidth * ratio) / 2;
-//         const imgY = 0;
-
-//         // If content is taller than one page, split into multiple pages
-//         const totalPages = Math.ceil((imgHeight * ratio) / pdfHeight);
-
-//         for (let page = 0; page < totalPages; page++) {
-//             if (page > 0) {
-//                 pdf.addPage();
+//                 pdf.addImage(
+//                     pageImgData,
+//                     'PNG',
+//                     imgX,
+//                     imgY,
+//                     imgWidth * ratio,
+//                     pageImgHeight
+//                 );
 //             }
 
-//             const sourceY = page * (pdfHeight / ratio);
-//             const sourceHeight = Math.min(
-//                 pdfHeight / ratio,
-//                 imgHeight - sourceY
-//             );
-
-//             const pageCanvas = document.createElement('canvas');
-//             pageCanvas.width = imgWidth;
-//             pageCanvas.height = sourceHeight;
-
-//             const pageCtx = pageCanvas.getContext('2d');
-//             pageCtx.drawImage(
-//                 canvas,
-//                 0,
-//                 sourceY,
-//                 imgWidth,
-//                 sourceHeight,
-//                 0,
-//                 0,
-//                 imgWidth,
-//                 sourceHeight
-//             );
-
-//             const pageImgData = pageCanvas.toDataURL('image/png');
-//             const pageImgHeight = sourceHeight * ratio;
-
-//             pdf.addImage(
-//                 pageImgData,
-//                 'PNG',
-//                 imgX,
-//                 imgY,
-//                 imgWidth * ratio,
-//                 pageImgHeight
-//             );
+//             // Save the PDF
+//             pdf.save(`Receipt-Voucher-${getTransactionNumber()}.pdf`);
+//         } catch (error) {
+//             console.error('PDF download error:', error);
+//             alert('An error occurred while generating the PDF. Please try again.');
 //         }
-
-//         // Save the PDF
-//         pdf.save(`Withdraw-Voucher-${getTransactionNumber()}.pdf`);
-//     } catch (error) {
-//         console.error('PDF download error:', error);
-//         alert('An error occurred while generating the PDF. Please try again.');
-//     }
-// };
+//     };
 
 //     // =========================================================
 //     // KEYBOARD
@@ -5159,17 +5174,6 @@ export default Voucher;
 //                                         transform-gpu
 //                                     "
 //                                 />
-
-//                                 {/* <div
-//                                     className="
-//                                         mt-1.5
-//                                         text-[8px]
-//                                         font-bold
-//                                         text-black
-//                                     "
-//                                 >
-//                                     BROKER CITY PROPERTIES
-//                                 </div> */}
 //                             </div>
 
 //                             {/* =================================================
@@ -5196,27 +5200,15 @@ export default Voucher;
 //                                         mb-5
 //                                     "
 //                                 >
-//                                     <span
-//                                         className="
-//                                             text-left
-//                                         "
-//                                     >
+//                                     <span className="text-left">
 //                                         سند قبض
 //                                     </span>
 
-//                                     <span
-//                                         className="
-//                                             text-left
-//                                         "
-//                                     >
+//                                     <span className="text-left">
 //                                         |
 //                                     </span>
 
-//                                     <span
-//                                         className="
-//                                             text-right
-//                                         "
-//                                     >
+//                                     <span className="text-right">
 //                                         Receipt Voucher
 //                                     </span>
 //                                 </div>
@@ -5247,8 +5239,6 @@ export default Voucher;
 //                                     sm:grid-cols-[1fr_420px]
 //                                 "
 //                             >
-//                                 {/* RIGHT SIDE - AMOUNT */}
-
 //                                 <div
 //                                     className="
 //                                         flex
@@ -5277,21 +5267,8 @@ export default Voucher;
 //                                         >
 //                                             {formatAmount()}
 //                                         </div>
-
-//                                         {/* <div
-//                                             className="
-//                                                 mt-1
-//                                                 text-[9px]
-//                                                 font-bold
-//                                                 text-right
-//                                             "
-//                                         >
-//                                             {getCurrency()}
-//                                         </div> */}
 //                                     </div>
 //                                 </div>
-
-//                                 {/* LEFT SIDE - NUMBER + DATE */}
 
 //                                 <div
 //                                     className="
@@ -5301,8 +5278,6 @@ export default Voucher;
 //                                         gap-3
 //                                     "
 //                                 >
-//                                     {/* NUMBER */}
-
 //                                     <div
 //                                         className="
 //                                             flex
@@ -5355,8 +5330,6 @@ export default Voucher;
 //                                             No
 //                                         </span>
 //                                     </div>
-
-//                                     {/* DATE */}
 
 //                                     <div
 //                                         className="
@@ -5421,16 +5394,10 @@ export default Voucher;
 //                                 RECEIVED FROM
 //                             ================================================== */}
 
-//                             <div
-//                                 className="
-//                                     mt-2
-//                                     text-center
-//                                 "
-//                             >
+//                             <div className="mt-2 text-center">
 //                                 <div
 //                                     className="
 //                                         flex
-                                        
 //                                         items-center
 //                                         justify-between
 //                                         gap-x-50
@@ -5468,7 +5435,6 @@ export default Voucher;
 //                                     className="
 //                                         mt-1
 //                                         flex
-                                        
 //                                         items-center
 //                                         justify-between
 //                                         gap-x-8
@@ -5499,7 +5465,7 @@ export default Voucher;
 //                             </div>
 
 //                             {/* =================================================
-//                                 AMOUNT IN WORDS  {formatAmountInWords(transaction.amount)}
+//                                 AMOUNT IN WORDS
 //                             ================================================== */}
 //                             <div
 //                                 className="
@@ -5511,7 +5477,6 @@ export default Voucher;
 //                                 <div
 //                                     className="
 //                                         flex
-                                        
 //                                         items-center
 //                                         justify-between
 //                                         gap-x-50
@@ -5531,9 +5496,8 @@ export default Voucher;
 //                                         dir="ltr"
 //                                         className="font-black"
 //                                     >
-//                                         {formatAmountInWords(transaction.amount)} درهم فقط لاغير 
+//                                         {formatAmountInWords(transaction.amount)} درهم فقط لاغير
 //                                     </span>
-                                    
 
 //                                     <span
 //                                         dir="rtl"
@@ -5543,75 +5507,48 @@ export default Voucher;
 //                                         The Sum of
 //                                     </span>
 //                                 </div>
-
-                                
 //                             </div>
 
-                            
 //                             {/* =================================================
 //                                 BEING
 //                             ================================================== */}
 
-//                             <div
-//                                 className="
-//                                     mt-2
-//                                     text-center
-//                                 "
-//                             >
-//                               <div className ='flex flex-col gap-0 bg-[#f8f7f5] py-1'>
-//                                 <div
-//                                     className="
-//                                         flex
-                                        
-//                                         items-center
-//                                         justify-between
-//                                         gap-x-50
-//                                         gap-y-1
-//                                         pt-4
-//                                         px-1
-//                                         text-[13px]
-//                                         font-bold
-//                                         py-2
-//                                     "
-//                                 >
-//                                     <span dir="rtl">
-//                                         وذلك عن :
-//                                     </span>
-
-//                                     <span
-//                                         dir="ltr"
-//                                         className="font-black"
+//                             <div className="mt-2 text-center">
+//                                 <div className='flex flex-col gap-0 bg-[#f8f7f5] py-1'>
+//                                     <div
+//                                         className="
+//                                             flex
+//                                             items-center
+//                                             justify-between
+//                                             gap-x-50
+//                                             gap-y-1
+//                                             pt-4
+//                                             px-1
+//                                             text-[13px]
+//                                             font-bold
+//                                             py-2
+//                                         "
 //                                     >
-//                                         {getBeingArabic()}
-//                                     </span>
+//                                         <span dir="rtl">
+//                                             وذلك عن :
+//                                         </span>
 
-//                                     <span
-//                                         dir="rtl"
-//                                         className="font-black"
-//                                     >
-                                        
-//                                         :Being
-//                                     </span>
+//                                         <span
+//                                             dir="ltr"
+//                                             className="font-black"
+//                                         >
+//                                             {getBeingArabic()}
+//                                         </span>
+
+//                                         <span
+//                                             dir="rtl"
+//                                             className="font-black"
+//                                         >
+//                                             :
+//                                             Being
+//                                         </span>
+//                                     </div>
 //                                 </div>
-//                                 <div className ='text-center'>
-//                                     {/* <span
-//                                     dir="ltr"
-//                                     className="
-//                                         font-black
-//                                         text-[11px]
-                                        
-//                                     "
-//                                 >
-//                                     {getBeingEnglish()}
-//                                 </span> */}
-
-//                                 </div>
-                              
-
-//                                 </div>
-
-                                
-                                
 
 //                                 <div
 //                                     className="
@@ -5786,12 +5723,7 @@ export default Voucher;
 
 //                             <hr className="text-gray-300 mt-2" />
 
-//                             <div
-//                                 className="
-//                                     mt-5
-//                                     w-full
-//                                 "
-//                             >
+//                             <div className="mt-5 w-full">
 //                                 <table
 //                                     className="
 //                                         receipt-table
@@ -5810,79 +5742,57 @@ export default Voucher;
 //                                         <col className="col-bank" />
 //                                     </colgroup>
 
-//                                     {/* TABLE HEADER */}
-
 //                                     <thead>
-//                                         <tr className ='bg-[#f8f7f5]'>
-//                                             <th className="py-1.5" style={{ fontSize: '12px' }} >
+//                                         <tr className='bg-[#f8f7f5]'>
+//                                             <th className="py-1.5" style={{ fontSize: '12px' }}>
 //                                                 S
 //                                                 <br />
-//                                                 <span dir="rtl">
-//                                                     س
-//                                                 </span>
+//                                                 <span dir="rtl">س</span>
 //                                             </th>
 
 //                                             <th className="py-1.5" style={{ fontSize: '12px' }}>
 //                                                 Fees Item
 //                                                 <br />
-//                                                 <span dir="rtl">
-//                                                     بند الرسوم
-//                                                 </span>
+//                                                 <span dir="rtl">بند الرسوم</span>
 //                                             </th>
 
 //                                             <th className="py-1.5" style={{ fontSize: '12px' }}>
 //                                                 Amount
 //                                                 <br />
-//                                                 <span dir="rtl">
-//                                                     المبلغ
-//                                                 </span>
+//                                                 <span dir="rtl">المبلغ</span>
 //                                             </th>
 
 //                                             <th className="py-1.5" style={{ fontSize: '12px' }}>
 //                                                 Due Date
 //                                                 <br />
-//                                                 <span dir="rtl">
-//                                                     تاريخ الاستحقاق
-//                                                 </span>
+//                                                 <span dir="rtl">تاريخ الاستحقاق</span>
 //                                             </th>
 
 //                                             <th className="py-1.5" style={{ fontSize: '12px' }}>
 //                                                 Payment Type
 //                                                 <br />
-//                                                 <span dir="rtl">
-//                                                     طريقة الدفع
-//                                                 </span>
+//                                                 <span dir="rtl">طريقة الدفع</span>
 //                                             </th>
 
 //                                             <th className="py-1.5" style={{ fontSize: '12px' }}>
 //                                                 Cheque
 //                                                 <br />
-//                                                 <span dir="rtl">
-//                                                     رقم الشيك
-//                                                 </span>
+//                                                 <span dir="rtl">رقم الشيك</span>
 //                                             </th>
 
 //                                             <th className="py-1.5" style={{ fontSize: '12px' }}>
 //                                                 Date
 //                                                 <br />
-//                                                 <span dir="rtl">
-//                                                     تاريخ الشيك
-//                                                 </span>
+//                                                 <span dir="rtl">تاريخ الشيك</span>
 //                                             </th>
 
 //                                             <th className="py-1.5" style={{ fontSize: '12px' }}>
 //                                                 Bank
 //                                                 <br />
-//                                                 <span dir="rtl">
-//                                                     البنك
-//                                                 </span>
+//                                                 <span dir="rtl">البنك</span>
 //                                             </th>
 //                                         </tr>
 //                                     </thead>
-
-//                                     {/* =================================================
-//                                         TABLE BODY
-//                                     ================================================== */}
 
 //                                     <tbody>
 //                                         {tableRows.map(
@@ -5895,21 +5805,13 @@ export default Voucher;
 //                                                     }
 //                                                     className="text-center"
 //                                                 >
-//                                                     {/* S */}
-
 //                                                     <td
-//                                                         className="
-//                                                             px-1
-//                                                             py-1.5
-//                                                             font-bold
-//                                                         "
+//                                                         className="px-1 py-1.5 font-bold"
 //                                                         style={{ fontSize: '15px' }}
 //                                                     >
 //                                                         {index + 1}
 //                                                     </td>
 
-//                                                     {/* DESCRIPTION */}
-
 //                                                     <td
 //                                                         dir="auto"
 //                                                         className="
@@ -5920,12 +5822,8 @@ export default Voucher;
 //                                                         "
 //                                                         style={{ fontSize: '13px' }}
 //                                                     >
-//                                                         {getRowDescription(
-//                                                             row
-//                                                         )}
+//                                                         {getRowDescription(row)}
 //                                                     </td>
-
-//                                                     {/* AMOUNT */}
 
 //                                                     <td
 //                                                         className="
@@ -5936,14 +5834,8 @@ export default Voucher;
 //                                                         dir="ltr"
 //                                                         style={{ fontSize: '15px' }}
 //                                                     >
-//                                                         {formatAmount(
-//                                                             getRowAmount(
-//                                                                 row
-//                                                             )
-//                                                         )}
+//                                                         {formatAmount(getRowAmount(row))}
 //                                                     </td>
-
-//                                                     {/* DUE DATE */}
 
 //                                                     <td
 //                                                         className="
@@ -5954,14 +5846,8 @@ export default Voucher;
 //                                                         style={{ fontSize: '13px' }}
 //                                                         dir="ltr"
 //                                                     >
-//                                                         {formatDate(
-//                                                             getRowDueDate(
-//                                                                 row
-//                                                             )
-//                                                         )}
+//                                                         {formatDate(getRowDueDate(row))}
 //                                                     </td>
-
-//                                                     {/* PAYMENT */}
 
 //                                                     <td
 //                                                         className="
@@ -5971,12 +5857,8 @@ export default Voucher;
 //                                                         "
 //                                                         style={{ fontSize: '15px' }}
 //                                                     >
-//                                                         {getRowPaymentType(
-//                                                             row
-//                                                         )}
+//                                                         {getRowPaymentType(row)}
 //                                                     </td>
-
-//                                                     {/* CHEQUE */}
 
 //                                                     <td
 //                                                         className="
@@ -5987,12 +5869,8 @@ export default Voucher;
 //                                                         dir="ltr"
 //                                                         style={{ fontSize: '13px' }}
 //                                                     >
-//                                                         {getRowChequeNumber(
-//                                                             row
-//                                                         )}
+//                                                         {getRowChequeNumber(row)}
 //                                                     </td>
-
-//                                                     {/* CHEQUE DATE */}
 
 //                                                     <td
 //                                                         className="
@@ -6003,19 +5881,11 @@ export default Voucher;
 //                                                         dir="ltr"
 //                                                         style={{ fontSize: '13px' }}
 //                                                     >
-//                                                         {getRowChequeNumber(
-//                                                             row
-//                                                         )
-//                                                             ? formatDate(
-//                                                                 getRowChequeDate(
-//                                                                     row
-//                                                                 )
-//                                                             )
+//                                                         {getRowChequeNumber(row)
+//                                                             ? formatDate(getRowChequeDate(row))
 //                                                             : ''}
 //                                                     </td>
 
-//                                                     {/* BANK */}
-
 //                                                     <td
 //                                                         dir="auto"
 //                                                         className="
@@ -6026,16 +5896,12 @@ export default Voucher;
 //                                                         "
 //                                                         style={{ fontSize: '15px' }}
 //                                                     >
-//                                                         {getRowBank(
-//                                                             row
-//                                                         )}
+//                                                         {getRowBank(row)}
 //                                                     </td>
 //                                                 </tr>
 //                                             )
 //                                         )}
 //                                     </tbody>
-
-//                                     {/* TABLE TOTAL */}
 
 //                                     <tfoot>
 //                                         <tr>
@@ -6062,9 +5928,7 @@ export default Voucher;
 //                                                 dir="ltr"
 //                                                 style={{ fontSize: '13px' }}
 //                                             >
-//                                                 {formatAmount(
-//                                                     totalTableAmount
-//                                                 )}
+//                                                 {formatAmount(totalTableAmount)}
 //                                             </td>
 
 //                                             <td
@@ -6103,9 +5967,7 @@ export default Voucher;
 //                                             Document No:
 
 //                                             <strong className="ml-1">
-//                                                 {safeValue(
-//                                                     transaction.document_no
-//                                                 )}
+//                                                 {safeValue(transaction.document_no)}
 //                                             </strong>
 //                                         </div>
 //                                     )}
@@ -6166,8 +6028,6 @@ export default Voucher;
 //                                     gap-8
 //                                 "
 //                             >
-//                                 {/* PREPARED */}
-
 //                                 <div className="text-center">
 //                                     <div
 //                                         className="
@@ -6184,13 +6044,7 @@ export default Voucher;
 //                                         )}
 //                                     </div>
 
-//                                     <div
-//                                         className="
-//                                             mt-2
-//                                             border-t
-//                                             border-black
-//                                         "
-//                                     />
+//                                     <div className="mt-2 border-t border-black" />
 
 //                                     <div
 //                                         dir="ltr"
@@ -6205,16 +6059,11 @@ export default Voucher;
 
 //                                     <div
 //                                         dir="rtl"
-//                                         className="
-//                                             text-[9px]
-//                                             font-bold
-//                                         "
+//                                         className="text-[9px] font-bold"
 //                                     >
 //                                         إعداد
 //                                     </div>
 //                                 </div>
-
-//                                 {/* APPROVED */}
 
 //                                 <div className="text-center">
 //                                     <div
@@ -6231,13 +6080,7 @@ export default Voucher;
 //                                         )}
 //                                     </div>
 
-//                                     <div
-//                                         className="
-//                                             mt-2
-//                                             border-t
-//                                             border-black
-//                                         "
-//                                     />
+//                                     <div className="mt-2 border-t border-black" />
 
 //                                     <div
 //                                         dir="ltr"
@@ -6252,16 +6095,11 @@ export default Voucher;
 
 //                                     <div
 //                                         dir="rtl"
-//                                         className="
-//                                             text-[9px]
-//                                             font-bold
-//                                         "
+//                                         className="text-[9px] font-bold"
 //                                     >
 //                                         اعتماد
 //                                     </div>
 //                                 </div>
-
-//                                 {/* RECEIVED */}
 
 //                                 <div className="text-center">
 //                                     <div
@@ -6278,13 +6116,7 @@ export default Voucher;
 //                                         )}
 //                                     </div>
 
-//                                     <div
-//                                         className="
-//                                             mt-2
-//                                             border-t
-//                                             border-black
-//                                         "
-//                                     />
+//                                     <div className="mt-2 border-t border-black" />
 
 //                                     <div
 //                                         dir="ltr"
@@ -6299,10 +6131,7 @@ export default Voucher;
 
 //                                     <div
 //                                         dir="rtl"
-//                                         className="
-//                                             text-[9px]
-//                                             font-bold
-//                                         "
+//                                         className="text-[9px] font-bold"
 //                                     >
 //                                         استلم بواسطة
 //                                     </div>
@@ -6332,22 +6161,10 @@ export default Voucher;
 //                                         font-bold
 //                                     "
 //                                 >
-//                                     <div>
-//                                         1 / 1
-//                                     </div>
-
-//                                     <div>
-//                                         |
-//                                     </div>
-
-//                                     <div>
-//                                         {getTransactionUserName()}
-//                                     </div>
-
-//                                     <div>
-//                                         |
-//                                     </div>
-
+//                                     <div>1 / 1</div>
+//                                     <div>|</div>
+//                                     <div>{getTransactionUserName()}</div>
+//                                     <div>|</div>
 //                                     <div dir="ltr">
 //                                         {formatDateTime(
 //                                             transaction.created_at ||
@@ -6355,11 +6172,7 @@ export default Voucher;
 //                                             transaction.date
 //                                         )}
 //                                     </div>
-
-//                                     <div>
-//                                         |
-//                                     </div>
-
+//                                     <div>|</div>
 //                                     <div className="font-black">
 //                                         BROKER CITY PROPERTIES
 //                                     </div>
@@ -6374,3 +6187,4 @@ export default Voucher;
 // };
 
 // export default Voucher;
+
