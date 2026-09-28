@@ -2460,7 +2460,7 @@ const VoucherWithdraw = ({ transaction = {}, onClose }) => {
                                         className="font-black"
                                     >
                                         
-                                        Being :
+                                        Being 
                                     </span>
                                 </div>
                                 <div className ='text-center'>
