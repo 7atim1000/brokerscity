@@ -228,13 +228,13 @@ const Voucher = ({ transaction = {}, onClose }) => {
         if (typeof value === 'object') {
             return (
                 value.name ||
+                value.bank_name ||
+                value.cashbox_name ||
+                value.account_name ||
                 value.title ||
                 value.username ||
                 value.full_name ||
                 value.fullName ||
-                value.account_name ||
-                value.bank_name ||
-                value.cashbox_name ||
                 value.description ||
                 value.id ||
                 '-'
@@ -343,40 +343,51 @@ const Voucher = ({ transaction = {}, onClose }) => {
     // BANK
     // =========================================================
 
-    // const getBankName = () => {
-    //     return getObjectName(
-    //         transaction.bank ||
-    //         transaction.bank_name
-    //     );
-    // };
-
     const getBankName = () => {
-    // 1. Prefer explicit bank_name field
-    if (transaction.bank_name) {
-        return getObjectName(transaction.bank_name);
-    }
+        // 1. Prefer explicit bank_name field (same as TransactionDetails)
+        if (
+            transaction.bank_name &&
+            typeof transaction.bank_name !== 'object'
+        ) {
+            return transaction.bank_name;
+        }
 
-    // 2. If bank is an object, prefer its name
-    if (
-        transaction.bank &&
-        typeof transaction.bank === 'object'
-    ) {
-        return (
-            transaction.bank.name ||
-            transaction.bank.bank_name ||
-            transaction.bank.title ||
-            transaction.bank.id ||
-            '-'
-        );
-    }
+        // 2. If bank_name is an object, extract its name
+        if (
+            transaction.bank_name &&
+            typeof transaction.bank_name === 'object'
+        ) {
+            return (
+                transaction.bank_name.name ||
+                transaction.bank_name.bank_name ||
+                transaction.bank_name.title ||
+                '-'
+            );
+        }
 
-    // 3. If bank is a primitive value
-    if (transaction.bank) {
-        return transaction.bank;
-    }
+        // 3. If bank is an object, prefer its name (NOT its id)
+        if (
+            transaction.bank &&
+            typeof transaction.bank === 'object'
+        ) {
+            return (
+                transaction.bank.name ||
+                transaction.bank.bank_name ||
+                transaction.bank.title ||
+                '-'
+            );
+        }
 
-    return '-';
-};
+        // 4. If bank is a primitive value (string), use it as-is
+        if (
+            transaction.bank &&
+            typeof transaction.bank !== 'object'
+        ) {
+            return transaction.bank;
+        }
+
+        return '-';
+    };
 
     // =========================================================
     // CASHBOX
@@ -947,15 +958,64 @@ const Voucher = ({ transaction = {}, onClose }) => {
         );
     };
 
+    // =========================================================
+    // ROW BANK — mirrors getBankName() logic for row data
+    // =========================================================
+
     const getRowBank = (row) => {
-        return (
-            getObjectName(
-                row.bank ||
-                row.bank_name ||
-                row.check_bank ||
-                row.cheque_bank
-            ) || getBankName()
-        );
+        // 1. Prefer row.bank_name (string)
+        if (
+            row.bank_name &&
+            typeof row.bank_name !== 'object'
+        ) {
+            return row.bank_name;
+        }
+
+        // 2. row.bank_name as object
+        if (
+            row.bank_name &&
+            typeof row.bank_name === 'object'
+        ) {
+            return (
+                row.bank_name.name ||
+                row.bank_name.bank_name ||
+                row.bank_name.title ||
+                getBankName()
+            );
+        }
+
+        // 3. row.bank as object → use .name (NOT .id)
+        if (
+            row.bank &&
+            typeof row.bank === 'object'
+        ) {
+            return (
+                row.bank.name ||
+                row.bank.bank_name ||
+                row.bank.title ||
+                getBankName()
+            );
+        }
+
+        // 4. row.bank as string
+        if (
+            row.bank &&
+            typeof row.bank !== 'object'
+        ) {
+            return row.bank;
+        }
+
+        // 5. row.check_bank / row.cheque_bank
+        if (row.check_bank) {
+            return getObjectName(row.check_bank);
+        }
+
+        if (row.cheque_bank) {
+            return getObjectName(row.cheque_bank);
+        }
+
+        // 6. Fallback to transaction-level bank
+        return getBankName();
     };
 
     // =========================================================
@@ -1382,9 +1442,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
         let tempContainer = null;
 
         try {
-            // =====================================================
-            // Clone the exact voucher that is currently displayed.
-            // =====================================================
             const voucherElement = printRef.current.cloneNode(true);
 
             if (!voucherElement) {
@@ -1399,17 +1456,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
 
             voucherElement.id = 'voucher-pdf-copy';
 
-            // =====================================================
-            // Create a real, visible rendering surface.
-            //
-            // The previous PDF renderer used:
-            //     opacity: 0
-            //     z-index: -1
-            //
-            // html2canvas can therefore receive an empty/transparent
-            // rendering in some browsers. Keep the cloned voucher
-            // in the document layout while rendering it off-screen.
-            // =====================================================
             tempContainer = document.createElement('div');
             tempContainer.id = 'voucher-pdf-temp-root';
 
@@ -1428,11 +1474,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
                 direction: 'rtl',
             });
 
-            // =====================================================
-            // PDF-specific styles.
-            // Keep the same voucher design and only make the
-            // cloned voucher render reliably for html2canvas.
-            // =====================================================
             const styleElement = document.createElement('style');
 
             styleElement.textContent = PRINT_STYLES + `
@@ -1590,9 +1631,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
             tempContainer.appendChild(voucherElement);
             document.body.appendChild(tempContainer);
 
-            // =====================================================
-            // Wait for every image used by the voucher.
-            // =====================================================
             const images = Array.from(
                 tempContainer.querySelectorAll('img')
             );
@@ -1609,25 +1647,17 @@ const Voucher = ({ transaction = {}, onClose }) => {
                         img.onload = finish;
                         img.onerror = finish;
 
-                        // Prevent a broken external image from
-                        // blocking PDF generation forever.
                         setTimeout(finish, 3000);
                     });
                 })
             );
 
-            // Let the browser finish layout before html2canvas reads it.
             await new Promise((resolve) => {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(resolve);
                 });
             });
 
-            // =====================================================
-            // Capture the actual voucher element, not the temporary
-            // wrapper. This guarantees that the PDF contains the
-            // same data currently visible in the component.
-            // =====================================================
             const canvas = await html2canvas(voucherElement, {
                 scale: 2,
                 useCORS: true,
@@ -1652,11 +1682,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     clonedVoucher.style.visibility = 'visible';
                     clonedVoucher.style.opacity = '1';
 
-                    // =================================================
-                    // html2canvas does not support oklch() in some
-                    // browser/html2canvas combinations. Replace any
-                    // remaining computed oklch colors with safe values.
-                    // =================================================
                     const clonedWindow = clonedDoc.defaultView;
 
                     if (clonedWindow) {
@@ -1717,7 +1742,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
                         });
                     }
 
-                    // Make the cloned root itself fully visible.
                     clonedVoucher.querySelectorAll('*').forEach((el) => {
                         el.style.setProperty(
                             'visibility',
@@ -1734,9 +1758,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
                 },
             });
 
-            // =====================================================
-            // Remove temporary DOM after the canvas is ready.
-            // =====================================================
             if (
                 tempContainer &&
                 tempContainer.parentNode
@@ -1748,9 +1769,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
 
             tempContainer = null;
 
-            // =====================================================
-            // Create A4 PDF while preserving the voucher design.
-            // =====================================================
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
@@ -1766,13 +1784,10 @@ const Voucher = ({ transaction = {}, onClose }) => {
             const imgWidth = canvas.width;
             const imgHeight = canvas.height;
 
-            // Fit the voucher to the printable A4 width.
             const ratio = pdfWidth / imgWidth;
 
             const renderedHeight = imgHeight * ratio;
 
-            // If the voucher is taller than one A4 page,
-            // split the rendered canvas into multiple pages.
             const totalPages = Math.max(
                 1,
                 Math.ceil(renderedHeight / pdfHeight)
@@ -3181,9 +3196,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
 
 export default Voucher;
 
-
-
-
 // // Voucher.jsx
 // // npm install framer-motion react-icons jspdf html2canvas
 
@@ -3529,12 +3541,40 @@ export default Voucher;
 //     // BANK
 //     // =========================================================
 
+//     // const getBankName = () => {
+//     //     return getObjectName(
+//     //         transaction.bank ||
+//     //         transaction.bank_name
+//     //     );
+//     // };
+
 //     const getBankName = () => {
-//         return getObjectName(
-//             transaction.bank ||
-//             transaction.bank_name
+//     // 1. Prefer explicit bank_name field
+//     if (transaction.bank_name) {
+//         return getObjectName(transaction.bank_name);
+//     }
+
+//     // 2. If bank is an object, prefer its name
+//     if (
+//         transaction.bank &&
+//         typeof transaction.bank === 'object'
+//     ) {
+//         return (
+//             transaction.bank.name ||
+//             transaction.bank.bank_name ||
+//             transaction.bank.title ||
+//             transaction.bank.id ||
+//             '-'
 //         );
-//     };
+//     }
+
+//     // 3. If bank is a primitive value
+//     if (transaction.bank) {
+//         return transaction.bank;
+//     }
+
+//     return '-';
+// };
 
 //     // =========================================================
 //     // CASHBOX
@@ -4537,9 +4577,11 @@ export default Voucher;
 //             return;
 //         }
 
+//         let tempContainer = null;
+
 //         try {
 //             // =====================================================
-//             // Clone the voucher element
+//             // Clone the exact voucher that is currently displayed.
 //             // =====================================================
 //             const voucherElement = printRef.current.cloneNode(true);
 
@@ -4547,52 +4589,58 @@ export default Voucher;
 //                 return;
 //             }
 
-//             // Remove print-only buttons
 //             voucherElement
 //                 .querySelectorAll('.voucher-no-print')
 //                 .forEach((element) => {
 //                     element.remove();
 //                 });
 
-//             // Keep the id for reference in onclone
 //             voucherElement.id = 'voucher-pdf-copy';
 
 //             // =====================================================
-//             // Build a temp container that stays in the layout flow
-//             // so all Tailwind styles compute correctly.
+//             // Create a real, visible rendering surface.
 //             //
-//             // IMPORTANT: Do NOT use left: -9999px because that
-//             // breaks some computed styles during html2canvas.
-//             // Instead, place it fixed at top:0/left:0 with opacity:0
-//             // and pointer-events:none.
+//             // The previous PDF renderer used:
+//             //     opacity: 0
+//             //     z-index: -1
+//             //
+//             // html2canvas can therefore receive an empty/transparent
+//             // rendering in some browsers. Keep the cloned voucher
+//             // in the document layout while rendering it off-screen.
 //             // =====================================================
-//             const tempContainer = document.createElement('div');
+//             tempContainer = document.createElement('div');
 //             tempContainer.id = 'voucher-pdf-temp-root';
-//             tempContainer.setAttribute('dir', 'rtl');
-//             tempContainer.style.position = 'fixed';
-//             tempContainer.style.top = '0';
-//             tempContainer.style.left = '0';
-//             tempContainer.style.width = '794px';
-//             tempContainer.style.background = '#ffffff';
-//             tempContainer.style.zIndex = '-1';
-//             tempContainer.style.opacity = '0';
-//             tempContainer.style.pointerEvents = 'none';
-//             tempContainer.style.overflow = 'visible';
+
+//             Object.assign(tempContainer.style, {
+//                 position: 'fixed',
+//                 top: '0',
+//                 left: '-10000px',
+//                 width: '794px',
+//                 minHeight: '1123px',
+//                 background: '#ffffff',
+//                 zIndex: '2147483647',
+//                 opacity: '1',
+//                 visibility: 'visible',
+//                 pointerEvents: 'none',
+//                 overflow: 'visible',
+//                 direction: 'rtl',
+//             });
 
 //             // =====================================================
-//             // Inject styles: PRINT_STYLES + oklch overrides + layout
+//             // PDF-specific styles.
+//             // Keep the same voucher design and only make the
+//             // cloned voucher render reliably for html2canvas.
 //             // =====================================================
 //             const styleElement = document.createElement('style');
+
 //             styleElement.textContent = PRINT_STYLES + `
-//                 /* ==========================================
-//                    Base voucher layout (mirrors on-screen preview)
-//                    ========================================== */
 //                 #voucher-pdf-copy {
 //                     display: block !important;
 //                     position: static !important;
-//                     width: 100% !important;
-//                     max-width: none !important;
-//                     margin: 0 auto !important;
+//                     width: 794px !important;
+//                     max-width: 794px !important;
+//                     min-height: 0 !important;
+//                     margin: 0 !important;
 //                     padding: 16px 16px 20px 16px !important;
 //                     background: #ffffff !important;
 //                     color: #111111 !important;
@@ -4600,6 +4648,7 @@ export default Voucher;
 //                     box-shadow: none !important;
 //                     overflow: visible !important;
 //                     visibility: visible !important;
+//                     opacity: 1 !important;
 //                     box-sizing: border-box !important;
 //                     direction: rtl !important;
 //                     font-family: Arial, Helvetica, sans-serif !important;
@@ -4607,13 +4656,10 @@ export default Voucher;
 
 //                 #voucher-pdf-copy * {
 //                     visibility: visible !important;
+//                     opacity: 1 !important;
 //                     box-sizing: border-box !important;
 //                 }
 
-//                 /* ==========================================
-//                    FIX: Override oklch() color functions
-//                    (html2canvas does NOT support oklch())
-//                    ========================================== */
 //                 #voucher-pdf-copy .bg-white,
 //                 #voucher-pdf-copy.receipt-paper,
 //                 #voucher-pdf-copy .receipt-paper {
@@ -4628,30 +4674,67 @@ export default Voucher;
 //                     background-color: rgba(164, 125, 82, 0.1) !important;
 //                 }
 
-//                 #voucher-pdf-copy .bg-slate-200 { background-color: #e2e8f0 !important; }
-//                 #voucher-pdf-copy .bg-slate-300 { background-color: #cbd5e1 !important; }
-//                 #voucher-pdf-copy .bg-slate-100 { background-color: #f1f5f9 !important; }
-//                 #voucher-pdf-copy .bg-slate-50  { background-color: #f8fafc !important; }
-//                 #voucher-pdf-copy .bg-red-600   { background-color: #dc2626 !important; }
+//                 #voucher-pdf-copy .bg-slate-200 {
+//                     background-color: #e2e8f0 !important;
+//                 }
 
-//                 /* Text colors */
+//                 #voucher-pdf-copy .bg-slate-300 {
+//                     background-color: #cbd5e1 !important;
+//                 }
+
+//                 #voucher-pdf-copy .bg-slate-100 {
+//                     background-color: #f1f5f9 !important;
+//                 }
+
+//                 #voucher-pdf-copy .bg-slate-50 {
+//                     background-color: #f8fafc !important;
+//                 }
+
+//                 #voucher-pdf-copy .bg-red-600 {
+//                     background-color: #dc2626 !important;
+//                 }
+
 //                 #voucher-pdf-copy .text-white {
 //                     color: #ffffff !important;
 //                     -webkit-text-fill-color: #ffffff !important;
 //                 }
-//                 #voucher-pdf-copy .text-black     { color: #000000 !important; }
-//                 #voucher-pdf-copy .text-slate-800 { color: #1e293b !important; }
-//                 #voucher-pdf-copy .text-slate-700 { color: #334155 !important; }
-//                 #voucher-pdf-copy .text-slate-600 { color: #475569 !important; }
-//                 #voucher-pdf-copy .text-slate-500 { color: #64748b !important; }
-//                 #voucher-pdf-copy .text-gray-300  { color: #d1d5db !important; }
 
-//                 /* Border colors */
-//                 #voucher-pdf-copy .border-slate-200 { border-color: #e2e8f0 !important; }
-//                 #voucher-pdf-copy .border-slate-300 { border-color: #cbd5e1 !important; }
-//                 #voucher-pdf-copy .border-black     { border-color: #000000 !important; }
+//                 #voucher-pdf-copy .text-black {
+//                     color: #000000 !important;
+//                 }
 
-//                 /* Make sure hr is visible */
+//                 #voucher-pdf-copy .text-slate-800 {
+//                     color: #1e293b !important;
+//                 }
+
+//                 #voucher-pdf-copy .text-slate-700 {
+//                     color: #334155 !important;
+//                 }
+
+//                 #voucher-pdf-copy .text-slate-600 {
+//                     color: #475569 !important;
+//                 }
+
+//                 #voucher-pdf-copy .text-slate-500 {
+//                     color: #64748b !important;
+//                 }
+
+//                 #voucher-pdf-copy .text-gray-300 {
+//                     color: #d1d5db !important;
+//                 }
+
+//                 #voucher-pdf-copy .border-slate-200 {
+//                     border-color: #e2e8f0 !important;
+//                 }
+
+//                 #voucher-pdf-copy .border-slate-300 {
+//                     border-color: #cbd5e1 !important;
+//                 }
+
+//                 #voucher-pdf-copy .border-black {
+//                     border-color: #000000 !important;
+//                 }
+
 //                 #voucher-pdf-copy hr {
 //                     border: 0 !important;
 //                     border-top: 1px solid #d1d5db !important;
@@ -4660,7 +4743,6 @@ export default Voucher;
 //                     height: 1px !important;
 //                 }
 
-//                 /* Tables */
 //                 #voucher-pdf-copy .receipt-table {
 //                     width: 100% !important;
 //                     border-collapse: collapse !important;
@@ -4678,7 +4760,6 @@ export default Voucher;
 //                     background-color: #f8f7f5 !important;
 //                 }
 
-//                 /* Signatures */
 //                 #voucher-pdf-copy .receipt-signature-image {
 //                     display: block !important;
 //                     max-width: 125px !important;
@@ -4693,7 +4774,6 @@ export default Voucher;
 //                     font-weight: 700 !important;
 //                 }
 
-//                 /* Images */
 //                 #voucher-pdf-copy img {
 //                     max-width: 100% !important;
 //                 }
@@ -4703,52 +4783,87 @@ export default Voucher;
 //                     margin-right: auto !important;
 //                 }
 //             `;
+
 //             tempContainer.appendChild(styleElement);
 //             tempContainer.appendChild(voucherElement);
 //             document.body.appendChild(tempContainer);
 
 //             // =====================================================
-//             // Wait for images to load
+//             // Wait for every image used by the voucher.
 //             // =====================================================
-//             const images = Array.from(tempContainer.querySelectorAll('img'));
+//             const images = Array.from(
+//                 tempContainer.querySelectorAll('img')
+//             );
+
 //             await Promise.all(
 //                 images.map((img) => {
-//                     if (img.complete) return Promise.resolve();
+//                     if (img.complete && img.naturalWidth > 0) {
+//                         return Promise.resolve();
+//                     }
+
 //                     return new Promise((resolve) => {
-//                         img.onload = resolve;
-//                         img.onerror = resolve;
+//                         const finish = () => resolve();
+
+//                         img.onload = finish;
+//                         img.onerror = finish;
+
+//                         // Prevent a broken external image from
+//                         // blocking PDF generation forever.
+//                         setTimeout(finish, 3000);
 //                     });
 //                 })
 //             );
 
-//             // Give the browser time to compute layout & styles
-//             await new Promise((resolve) => setTimeout(resolve, 700));
+//             // Let the browser finish layout before html2canvas reads it.
+//             await new Promise((resolve) => {
+//                 requestAnimationFrame(() => {
+//                     requestAnimationFrame(resolve);
+//                 });
+//             });
 
 //             // =====================================================
-//             // Capture with html2canvas
+//             // Capture the actual voucher element, not the temporary
+//             // wrapper. This guarantees that the PDF contains the
+//             // same data currently visible in the component.
 //             // =====================================================
-//             const canvas = await html2canvas(tempContainer, {
+//             const canvas = await html2canvas(voucherElement, {
 //                 scale: 2,
 //                 useCORS: true,
 //                 allowTaint: true,
 //                 backgroundColor: '#ffffff',
 //                 logging: false,
 //                 width: 794,
-//                 height: tempContainer.scrollHeight,
 //                 windowWidth: 794,
+//                 scrollX: 0,
+//                 scrollY: 0,
 //                 onclone: (clonedDoc) => {
-//                     const clonedContainer = clonedDoc.getElementById('voucher-pdf-copy');
-//                     if (clonedContainer) {
-//                         clonedContainer.style.width = '794px';
-//                         clonedContainer.style.direction = 'rtl';
+//                     const clonedVoucher =
+//                         clonedDoc.getElementById('voucher-pdf-copy');
 
-//                         // ==========================================
-//                         // FINAL SAFETY NET: strip any remaining oklch
-//                         // ==========================================
-//                         const allElements = clonedContainer.querySelectorAll('*');
+//                     if (!clonedVoucher) {
+//                         return;
+//                     }
+
+//                     clonedVoucher.style.width = '794px';
+//                     clonedVoucher.style.maxWidth = '794px';
+//                     clonedVoucher.style.direction = 'rtl';
+//                     clonedVoucher.style.visibility = 'visible';
+//                     clonedVoucher.style.opacity = '1';
+
+//                     // =================================================
+//                     // html2canvas does not support oklch() in some
+//                     // browser/html2canvas combinations. Replace any
+//                     // remaining computed oklch colors with safe values.
+//                     // =================================================
+//                     const clonedWindow = clonedDoc.defaultView;
+
+//                     if (clonedWindow) {
+//                         const allElements =
+//                             clonedVoucher.querySelectorAll('*');
 
 //                         allElements.forEach((el) => {
-//                             const computed = window.getComputedStyle(el);
+//                             const computed =
+//                                 clonedWindow.getComputedStyle(el);
 
 //                             const colorProps = [
 //                                 'color',
@@ -4766,13 +4881,20 @@ export default Voucher;
 //                             colorProps.forEach((prop) => {
 //                                 const value = computed[prop];
 
-//                                 if (value && value.includes('oklch')) {
+//                                 if (
+//                                     value &&
+//                                     value.includes('oklch')
+//                                 ) {
 //                                     let fallback = '#111111';
 
-//                                     if (prop === 'backgroundColor') {
+//                                     if (
+//                                         prop === 'backgroundColor'
+//                                     ) {
 //                                         fallback = 'transparent';
 //                                     } else if (
-//                                         prop.toLowerCase().includes('border') ||
+//                                         prop
+//                                             .toLowerCase()
+//                                             .includes('border') ||
 //                                         prop === 'outlineColor' ||
 //                                         prop === 'columnRuleColor'
 //                                     ) {
@@ -4780,59 +4902,52 @@ export default Voucher;
 //                                     }
 
 //                                     try {
-//                                         el.style.setProperty(prop, fallback, 'important');
-//                                     } catch (e) {
-//                                         // ignore
+//                                         el.style.setProperty(
+//                                             prop,
+//                                             fallback,
+//                                             'important'
+//                                         );
+//                                     } catch (error) {
+//                                         // Ignore individual style errors.
 //                                     }
 //                                 }
 //                             });
-
-//                             if (el.style && el.style.cssText) {
-//                                 if (el.style.cssText.includes('oklch')) {
-//                                     el.style.cssText = el.style.cssText.replace(
-//                                         /oklch\([^)]+\)/g,
-//                                         '#111111'
-//                                     );
-//                                 }
-//                             }
 //                         });
-
-//                         // Remove oklch rules from stylesheets
-//                         try {
-//                             const sheets = clonedDoc.styleSheets;
-//                             for (let i = 0; i < sheets.length; i++) {
-//                                 try {
-//                                     const rules = sheets[i].cssRules || sheets[i].rules;
-//                                     if (!rules) continue;
-
-//                                     for (let j = rules.length - 1; j >= 0; j--) {
-//                                         const rule = rules[j];
-//                                         if (rule.cssText && rule.cssText.includes('oklch')) {
-//                                             try {
-//                                                 sheets[i].deleteRule(j);
-//                                             } catch (e) {
-//                                                 // ignore
-//                                             }
-//                                         }
-//                                     }
-//                                 } catch (e) {
-//                                     // cross-origin sheet
-//                                 }
-//                             }
-//                         } catch (e) {
-//                             // ignore
-//                         }
 //                     }
+
+//                     // Make the cloned root itself fully visible.
+//                     clonedVoucher.querySelectorAll('*').forEach((el) => {
+//                         el.style.setProperty(
+//                             'visibility',
+//                             'visible',
+//                             'important'
+//                         );
+
+//                         el.style.setProperty(
+//                             'opacity',
+//                             '1',
+//                             'important'
+//                         );
+//                     });
 //                 },
 //             });
 
 //             // =====================================================
-//             // Clean up temp container
+//             // Remove temporary DOM after the canvas is ready.
 //             // =====================================================
-//             document.body.removeChild(tempContainer);
+//             if (
+//                 tempContainer &&
+//                 tempContainer.parentNode
+//             ) {
+//                 tempContainer.parentNode.removeChild(
+//                     tempContainer
+//                 );
+//             }
+
+//             tempContainer = null;
 
 //             // =====================================================
-//             // Create PDF
+//             // Create A4 PDF while preserving the voucher design.
 //             // =====================================================
 //             const pdf = new jsPDF({
 //                 orientation: 'portrait',
@@ -4840,36 +4955,65 @@ export default Voucher;
 //                 format: 'a4',
 //             });
 
-//             const pdfWidth = pdf.internal.pageSize.getWidth();
-//             const pdfHeight = pdf.internal.pageSize.getHeight();
+//             const pdfWidth =
+//                 pdf.internal.pageSize.getWidth();
+
+//             const pdfHeight =
+//                 pdf.internal.pageSize.getHeight();
 
 //             const imgWidth = canvas.width;
 //             const imgHeight = canvas.height;
 
-//             // Calculate the ratio to fit the page
-//             const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-//             const imgX = (pdfWidth - imgWidth * ratio) / 2;
-//             const imgY = 0;
+//             // Fit the voucher to the printable A4 width.
+//             const ratio = pdfWidth / imgWidth;
 
-//             // If content is taller than one page, split into multiple pages
-//             const totalPages = Math.ceil((imgHeight * ratio) / pdfHeight);
+//             const renderedHeight = imgHeight * ratio;
 
-//             for (let page = 0; page < totalPages; page++) {
+//             // If the voucher is taller than one A4 page,
+//             // split the rendered canvas into multiple pages.
+//             const totalPages = Math.max(
+//                 1,
+//                 Math.ceil(renderedHeight / pdfHeight)
+//             );
+
+//             for (
+//                 let page = 0;
+//                 page < totalPages;
+//                 page++
+//             ) {
 //                 if (page > 0) {
 //                     pdf.addPage();
 //                 }
 
-//                 const sourceY = page * (pdfHeight / ratio);
+//                 const sourceY =
+//                     page * (pdfHeight / ratio);
+
 //                 const sourceHeight = Math.min(
 //                     pdfHeight / ratio,
 //                     imgHeight - sourceY
 //                 );
 
-//                 const pageCanvas = document.createElement('canvas');
-//                 pageCanvas.width = imgWidth;
-//                 pageCanvas.height = sourceHeight;
+//                 if (sourceHeight <= 0) {
+//                     continue;
+//                 }
 
-//                 const pageCtx = pageCanvas.getContext('2d');
+//                 const pageCanvas =
+//                     document.createElement('canvas');
+
+//                 pageCanvas.width = imgWidth;
+//                 pageCanvas.height = Math.ceil(sourceHeight);
+
+//                 const pageCtx =
+//                     pageCanvas.getContext('2d');
+
+//                 pageCtx.fillStyle = '#ffffff';
+//                 pageCtx.fillRect(
+//                     0,
+//                     0,
+//                     pageCanvas.width,
+//                     pageCanvas.height
+//                 );
+
 //                 pageCtx.drawImage(
 //                     canvas,
 //                     0,
@@ -4882,24 +5026,43 @@ export default Voucher;
 //                     sourceHeight
 //                 );
 
-//                 const pageImgData = pageCanvas.toDataURL('image/png');
-//                 const pageImgHeight = sourceHeight * ratio;
+//                 const pageImgData =
+//                     pageCanvas.toDataURL('image/png');
+
+//                 const pageImgHeight =
+//                     sourceHeight * ratio;
 
 //                 pdf.addImage(
 //                     pageImgData,
 //                     'PNG',
-//                     imgX,
-//                     imgY,
-//                     imgWidth * ratio,
+//                     0,
+//                     0,
+//                     pdfWidth,
 //                     pageImgHeight
 //                 );
 //             }
 
-//             // Save the PDF
-//             pdf.save(`Receipt-Voucher-${getTransactionNumber()}.pdf`);
+//             pdf.save(
+//                 `Receipt-Voucher-${getTransactionNumber()}.pdf`
+//             );
 //         } catch (error) {
-//             console.error('PDF download error:', error);
-//             alert('An error occurred while generating the PDF. Please try again.');
+//             console.error(
+//                 'PDF download error:',
+//                 error
+//             );
+
+//             alert(
+//                 'An error occurred while generating the PDF. Please try again.'
+//             );
+
+//             if (
+//                 tempContainer &&
+//                 tempContainer.parentNode
+//             ) {
+//                 tempContainer.parentNode.removeChild(
+//                     tempContainer
+//                 );
+//             }
 //         }
 //     };
 
@@ -5572,7 +5735,7 @@ export default Voucher;
 //                                             dir="rtl"
 //                                             className="font-black"
 //                                         >
-//                                             :
+                                            
 //                                             Being
 //                                         </span>
 //                                     </div>
@@ -6215,4 +6378,6 @@ export default Voucher;
 // };
 
 // export default Voucher;
+
+
 
