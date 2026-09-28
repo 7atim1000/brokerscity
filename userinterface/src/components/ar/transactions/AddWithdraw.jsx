@@ -1026,34 +1026,7 @@ const AddWithdraw = ({ onClose, transactionData, onSuccess, initialData, isEditM
 
                         {!isEditMode && (
                             <>
-                                {/* Transaction Number (Manual) */}
-                                <div className="space-y-1">
-                                    <label className="block text-sm font-semibold text-gray-700">
-                                        رقم المعاملة
-                                    </label>
-                                    <input
-                                        ref={transactionNoRef}
-                                        type="text"
-                                        name="transaction_no"
-                                        value={formData.transaction_no}
-                                        onChange={handleChange}
-                                        onKeyDown={(e) => handleKeyDown(e, transactionDateRef)}
-                                        className="w-full px-4 py-3 bg-white rounded-sm shadow-lg focus:outline-none transition-all duration-300 text-right"
-                                        style={{
-                                            borderTopColor: 'transparent',
-                                            borderBottomColor: 'white',
-                                            borderLeftColor: 'transparent',
-                                            borderRightColor: formData.transaction_no ? '#a47d52' : '#ef4444',
-                                            borderWidth: '2px',
-                                            borderStyle: 'solid',
-                                            boxShadow: formData.transaction_no ? '0 0 0 3px rgba(164, 125, 82, 0.12)' : '0 0 0 3px rgba(239, 68, 68, 0.08)'
-                                        }}
-                                        placeholder="أدخل رقم المعاملة..."
-                                        disabled={loading}
-                                    />
-                                </div>
-
-                                {/* ===== Transaction Date (NEW) ===== */}
+                                {/* ===== Transaction Date — MOVED TO FIRST ===== */}
                                 <div className="space-y-1">
                                     <label className="block text-sm font-semibold text-gray-700">
                                         تاريخ المعاملة <span className="text-red-500">*</span>
@@ -1064,7 +1037,7 @@ const AddWithdraw = ({ onClose, transactionData, onSuccess, initialData, isEditM
                                         name="transaction_date"
                                         value={formData.transaction_date}
                                         onChange={handleChange}
-                                        onKeyDown={(e) => handleKeyDown(e, currencyRef)}
+                                        onKeyDown={(e) => handleKeyDown(e, transactionNoRef)}
                                         className="w-full px-4 py-3 bg-white rounded-sm shadow-lg focus:outline-none transition-all duration-300 text-right"
                                         style={{
                                             borderTopColor: 'transparent',
@@ -1076,6 +1049,34 @@ const AddWithdraw = ({ onClose, transactionData, onSuccess, initialData, isEditM
                                             boxShadow: formData.transaction_date ? '0 0 0 3px rgba(164, 125, 82, 0.12)' : '0 0 0 3px rgba(239, 68, 68, 0.08)'
                                         }}
                                         required
+                                        disabled={loading}
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {/* Transaction Number (Manual) */}
+                                <div className="space-y-1">
+                                    <label className="block text-sm font-semibold text-gray-700">
+                                        رقم المعاملة
+                                    </label>
+                                    <input
+                                        ref={transactionNoRef}
+                                        type="text"
+                                        name="transaction_no"
+                                        value={formData.transaction_no}
+                                        onChange={handleChange}
+                                        onKeyDown={(e) => handleKeyDown(e, currencyRef)}
+                                        className="w-full px-4 py-3 bg-white rounded-sm shadow-lg focus:outline-none transition-all duration-300 text-right"
+                                        style={{
+                                            borderTopColor: 'transparent',
+                                            borderBottomColor: 'white',
+                                            borderLeftColor: 'transparent',
+                                            borderRightColor: formData.transaction_no ? '#a47d52' : '#ef4444',
+                                            borderWidth: '2px',
+                                            borderStyle: 'solid',
+                                            boxShadow: formData.transaction_no ? '0 0 0 3px rgba(164, 125, 82, 0.12)' : '0 0 0 3px rgba(239, 68, 68, 0.08)'
+                                        }}
+                                        placeholder="أدخل رقم المعاملة..."
                                         disabled={loading}
                                     />
                                 </div>
@@ -1289,7 +1290,6 @@ const AddWithdraw = ({ onClose, transactionData, onSuccess, initialData, isEditM
                                             }}
                                             required
                                             disabled={loading}
-                                            autoFocus
                                         >
                                             <option value="">اختر الحساب...</option>
                                             {accounts.map((account) => (
@@ -1723,7 +1723,6 @@ const AddWithdraw = ({ onClose, transactionData, onSuccess, initialData, isEditM
 
 export default AddWithdraw;
 
-
 // import React, { useState, useEffect, useRef } from 'react';
 // import { toast } from 'react-toastify';
 // import { FaSave, FaUniversity, FaMoneyBillWave, FaCheck, FaUpload, FaSignature } from 'react-icons/fa';
@@ -1766,6 +1765,7 @@ export default AddWithdraw;
 //     const checkDateRef = useRef(null);
 //     const currencyRef = useRef(null);
 //     const transactionNoRef = useRef(null);
+//     const transactionDateRef = useRef(null);
 //     const userSignatureRef = useRef(null);
 //     const managerSignatureRef = useRef(null);
 //     const secondPersonSignatureRef = useRef(null);
@@ -2762,7 +2762,7 @@ export default AddWithdraw;
 //                                         name="transaction_no"
 //                                         value={formData.transaction_no}
 //                                         onChange={handleChange}
-//                                         onKeyDown={(e) => handleKeyDown(e, currencyRef)}
+//                                         onKeyDown={(e) => handleKeyDown(e, transactionDateRef)}
 //                                         className="w-full px-4 py-3 bg-white rounded-sm shadow-lg focus:outline-none transition-all duration-300 text-right"
 //                                         style={{
 //                                             borderTopColor: 'transparent',
@@ -2774,6 +2774,33 @@ export default AddWithdraw;
 //                                             boxShadow: formData.transaction_no ? '0 0 0 3px rgba(164, 125, 82, 0.12)' : '0 0 0 3px rgba(239, 68, 68, 0.08)'
 //                                         }}
 //                                         placeholder="أدخل رقم المعاملة..."
+//                                         disabled={loading}
+//                                     />
+//                                 </div>
+
+//                                 {/* ===== Transaction Date (NEW) ===== */}
+//                                 <div className="space-y-1">
+//                                     <label className="block text-sm font-semibold text-gray-700">
+//                                         تاريخ المعاملة <span className="text-red-500">*</span>
+//                                     </label>
+//                                     <input
+//                                         ref={transactionDateRef}
+//                                         type="date"
+//                                         name="transaction_date"
+//                                         value={formData.transaction_date}
+//                                         onChange={handleChange}
+//                                         onKeyDown={(e) => handleKeyDown(e, currencyRef)}
+//                                         className="w-full px-4 py-3 bg-white rounded-sm shadow-lg focus:outline-none transition-all duration-300 text-right"
+//                                         style={{
+//                                             borderTopColor: 'transparent',
+//                                             borderBottomColor: 'white',
+//                                             borderLeftColor: 'transparent',
+//                                             borderRightColor: formData.transaction_date ? '#a47d52' : '#ef4444',
+//                                             borderWidth: '2px',
+//                                             borderStyle: 'solid',
+//                                             boxShadow: formData.transaction_date ? '0 0 0 3px rgba(164, 125, 82, 0.12)' : '0 0 0 3px rgba(239, 68, 68, 0.08)'
+//                                         }}
+//                                         required
 //                                         disabled={loading}
 //                                     />
 //                                 </div>
@@ -3053,30 +3080,7 @@ export default AddWithdraw;
 
 //                                 {/* Date + Statement */}
 //                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                                     <div className="space-y-1">
-//                                         <label className="block text-sm font-semibold text-gray-700">
-//                                             التاريخ <span className="text-red-500">*</span>
-//                                         </label>
-//                                         <input
-//                                             type="date"
-//                                             name="transaction_date"
-//                                             value={formData.transaction_date}
-//                                             onChange={handleChange}
-//                                             onKeyDown={(e) => handleKeyDown(e, statementRef)}
-//                                             className="w-full px-4 py-3 bg-white rounded-sm shadow-lg focus:outline-none transition-all duration-300 text-right"
-//                                             style={{
-//                                                 borderTopColor: 'transparent',
-//                                                 borderBottomColor: 'white',
-//                                                 borderLeftColor: 'transparent',
-//                                                 borderRightColor: formData.transaction_date ? '#a47d52' : '#ef4444',
-//                                                 borderWidth: '2px',
-//                                                 borderStyle: 'solid',
-//                                                 boxShadow: formData.transaction_date ? '0 0 0 3px rgba(164, 125, 82, 0.12)' : '0 0 0 3px rgba(239, 68, 68, 0.08)'
-//                                             }}
-//                                             required
-//                                             disabled={loading}
-//                                         />
-//                                     </div>
+//                                     {/* Date input removed — moved to top of ADD-mode fields */}
 
 //                                     <div className="space-y-1">
 //                                         <label className="block text-sm font-semibold text-gray-700">
@@ -3443,3 +3447,4 @@ export default AddWithdraw;
 // };
 
 // export default AddWithdraw;
+
