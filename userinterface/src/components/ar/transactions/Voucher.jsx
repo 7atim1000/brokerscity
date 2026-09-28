@@ -1544,19 +1544,15 @@ const Voucher = ({ transaction = {}, onClose }) => {
             const styleElement = document.createElement('style');
 
             styleElement.textContent = PRINT_STYLES + `
+                /* Keep the PDF rendering identical to the voucher print layout. */
                 #voucher-pdf-copy {
                     display: block !important;
                     position: static !important;
                     width: 794px !important;
                     max-width: 794px !important;
-                    min-height: 0 !important;
                     margin: 0 !important;
-                    padding: 16px 16px 20px 16px !important;
                     background: #ffffff !important;
                     color: #111111 !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    overflow: visible !important;
                     visibility: visible !important;
                     opacity: 1 !important;
                     box-sizing: border-box !important;
@@ -1570,88 +1566,23 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     box-sizing: border-box !important;
                 }
 
-                #voucher-pdf-copy .bg-white,
-                #voucher-pdf-copy.receipt-paper,
-                #voucher-pdf-copy .receipt-paper {
-                    background-color: #ffffff !important;
-                }
-
-                #voucher-pdf-copy [class*="bg-[#f8f7f5]"] {
-                    background-color: #f8f7f5 !important;
-                }
-
-                #voucher-pdf-copy [class*="bg-[#a47d52]/10"] {
-                    background-color: rgba(164, 125, 82, 0.1) !important;
-                }
-
-                #voucher-pdf-copy .bg-slate-200 {
-                    background-color: #e2e8f0 !important;
-                }
-
-                #voucher-pdf-copy .bg-slate-300 {
-                    background-color: #cbd5e1 !important;
-                }
-
-                #voucher-pdf-copy .bg-slate-100 {
-                    background-color: #f1f5f9 !important;
-                }
-
-                #voucher-pdf-copy .bg-slate-50 {
-                    background-color: #f8fafc !important;
-                }
-
-                #voucher-pdf-copy .bg-red-600 {
-                    background-color: #dc2626 !important;
-                }
-
-                #voucher-pdf-copy .text-white {
-                    color: #ffffff !important;
-                    -webkit-text-fill-color: #ffffff !important;
-                }
-
-                #voucher-pdf-copy .text-black {
-                    color: #000000 !important;
-                }
-
-                #voucher-pdf-copy .text-slate-800 {
-                    color: #1e293b !important;
-                }
-
-                #voucher-pdf-copy .text-slate-700 {
-                    color: #334155 !important;
-                }
-
-                #voucher-pdf-copy .text-slate-600 {
-                    color: #475569 !important;
-                }
-
-                #voucher-pdf-copy .text-slate-500 {
-                    color: #64748b !important;
-                }
-
-                #voucher-pdf-copy .text-gray-300 {
-                    color: #d1d5db !important;
-                }
-
-                #voucher-pdf-copy .border-slate-200 {
-                    border-color: #e2e8f0 !important;
-                }
-
-                #voucher-pdf-copy .border-slate-300 {
-                    border-color: #cbd5e1 !important;
-                }
-
-                #voucher-pdf-copy .border-black {
-                    border-color: #000000 !important;
-                }
-
-                #voucher-pdf-copy hr {
-                    border: 0 !important;
-                    border-top: 1px solid #d1d5db !important;
-                    margin: 8px 0 !important;
-                    display: block !important;
-                    height: 1px !important;
-                }
+                /* Explicit fallbacks for Tailwind colors so html2canvas
+                   produces the same colors as the browser/print preview. */
+                #voucher-pdf-copy .bg-white { background-color: #ffffff !important; }
+                #voucher-pdf-copy .bg-slate-50 { background-color: #f8fafc !important; }
+                #voucher-pdf-copy .bg-slate-100 { background-color: #f1f5f9 !important; }
+                #voucher-pdf-copy .bg-slate-200 { background-color: #e2e8f0 !important; }
+                #voucher-pdf-copy .bg-slate-300 { background-color: #cbd5e1 !important; }
+                #voucher-pdf-copy .bg-red-600 { background-color: #dc2626 !important; }
+                #voucher-pdf-copy .text-white { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+                #voucher-pdf-copy .text-black { color: #000000 !important; }
+                #voucher-pdf-copy .text-slate-800 { color: #1e293b !important; }
+                #voucher-pdf-copy .text-slate-700 { color: #334155 !important; }
+                #voucher-pdf-copy .text-slate-600 { color: #475569 !important; }
+                #voucher-pdf-copy .text-slate-500 { color: #64748b !important; }
+                #voucher-pdf-copy .border-slate-200 { border-color: #e2e8f0 !important; }
+                #voucher-pdf-copy .border-slate-300 { border-color: #cbd5e1 !important; }
+                #voucher-pdf-copy .border-black { border-color: #000000 !important; }
 
                 #voucher-pdf-copy .receipt-table {
                     width: 100% !important;
@@ -1663,11 +1594,6 @@ const Voucher = ({ transaction = {}, onClose }) => {
                 #voucher-pdf-copy .receipt-table td {
                     border: 1px solid #9ca3af !important;
                     vertical-align: middle !important;
-                    padding: 4px 4px !important;
-                }
-
-                #voucher-pdf-copy .receipt-table thead tr {
-                    background-color: #f8f7f5 !important;
                 }
 
                 #voucher-pdf-copy .receipt-signature-image {
@@ -1678,19 +1604,8 @@ const Voucher = ({ transaction = {}, onClose }) => {
                     margin: 0 auto !important;
                 }
 
-                #voucher-pdf-copy .receipt-signature-text {
-                    display: block !important;
-                    font-size: 10px !important;
-                    font-weight: 700 !important;
-                }
-
                 #voucher-pdf-copy img {
                     max-width: 100% !important;
-                }
-
-                .mx-auto {
-                    margin-left: auto !important;
-                    margin-right: auto !important;
                 }
             `;
 
@@ -3265,11 +3180,10 @@ export default Voucher;
 
 
 
-
 // // Voucher.jsx
 // // npm install framer-motion react-icons jspdf html2canvas
 
-// import React, { useEffect, useRef } from 'react';
+// import React, { useEffect, useRef, useState } from 'react';
 // import { motion } from 'framer-motion';
 // import logo from '../../../assets/images/logogo-removebg.png';
 // import { formatAmountInWords } from '../../../utils/numberToArabic';
@@ -3282,6 +3196,8 @@ export default Voucher;
 
 // import jsPDF from 'jspdf';
 // import html2canvas from 'html2canvas';
+
+// const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
 
 // // =============================================================
 // // PRINT STYLES
@@ -3467,6 +3383,73 @@ export default Voucher;
 
 // const Voucher = ({ transaction = {}, onClose }) => {
 //     const printRef = useRef(null);
+//     const [fetchedBankName, setFetchedBankName] = useState('');
+
+//     // =========================================================
+//     // FETCH BANK NAME
+//     // =========================================================
+
+//     useEffect(() => {
+//         const bankValue = transaction?.bank;
+//         const bankId =
+//             bankValue && typeof bankValue === 'object'
+//                 ? bankValue.id
+//                 : bankValue;
+
+//         if (!bankId) {
+//             setFetchedBankName('');
+//             return;
+//         }
+
+//         // If the transaction already contains the bank object/name, use it directly.
+//         if (typeof bankValue === 'object') {
+//             const existingName =
+//                 bankValue.name ||
+//                 bankValue.bank_name ||
+//                 bankValue.title;
+
+//             if (existingName) {
+//                 setFetchedBankName(existingName);
+//                 return;
+//             }
+//         }
+
+//         const fetchBankName = async () => {
+//             try {
+//                 const token = localStorage.getItem('access_token');
+
+//                 const response = await fetch(
+//                     `${BASE}/api/banks/${bankId}/`,
+//                     {
+//                         headers: {
+//                             'Content-Type': 'application/json',
+//                             ...(token
+//                                 ? { Authorization: `Bearer ${token}` }
+//                                 : {}),
+//                         },
+//                     }
+//                 );
+
+//                 if (!response.ok) {
+//                     throw new Error(`HTTP error! status: ${response.status}`);
+//                 }
+
+//                 const data = await response.json();
+
+//                 setFetchedBankName(
+//                     data?.name ||
+//                     data?.bank_name ||
+//                     data?.title ||
+//                     ''
+//                 );
+//             } catch (error) {
+//                 console.error('Error fetching bank name:', error);
+//                 setFetchedBankName('');
+//             }
+//         };
+
+//         fetchBankName();
+//     }, [transaction?.bank]);
 
 //     // =========================================================
 //     // BASIC HELPERS
@@ -3571,7 +3554,7 @@ export default Voucher;
 //             method === 'banks' ||
 //             method === 'bank'
 //         ) {
-//             return 'banks | بنوك';
+//             return 'Cheque | شيك';
 //         }
 
 //         if (method === 'cash') {
@@ -3612,7 +3595,12 @@ export default Voucher;
 //     // =========================================================
 
 //     const getBankName = () => {
-//         // 1. Prefer explicit bank_name field (same as TransactionDetails)
+//         // 1. Prefer the fetched bank name when transaction.bank contains an ID.
+//         if (fetchedBankName) {
+//             return fetchedBankName;
+//         }
+
+//         // 2. Prefer explicit bank_name field.
 //         if (
 //             transaction.bank_name &&
 //             typeof transaction.bank_name !== 'object'
@@ -3620,7 +3608,7 @@ export default Voucher;
 //             return transaction.bank_name;
 //         }
 
-//         // 2. If bank_name is an object, extract its name
+//         // 3. If bank_name is an object, extract its name.
 //         if (
 //             transaction.bank_name &&
 //             typeof transaction.bank_name === 'object'
@@ -3633,7 +3621,7 @@ export default Voucher;
 //             );
 //         }
 
-//         // 3. If bank is an object, prefer its name (NOT its id)
+//         // 4. If bank is already an object, prefer its name.
 //         if (
 //             transaction.bank &&
 //             typeof transaction.bank === 'object'
@@ -3646,14 +3634,7 @@ export default Voucher;
 //             );
 //         }
 
-//         // 4. If bank is a primitive value (string), use it as-is
-//         if (
-//             transaction.bank &&
-//             typeof transaction.bank !== 'object'
-//         ) {
-//             return transaction.bank;
-//         }
-
+//         // 5. Do not display the bank ID. The name is fetched above.
 //         return '-';
 //     };
 
@@ -6463,3 +6444,6 @@ export default Voucher;
 // };
 
 // export default Voucher;
+
+
+
