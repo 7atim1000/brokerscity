@@ -18,10 +18,19 @@ import ArRental from './pages/ar/Rental' ;
 // Website 
 import ArWebSiteLink from './pages/ar/WebSiteLink' ;
 import ArSlider from './pages/ar/Slider' ;
+// Developers
+import ArDeveloper from './pages/ar/Developer' ;
+import ArDeveloperEmail from './pages/ar/DeveloperEmail' ;
 
+// Sale Offer
+import ArSaleOffer from './pages/ar/Developer' ;
 
 import Login from './pages/en/Login'
 import Signup from './pages/en/Signup'
+
+import OfferSalesPDF from './pages/OfferSalePdf';
+
+import ArMonitor from './pages/ar/Monitor';
 
 
 
@@ -58,6 +67,17 @@ function App() {
 
                 <Route path="/ar-website" element={<ArWebSiteLink />}/>
                 <Route path="/ar-slider" element={<ArSlider />}/>
+
+                <Route path="/ar-developer" element={<ArDeveloper />}/>
+                {/* /ar-developer-email */}
+                <Route path="/ar-developer-email" element={<ArDeveloperEmail />}/>
+                
+                
+                <Route path="/offer-sale" element={<OfferSalesPDF />}/>
+                <Route path="/ar-sale-offer" element={<ArSaleOffer />}/>
+
+                 {/* Monitoring */}
+                <Route path="/ar-monitor" element={<ArMonitor />}/>
               
             </Route>
 

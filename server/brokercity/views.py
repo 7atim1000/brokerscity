@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
-from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental
+from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, Monitor
 from rest_framework.response import Response
 from rest_framework import status, generics, filters
 from django.shortcuts import render, get_object_or_404
@@ -29,14 +29,29 @@ from django.conf import settings
 import logging
 import traceback
 from rest_framework_simplejwt.views import TokenObtainPairView
-
+###############
 # Backup
+##############
 import os
 import subprocess
 from django.http import JsonResponse
 
+##############
 # Website
+#############
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser  #
+
+##############
+# Email
+##############
+from django.core.mail import send_mail 
+
+from datetime import datetime
+from django.db.models import Q
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 
 
@@ -75,8 +90,17 @@ from .serializers import (
     BuildingSerializer,
     UnitSerializer,
     RentalSerializer,
+    SliderSerializer,
+    
+    # Developer
+    DeveloperSerializer, DeveloperDetailSerializer,
 
-    SliderSerializer
+    # OfferSale
+    OffersaleSerializer, OffersaleListSerializer, PaymentPlanSerializer,
+
+    # Monitoring
+    MonitorSerializer,
+    MonitorCreateSerializer,
     )
 
 # Dashboard
@@ -90,6 +114,25 @@ from rest_framework.pagination import PageNumberPagination
 
 # Create your views here.
 # manual database backup
+
+
+#########################
+# def test_email_view(request):
+#     try:
+#         send_mail(
+#             subject="Test from Broker's City",
+#             message="Broker City Properties welcomes you. If you received this in your inbox (not spam), everything is working!",
+#             from_email="info@brokerscity.ae",
+#             recipient_list=["mohammad-alahmad@brokerscity.ae"],
+#             fail_silently=False,
+#         )
+#         return JsonResponse({"status": "success", "message": "Email sent!"})
+#     except Exception as e:
+#         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def database_backup_view(request):
@@ -756,83 +799,84 @@ class AccountDeleteView(generics.DestroyAPIView):
 ################# Transactions #######################
 ######################################################
 # Pagination Class
-class TransactionPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = 'page_size'
-    max_page_size = 100
+# class TransactionPagination(PageNumberPagination):
+#     page_size = 20
+#     page_size_query_param = 'page_size'
+#     max_page_size = 100
 
 
-# 1. List Transactions (with pagination, filtering, search)
-class TransactionListView(generics.ListAPIView):
-    """
-    GET /api/transactions/
-    List all transactions with pagination, filtering, and search.
+# # 1. List Transactions (with pagination, filtering, search)
+# class TransactionListView(generics.ListAPIView):
+#     """
+#     GET /api/transactions/
+#     List all transactions with pagination, filtering, and search.
     
-    Query Parameters:
-    - page: Page number
-    - page_size: Items per page (default: 20, max: 100)
-    - search: Search by transaction_no, statement, check_no, person_receipt
-    - type: Filter by type (deposit/withdraw)
-    - payment_method: Filter by payment_method (banks/cash)
-    - currency: Filter by currency (AED/USD/EUR/SAR)
-    - has_check: Filter by has_check (true/false)
-    - transaction_date_after: Filter by date (YYYY-MM-DD)
-    - transaction_date_before: Filter by date (YYYY-MM-DD)
-    - ordering: Order by field (transaction_date, created_at, amount)
-    """
-    serializer_class = TransactionListSerializer
-    permission_classes = [IsAuthenticated]
-    pagination_class = TransactionPagination
+#     Query Parameters:
+#     - page: Page number
+#     - page_size: Items per page (default: 20, max: 100)
+#     - search: Search by transaction_no, statement, check_no, person_receipt
+#     - type: Filter by type (deposit/withdraw)
+#     - payment_method: Filter by payment_method (banks/cash)
+#     - currency: Filter by currency (AED/USD/EUR/SAR)
+#     - has_check: Filter by has_check (true/false)
+#     - transaction_date_after: Filter by date (YYYY-MM-DD)
+#     - transaction_date_before: Filter by date (YYYY-MM-DD)
+#     - ordering: Order by field (transaction_date, created_at, amount)
+#     """
+#     serializer_class = TransactionListSerializer
+#     permission_classes = [IsAuthenticated]
+#     pagination_class = TransactionPagination
     
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['type', 'payment_method', 'currency', 'has_check']
-    search_fields = ['transaction_no', 'statement', 'check_no', 'person_receipt']
-    ordering_fields = ['transaction_date', 'created_at', 'amount']
-    ordering = ['-transaction_date']
+#     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+#     filterset_fields = ['type', 'payment_method', 'currency', 'has_check']
+#     search_fields = ['transaction_no', 'statement', 'check_no', 'person_receipt']
+#     ordering_fields = ['transaction_date', 'created_at', 'amount']
+#     ordering = ['-transaction_date']
     
-    def get_queryset(self):
-        queryset = Transaction.objects.all()
+#     def get_queryset(self):
+#         queryset = Transaction.objects.all()
         
-        # Date filtering
-        date_after = self.request.query_params.get('transaction_date_after')
-        date_before = self.request.query_params.get('transaction_date_before')
+#         # Date filtering
+#         date_after = self.request.query_params.get('transaction_date_after')
+#         date_before = self.request.query_params.get('transaction_date_before')
         
-        if date_after:
-            queryset = queryset.filter(transaction_date__gte=date_after)
-        if date_before:
-            queryset = queryset.filter(transaction_date__lte=date_before)
+#         if date_after:
+#             queryset = queryset.filter(transaction_date__gte=date_after)
+#         if date_before:
+#             queryset = queryset.filter(transaction_date__lte=date_before)
         
-        return queryset
+#         return queryset
 
 
-# 2. Transaction Detail
-class TransactionDetailView(generics.RetrieveAPIView):
-    """
-    GET /api/transactions/{id}/
-    Get detailed information about a specific transaction.
-    """
-    serializer_class = TransactionDetailSerializer
-    permission_classes = [IsAuthenticated]
-    lookup_field = 'id'
+# # 2. Transaction Detail
+# class TransactionDetailView(generics.RetrieveAPIView):
+#     """
+#     GET /api/transactions/{id}/
+#     Get detailed information about a specific transaction.
+#     """
+#     serializer_class = TransactionDetailSerializer
+#     permission_classes = [IsAuthenticated]
+#     lookup_field = 'id'
     
-    def get_queryset(self):
-        return Transaction.objects.all()
+#     def get_queryset(self):
+#         return Transaction.objects.all()
 
 
-# 3. Create Transaction
+# ```python
 # class TransactionCreateView(generics.CreateAPIView):
 #     """
 #     POST /api/transactions/
 #     Create a new transaction.
-    
+
 #     Required fields based on type and payment_method:
-#     - Deposit + Banks: account_from, bank
-#     - Deposit + Cash: account_from, cashbox
-#     - Withdraw + Banks: account_to, bank
-#     - Withdraw + Cash: account_to, cashbox
-    
+#     - Deposit + Banks: transaction_no, account_from, bank
+#     - Deposit + Cash: transaction_no, account_from, cashbox
+#     - Withdraw + Banks: transaction_no, account_to, bank
+#     - Withdraw + Cash: transaction_no, account_to, cashbox
+
 #     Example - Deposit via Bank:
 #     {
+#         "transaction_no": "TRX-000001",
 #         "type": "deposit",
 #         "payment_method": "banks",
 #         "account_from": 1,
@@ -847,19 +891,18 @@ class TransactionDetailView(generics.RetrieveAPIView):
 #     """
 #     # serializer_class = TransactionCreateUpdateSerializer
 #     # permission_classes = [IsAuthenticated]
-    
+
 #     # def perform_create(self, serializer):
 #     #     serializer.save(transaction_user=self.request.user)
 
 #     queryset = Transaction.objects.all()
 #     serializer_class = TransactionCreateUpdateSerializer
 #     permission_classes = [IsAuthenticated]
-    
 
 #     queryset = Transaction.objects.all()
 #     serializer_class = TransactionCreateUpdateSerializer
 #     permission_classes = [IsAuthenticated]
-    
+
 #     def create(self, request, *args, **kwargs):
 #         print("=" * 80)
 #         print("=== TRANSACTION CREATE VIEW CALLED ===")
@@ -869,45 +912,48 @@ class TransactionDetailView(generics.RetrieveAPIView):
 #         print(f"Request data: {request.data}")
 #         print(f"Request FILES: {request.FILES}")
 #         print("=" * 80)
-        
+
 #         # Check if it's FormData or JSON
 #         if request.content_type and 'multipart/form-data' in request.content_type:
 #             print("=== FORM DATA RECEIVED ===")
 #             for key, value in request.data.items():
 #                 print(f"  {key}: {value} (type: {type(value)})")
 #             print("=" * 80)
-        
+
 #         serializer = self.get_serializer(data=request.data)
-        
+
 #         if not serializer.is_valid():
-#             print(f"=== SERIALIZER ERRORS ===")
+#             print("=== SERIALIZER ERRORS ===")
 #             print(f"Errors: {serializer.errors}")
 #             print(f"Validated data before errors: {serializer.validated_data}")
 #             print("=" * 80)
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-#         print(f"=== SERIALIZER VALIDATED DATA ===")
+#             return Response(
+#                 serializer.errors,
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         print("=== SERIALIZER VALIDATED DATA ===")
 #         for key, value in serializer.validated_data.items():
 #             print(f"  {key}: {value} (type: {type(value)})")
 #         print("=" * 80)
-        
+
 #         return super().create(request, *args, **kwargs)
-    
+
 #     def perform_create(self, serializer):
 #         print("=" * 80)
 #         print("=== PERFORM_CREATE CALLED ===")
 #         print(f"User: {self.request.user}")
 #         print(f"Serializer validated data before save: {serializer.validated_data}")
 #         print("=" * 80)
-        
+
 #         # Save with the current user
 #         transaction = serializer.save(transaction_user=self.request.user)
-        
+
 #         print("=" * 80)
 #         print("=== TRANSACTION SAVED ===")
 #         print(f"Transaction ID: {transaction.id}")
 #         print(f"Transaction No: {transaction.transaction_no}")
-#         #payment_method
+#         # payment_method
 #         print(f"Payment Method: {transaction.payment_method}")
 #         print(f"Account From: {transaction.account_from}")
 #         print(f"Account To: {transaction.account_to}")
@@ -923,6 +969,7 @@ class TransactionDetailView(generics.RetrieveAPIView):
 
 #         print("=" * 80)
 
+
 # # 4. Update Transaction
 # class TransactionUpdateView(generics.UpdateAPIView):
 #     """
@@ -933,12 +980,204 @@ class TransactionDetailView(generics.RetrieveAPIView):
 #     serializer_class = TransactionCreateUpdateSerializer
 #     permission_classes = [IsAuthenticated]
 #     lookup_field = 'id'
-    
+
 #     def get_queryset(self):
 #         return Transaction.objects.all()
 
 
-# ```python
+# # 5. Delete Transaction
+# class TransactionDeleteView(generics.DestroyAPIView):
+#     """
+#     DELETE /api/transactions/{id}/delete/
+#     Delete a transaction.
+#     """
+#     permission_classes = [IsAuthenticated]
+#     lookup_field = 'id'
+    
+#     def get_queryset(self):
+#         return Transaction.objects.all()
+    
+#     def destroy(self, request, *args, **kwargs):
+#         instance = self.get_object()
+#         transaction_no = instance.transaction_no
+#         self.perform_destroy(instance)
+#         return Response({
+#             'message': f'Transaction {transaction_no} deleted successfully'
+#         }, status=status.HTTP_200_OK)
+
+
+# # 6. Combined View (All-in-One - Recommended)
+# class TransactionViewSet(generics.GenericAPIView):
+#     """
+#     Combined view for all transaction operations.
+    
+#     GET    /api/transactions/          - List with pagination
+#     POST   /api/transactions/          - Create
+#     GET    /api/transactions/{id}/     - Detail
+#     PUT    /api/transactions/{id}/     - Update
+#     PATCH  /api/transactions/{id}/     - Partial update
+#     DELETE /api/transactions/{id}/     - Delete
+#     """
+#     permission_classes = [IsAuthenticated]
+#     pagination_class = TransactionPagination
+    
+#     def get_serializer_class(self):
+#         if self.request.method == 'GET':
+#             if self.kwargs.get('id'):
+#                 return TransactionDetailSerializer
+#             return TransactionListSerializer
+#         return TransactionCreateUpdateSerializer
+    
+#     def get_queryset(self):
+#         return Transaction.objects.all()
+    
+#     def get(self, request, *args, **kwargs):
+#         """GET /api/transactions/ - List all transactions"""
+#         if kwargs.get('id'):
+#             # Detail view
+#             instance = self.get_queryset().filter(id=kwargs['id']).first()
+#             if not instance:
+#                 return Response(
+#                     {'error': 'Transaction not found'}, 
+#                     status=status.HTTP_404_NOT_FOUND
+#                 )
+#             serializer = TransactionDetailSerializer(instance)
+#             return Response(serializer.data)
+        
+#         # List view with pagination
+#         queryset = self.get_queryset()
+        
+#         # Apply filters from query params
+#         date_after = request.query_params.get('transaction_date_after')
+#         date_before = request.query_params.get('transaction_date_before')
+#         transaction_type = request.query_params.get('type')
+#         payment_method = request.query_params.get('payment_method')
+        
+#         if date_after:
+#             queryset = queryset.filter(transaction_date__gte=date_after)
+#         if date_before:
+#             queryset = queryset.filter(transaction_date__lte=date_before)
+#         if transaction_type:
+#             queryset = queryset.filter(type=transaction_type)
+#         if payment_method:
+#             queryset = queryset.filter(payment_method=payment_method)
+        
+#         page = self.paginate_queryset(queryset)
+#         if page is not None:
+#             serializer = TransactionListSerializer(page, many=True)
+#             return self.get_paginated_response(serializer.data)
+        
+#         serializer = TransactionListSerializer(queryset, many=True)
+#         return Response(serializer.data)
+    
+#     def post(self, request, *args, **kwargs):
+#         """POST /api/transactions/ - Create a new transaction"""
+#         serializer = TransactionCreateUpdateSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save(transaction_user=request.user)
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+#     def put(self, request, *args, **kwargs):
+#         """PUT /api/transactions/{id}/ - Update a transaction"""
+#         instance = self.get_queryset().filter(id=kwargs.get('id')).first()
+#         if not instance:
+#             return Response(
+#                 {'error': 'Transaction not found'}, 
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+        
+#         serializer = TransactionCreateUpdateSerializer(instance, data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+#     def patch(self, request, *args, **kwargs):
+#         """PATCH /api/transactions/{id}/ - Partial update"""
+#         return self.put(request, *args, **kwargs)
+    
+#     def delete(self, request, *args, **kwargs):
+#         """DELETE /api/transactions/{id}/ - Delete a transaction"""
+#         instance = self.get_queryset().filter(id=kwargs.get('id')).first()
+#         if not instance:
+#             return Response(
+#                 {'error': 'Transaction not found'}, 
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+        
+#         transaction_no = instance.transaction_no
+#         instance.delete()
+#         return Response({
+#             'message': f'Transaction {transaction_no} deleted successfully'
+#         }, status=status.HTTP_200_OK)
+
+
+
+class TransactionPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+# 1. List Transactions (with pagination, filtering, search)
+class TransactionListView(generics.ListAPIView):
+    """
+    GET /api/transactions/
+    List all transactions with pagination, filtering, and search.
+
+    Query Parameters:
+    - page: Page number
+    - page_size: Items per page (default: 20, max: 100)
+    - search: Search by transaction_no, statement, check_no, person_receipt
+    - type: Filter by type (deposit/withdraw)
+    - payment_method: Filter by payment_method (banks/cash)
+    - currency: Filter by currency (AED/USD/EUR/SAR)
+    - has_check: Filter by has_check (true/false)
+    - transaction_date_after: Filter by date (YYYY-MM-DD)
+    - transaction_date_before: Filter by date (YYYY-MM-DD)
+    - ordering: Order by field (transaction_date, created_at, amount)
+    """
+    serializer_class = TransactionListSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = TransactionPagination
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['type', 'payment_method', 'currency', 'has_check']
+    search_fields = ['transaction_no', 'statement', 'check_no', 'person_receipt']
+    ordering_fields = ['transaction_date', 'created_at', 'amount']
+    ordering = ['-transaction_date']
+
+    def get_queryset(self):
+        queryset = Transaction.objects.all()
+
+        # Date filtering
+        date_after = self.request.query_params.get('transaction_date_after')
+        date_before = self.request.query_params.get('transaction_date_before')
+
+        if date_after:
+            queryset = queryset.filter(transaction_date__gte=date_after)
+        if date_before:
+            queryset = queryset.filter(transaction_date__lte=date_before)
+
+        return queryset
+
+
+# 2. Transaction Detail
+class TransactionDetailView(generics.RetrieveAPIView):
+    """
+    GET /api/transactions/{id}/
+    Get detailed information about a specific transaction.
+    """
+    serializer_class = TransactionDetailSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+
+# 3. Create Transaction
 class TransactionCreateView(generics.CreateAPIView):
     """
     POST /api/transactions/
@@ -957,6 +1196,8 @@ class TransactionCreateView(generics.CreateAPIView):
         "payment_method": "banks",
         "account_from": 1,
         "bank": 1,
+        "subtotal": "1304.35",
+        "vat": "195.65",
         "amount": "1500.00",
         "transaction_date": "2024-01-15",
         "statement": "Salary deposit",
@@ -965,16 +1206,6 @@ class TransactionCreateView(generics.CreateAPIView):
         "amount_to_english": "One thousand five hundred UAE Dirhams only"
     }
     """
-    # serializer_class = TransactionCreateUpdateSerializer
-    # permission_classes = [IsAuthenticated]
-
-    # def perform_create(self, serializer):
-    #     serializer.save(transaction_user=self.request.user)
-
-    queryset = Transaction.objects.all()
-    serializer_class = TransactionCreateUpdateSerializer
-    permission_classes = [IsAuthenticated]
-
     queryset = Transaction.objects.all()
     serializer_class = TransactionCreateUpdateSerializer
     permission_classes = [IsAuthenticated]
@@ -1029,8 +1260,10 @@ class TransactionCreateView(generics.CreateAPIView):
         print("=== TRANSACTION SAVED ===")
         print(f"Transaction ID: {transaction.id}")
         print(f"Transaction No: {transaction.transaction_no}")
-        # payment_method
         print(f"Payment Method: {transaction.payment_method}")
+        print(f"Subtotal: {transaction.subtotal}")   # 👈 NEW (for debugging)
+        print(f"VAT: {transaction.vat}")             # 👈 NEW (for debugging)
+        print(f"Amount: {transaction.amount}")
         print(f"Account From: {transaction.account_from}")
         print(f"Account To: {transaction.account_to}")
         print(f"Bank: {transaction.bank}")
@@ -1042,7 +1275,6 @@ class TransactionCreateView(generics.CreateAPIView):
         print(f"Check Date: {transaction.check_date}")
         print(f"Document No: {transaction.document_no}")
         print(f"Transaction User: {transaction.transaction_user}")
-
         print("=" * 80)
 
 
@@ -1061,8 +1293,6 @@ class TransactionUpdateView(generics.UpdateAPIView):
         return Transaction.objects.all()
 
 
-
-
 # 5. Delete Transaction
 class TransactionDeleteView(generics.DestroyAPIView):
     """
@@ -1071,10 +1301,10 @@ class TransactionDeleteView(generics.DestroyAPIView):
     """
     permission_classes = [IsAuthenticated]
     lookup_field = 'id'
-    
+
     def get_queryset(self):
         return Transaction.objects.all()
-    
+
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         transaction_no = instance.transaction_no
@@ -1088,7 +1318,7 @@ class TransactionDeleteView(generics.DestroyAPIView):
 class TransactionViewSet(generics.GenericAPIView):
     """
     Combined view for all transaction operations.
-    
+
     GET    /api/transactions/          - List with pagination
     POST   /api/transactions/          - Create
     GET    /api/transactions/{id}/     - Detail
@@ -1098,17 +1328,17 @@ class TransactionViewSet(generics.GenericAPIView):
     """
     permission_classes = [IsAuthenticated]
     pagination_class = TransactionPagination
-    
+
     def get_serializer_class(self):
         if self.request.method == 'GET':
             if self.kwargs.get('id'):
                 return TransactionDetailSerializer
             return TransactionListSerializer
         return TransactionCreateUpdateSerializer
-    
+
     def get_queryset(self):
         return Transaction.objects.all()
-    
+
     def get(self, request, *args, **kwargs):
         """GET /api/transactions/ - List all transactions"""
         if kwargs.get('id'):
@@ -1116,21 +1346,21 @@ class TransactionViewSet(generics.GenericAPIView):
             instance = self.get_queryset().filter(id=kwargs['id']).first()
             if not instance:
                 return Response(
-                    {'error': 'Transaction not found'}, 
+                    {'error': 'Transaction not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
             serializer = TransactionDetailSerializer(instance)
             return Response(serializer.data)
-        
+
         # List view with pagination
         queryset = self.get_queryset()
-        
+
         # Apply filters from query params
         date_after = request.query_params.get('transaction_date_after')
         date_before = request.query_params.get('transaction_date_before')
         transaction_type = request.query_params.get('type')
         payment_method = request.query_params.get('payment_method')
-        
+
         if date_after:
             queryset = queryset.filter(transaction_date__gte=date_after)
         if date_before:
@@ -1139,15 +1369,15 @@ class TransactionViewSet(generics.GenericAPIView):
             queryset = queryset.filter(type=transaction_type)
         if payment_method:
             queryset = queryset.filter(payment_method=payment_method)
-        
+
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = TransactionListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
+
         serializer = TransactionListSerializer(queryset, many=True)
         return Response(serializer.data)
-    
+
     def post(self, request, *args, **kwargs):
         """POST /api/transactions/ - Create a new transaction"""
         serializer = TransactionCreateUpdateSerializer(data=request.data)
@@ -1155,40 +1385,41 @@ class TransactionViewSet(generics.GenericAPIView):
             serializer.save(transaction_user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def put(self, request, *args, **kwargs):
         """PUT /api/transactions/{id}/ - Update a transaction"""
         instance = self.get_queryset().filter(id=kwargs.get('id')).first()
         if not instance:
             return Response(
-                {'error': 'Transaction not found'}, 
+                {'error': 'Transaction not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         serializer = TransactionCreateUpdateSerializer(instance, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def patch(self, request, *args, **kwargs):
         """PATCH /api/transactions/{id}/ - Partial update"""
         return self.put(request, *args, **kwargs)
-    
+
     def delete(self, request, *args, **kwargs):
         """DELETE /api/transactions/{id}/ - Delete a transaction"""
         instance = self.get_queryset().filter(id=kwargs.get('id')).first()
         if not instance:
             return Response(
-                {'error': 'Transaction not found'}, 
+                {'error': 'Transaction not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         transaction_no = instance.transaction_no
         instance.delete()
         return Response({
             'message': f'Transaction {transaction_no} deleted successfully'
         }, status=status.HTTP_200_OK)
+
 
 
 #=======================================
@@ -1955,9 +2186,6 @@ class WhatsAppWebhookView(APIView):
 
         return Response(status=status.HTTP_200_OK)
 
-
-
-
 #============================================
 #  Unit Views
 #============================================
@@ -2347,9 +2575,8 @@ def delete_rental(request, pk):
 
 
 
-
 ############################WEBSITE###########################
-#############################################################
+##############################################################
 class SliderListCreateView(generics.ListCreateAPIView):
     queryset = Slider.objects.all().order_by('-id')
     serializer_class = SliderSerializer
@@ -2360,3 +2587,482 @@ class SliderDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Slider.objects.all()
     serializer_class = SliderSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+
+#=============================================================
+# Developer
+#=============================================================
+# ---------- LIST + CREATE ----------
+class DeveloperListCreateView(generics.ListCreateAPIView):
+    queryset = Developer.objects.all().order_by('-id')
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return DeveloperSerializer
+        return DeveloperSerializer
+
+
+# ---------- RETRIEVE + UPDATE + DELETE ----------
+class DeveloperDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Developer.objects.all()
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return DeveloperDetailSerializer
+        return DeveloperSerializer
+
+
+
+# =============================================================
+# NEW: Send Bulk Email
+# =============================================================
+
+class SendBulkEmailView(APIView):
+    """
+    POST /api/developers/send-email/
+
+    Body:
+    {
+        "subject": "...",
+        "message": "...",
+        "recipient_ids": [1, 2, 3]
+    }
+
+    The backend:
+    1. Validates the payload.
+    2. Loads the selected Developer records.
+    3. Filters out records without a valid email.
+    4. Sends one email per recipient (BCC/CC optional).
+    5. Returns a per-recipient status report.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = SendEmailSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = serializer.validated_data
+        subject = data['subject']
+        message = data['message']
+        recipient_ids = data['recipient_ids']
+
+        # Load only the developers that were selected AND have an email
+        developers = (
+            Developer.objects
+            .filter(id__in=recipient_ids)
+            .exclude(email__isnull=True)
+            .exclude(email__exact='')
+        )
+
+        if not developers.exists():
+            return Response(
+                {'detail': 'لا يوجد أي مطور محدد لديه بريد إلكتروني صالح'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from_email = settings.DEFAULT_FROM_EMAIL
+
+        sent = []
+        failed = []
+
+        # Use a single connection for all sends — much faster than
+        # opening a new SMTP connection per message.
+        connection = get_connection(fail_silently=False)
+
+        try:
+            connection.open()
+
+            for dev in developers:
+                try:
+                    send_mail(
+                        subject=subject,
+                        message=message,
+                        from_email=from_email,
+                        recipient_list=[dev.email],
+                        fail_silently=False,
+                        connection=connection,
+                    )
+                    sent.append({
+                        'id': dev.id,
+                        'name': dev.name or '',
+                        'email': dev.email,
+                    })
+                except Exception as e:
+                    failed.append({
+                        'id': dev.id,
+                        'name': dev.name or '',
+                        'email': dev.email,
+                        'error': str(e),
+                    })
+        finally:
+            try:
+                connection.close()
+            except Exception:
+                pass
+
+        response_payload = {
+            'status': 'success' if sent else 'error',
+            'sent_count': len(sent),
+            'failed_count': len(failed),
+            'sent': sent,
+            'failed': failed,
+        }
+
+        # If nothing sent → 500, if partial → 200 with errors listed
+        http_status = (
+            status.HTTP_200_OK
+            if sent
+            else status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+        return Response(response_payload, status=http_status)
+
+
+# =============================================================
+# OPTIONAL: Test endpoint (keep your existing one)
+# =============================================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def test_email_view(request):
+    try:
+        send_mail(
+            subject="Test from Broker's City",
+            message=(
+                "Broker City Properties welcomes you. "
+                "If you received this in your inbox (not spam), "
+                "everything is working!"
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=["mohammad-alahmad@brokerscity.ae"],
+            fail_silently=False,
+        )
+        return Response({"status": "success", "message": "Email sent!"})
+    except Exception as e:
+        return Response(
+            {"status": "error", "message": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+        
+
+#==========Offersale
+
+# =========================================================
+# LIST  +  CREATE
+# =========================================================
+class OffersaleListCreateView(APIView):
+    """
+    GET  /api/offersales/         → list all offers
+    POST /api/offersales/         → create a new offer
+    """
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request):
+        queryset = Offersale.objects.all().order_by("-id")
+        serializer = OffersaleListSerializer(
+            queryset, many=True, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = OffersaleSerializer(
+            data=request.data, context={"request": request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# =========================================================
+# FETCH DETAIL
+# =========================================================
+class OffersaleDetailView(APIView):
+    """
+    GET /api/offersales/<pk>/     → retrieve one offer
+    """
+    def get(self, request, pk):
+        try:
+            obj = Offersale.objects.get(pk=pk)
+        except Offersale.DoesNotExist:
+            return Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = OffersaleSerializer(
+            obj, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+# =========================================================
+# UPDATE  +  DELETE
+# =========================================================
+class OffersaleUpdateDeleteView(APIView):
+    """
+    PUT    /api/offersales/<pk>/   → full update
+    PATCH  /api/offersales/<pk>/   → partial update
+    DELETE /api/offersales/<pk>/   → delete
+    """
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_object(self, pk):
+        try:
+            return Offersale.objects.get(pk=pk)
+        except Offersale.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = OffersaleSerializer(
+            obj, data=request.data, context={"request": request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = OffersaleSerializer(
+            obj, data=request.data, partial=True,
+            context={"request": request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        obj.delete()
+        return Response(
+            {"detail": "Deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
+
+######################################
+# Payment Plan
+######################################
+
+# =========================================================
+# LIST  +  CREATE
+# =========================================================
+class PaymentPlanListCreateView(APIView):
+    """
+    GET  /api/payment-plans/         → list all payment plans
+    POST /api/payment-plans/         → create a new payment plan
+    """
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request):
+        queryset = (
+            PaymentPlan.objects
+            .select_related("unit_no")
+            .all()
+            .order_by("-id")
+        )
+        serializer = PaymentPlanSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = PaymentPlanSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# =========================================================
+# UPDATE  +  DELETE
+# =========================================================
+class PaymentPlanUpdateDeleteView(APIView):
+    """
+    PUT    /api/payment-plans/<pk>/   → full update
+    PATCH  /api/payment-plans/<pk>/   → partial update
+    DELETE /api/payment-plans/<pk>/   → delete
+    """
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_object(self, pk):
+        try:
+            return PaymentPlan.objects.get(pk=pk)
+        except PaymentPlan.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = PaymentPlanSerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = PaymentPlanSerializer(
+            obj, data=request.data, partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        obj.delete()
+        return Response(
+            {"detail": "Deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
+
+################################
+# Monitoring
+################################
+
+# ---------- Pagination ----------
+# ============================================================
+#  MONITOR — Pagination, Filters, CRUD endpoints
+# ============================================================
+
+class MonitorPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
+# ---------- Helpers ----------
+def _parse_date(value, field_name):
+    """Parse a YYYY-MM-DD string to date, raise ValueError on failure."""
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        raise ValueError(f"Invalid {field_name} format. Use YYYY-MM-DD.")
+
+
+def _apply_monitor_filters(queryset, request):
+    """
+    Apply search + filters to a Monitor queryset.
+    Query params:
+      - search: matches agent / draws_cause / lead_no / agent_lead_no / draws_no
+      - day or date: YYYY-MM-DD -> date == value
+      - month: string -> month == value (case-insensitive)
+      - from_date / to_date: YYYY-MM-DD -> date BETWEEN
+    """
+    search = request.query_params.get('search')
+    if search:
+        q = Q(agent__icontains=search) | Q(draws_cause__icontains=search)
+        if search.isdigit():
+            q |= (
+                Q(lead_no=int(search))
+                | Q(agent_lead_no=int(search))
+                | Q(draws_no=int(search))
+            )
+        queryset = queryset.filter(q)
+
+    day = request.query_params.get('day') or request.query_params.get('date')
+    if day:
+        queryset = queryset.filter(date=_parse_date(day, "day"))
+
+    month = request.query_params.get('month')
+    if month:
+        queryset = queryset.filter(month__iexact=month)
+
+    from_date = request.query_params.get('from_date')
+    to_date = request.query_params.get('to_date')
+    if from_date and to_date:
+        start = _parse_date(from_date, "from_date")
+        end = _parse_date(to_date, "to_date")
+        if start > end:
+            raise ValueError("from_date cannot be after to_date.")
+        queryset = queryset.filter(date__range=(start, end))
+    elif from_date:
+        queryset = queryset.filter(date__gte=_parse_date(from_date, "from_date"))
+    elif to_date:
+        queryset = queryset.filter(date__lte=_parse_date(to_date, "to_date"))
+
+    return queryset
+
+
+# ---------- CREATE ----------
+@api_view(['POST'])
+def monitor_create(request):
+    serializer = MonitorCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {"message": "Monitor created successfully.", "data": serializer.data},
+            status=status.HTTP_201_CREATED,
+        )
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------- DELETE ----------
+@api_view(['DELETE'])
+def monitor_delete(request, pk):
+    try:
+        obj = Monitor.objects.get(pk=pk)
+    except Monitor.DoesNotExist:
+        return Response({"error": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+    obj.delete()
+    return Response({"message": "Monitor deleted successfully."}, status=status.HTTP_200_OK)
+
+
+# ---------- LIST (search + filters + pagination) ----------
+@api_view(['GET'])
+def monitor_list(request):
+    queryset = Monitor.objects.all()
+    try:
+        queryset = _apply_monitor_filters(queryset, request)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    paginator = MonitorPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    serializer = MonitorSerializer(page, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+
+# ---------- DETAIL ----------
+@api_view(['GET'])
+def monitor_detail(request, pk):
+    try:
+        obj = Monitor.objects.get(pk=pk)
+    except Monitor.DoesNotExist:
+        return Response({"error": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+    serializer = MonitorSerializer(obj)
+    return Response(serializer.data, status=status.HTTP_200_OK)

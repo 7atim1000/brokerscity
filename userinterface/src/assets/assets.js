@@ -25,7 +25,11 @@ import { BsBrowserEdge } from "react-icons/bs";
 import { SiGooglechrome } from "react-icons/si";
 
 import ChromeLogo from "../components/ar/shared/ChromeLogo";
+import { MdOutlineRealEstateAgent } from "react-icons/md";
+import { MdOutlineMarkEmailUnread } from "react-icons/md";
+import { MdLocalOffer } from "react-icons/md";
 
+import { MdOutlineMonitor } from "react-icons/md";
 
 export const SidebarMenuLinks = [
   {
@@ -113,6 +117,43 @@ export const SidebarMenuLinks = [
       
     ]
   },
+
+   {
+    name: "إدارة المطورين",
+    path: "",
+    icon: FaRegBuilding,
+
+    isExpanded: false,
+    subItems: [
+      
+      {
+        name: "بيانات المطورين",
+        path: "/ar-developer",
+        icon: MdOutlineRealEstateAgent
+      },
+
+      {
+        name: "مراسلة المطورين",
+        path: "/ar-developer-email",
+        icon: MdOutlineMarkEmailUnread
+      },
+    
+     
+    ]
+  },
+
+  {
+    name: "عروض البيع",
+    path: "/ar-developer-email",
+    icon: MdLocalOffer,  
+  },
+
+   {
+    name: "قسم المراقبة",
+    path: "/ar-monitor",
+    icon: MdOutlineMonitor,
+  },
+  
 
   
   

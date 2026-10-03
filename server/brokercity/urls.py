@@ -70,8 +70,7 @@ urlpatterns = [
     # Summary
     path('cashboxes/summary/', views.CashBoxSummaryView.as_view(), name='cashbox-summary'),
 
-    
-    
+
     #================================================
     # Account and AccountCategories urls
     #=================================================
@@ -183,8 +182,6 @@ urlpatterns = [
     # ========================================================
     # RENTAL APIs
     # ========================================================
-
-
     path('rentals/', views.get_all_rentals, name='get_all_rentals', ),
     path('rentals/create/', views.create_rental, name='create_rental', ),
     path('rentals/<int:pk>/', views.get_rental_details, name='get_rental_details',),
@@ -192,14 +189,63 @@ urlpatterns = [
     path('rentals/<int:pk>/delete/', views.delete_rental, name='delete_rental', ),
 
 
-    #########################################################################
-    # website
-    #########################################################################
+    ###########################################################    # website
+    ###########################################################
     path('sliders/', views.SliderListCreateView.as_view(), name='slider-list-create'),
     path('sliders/<int:pk>/', views.SliderDetailView.as_view(), name='slider-detail'),
 
-]
 
+    #===========================================================
+    # Developer
+    #===========================================================
+    path('developers/', views.DeveloperListCreateView.as_view(), name='developer-list-create'),
+    path('developers/<int:pk>/', views.DeveloperDetailView.as_view(), name='developer-detail'),
+
+    # Bulk email send
+    path('send-email/', views.SendBulkEmailView.as_view(), name='send-bulk-email'),
+
+    # Optional test endpoint
+    path('test-email/', views.test_email_view, name='test-email'),
+    # http://127.0.0.1:8000/api/test-email/
+    
+    #Purpose: This is a one-off health-check to verify your SMTP/email configuration works. It is NOT meant to be used by the UI.
+    #Method: GET only
+    #===========================================================
+    # Offer sale
+    #============================================================
+    path("offersales/", views.OffersaleListCreateView.as_view(), name="offersale-list-create", ),
+    # UPDATE + DELETE
+    path("offersales/<int:pk>/", views.OffersaleUpdateDeleteView.as_view(), name="offersale-update-delete", ),
+    # FETCH DETAIL
+    path("offersales/<int:pk>/", views.OffersaleDetailView.as_view(), name="offersale-detail",),
+
+
+
+    #===========================================================
+    # Payment Plan
+    #===========================================================
+      # LIST + CREATE
+    path("payment-plans/", views.PaymentPlanListCreateView.as_view(), name="payment-plan-list-create", ),
+
+    # UPDATE + DELETE
+    path("payment-plans/<int:pk>/", views.PaymentPlanUpdateDeleteView.as_view(), name="payment-plan-update-delete",),
+
+    ##########################################################
+    # Monitoring
+    ##########################################################
+      # Create
+    path('monitor/create/', views.monitor_create, name='monitoring-create'),
+
+    # Delete
+    path('monitor/delete/<int:pk>/', views.monitor_delete, name='monitoring-delete'),
+
+    # Fetch all (with search, day, month, date range) + pagination
+    path('monitor/', views.monitor_list, name='monitoring-list'),
+
+    # Fetch one
+    path('monitor/<int:pk>/', views.monitor_detail, name='monitoring-detail'),
+   
+]
 
 
 

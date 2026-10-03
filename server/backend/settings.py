@@ -74,7 +74,23 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework',
     'brokercity',
+    "anymail",
 ]
+
+MAILGUN_WEBHOOK_SIGNING_KEY = os.environ.get("MAILGUN_WEBHOOK_SIGNING_KEY") 
+EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+
+ANYMAIL = {
+    "MAILGUN_API_KEY": os.environ.get("MAILGUN_API_KEY"),
+    "MAILGUN_SENDER_DOMAIN": os.environ.get("MAILGUN_SENDER_DOMAIN", "brokerscity.ae"),
+    "MAILGUN_WEBHOOK_SIGNING_KEY": os.environ.get("MAILGUN_WEBHOOK_SIGNING_KEY"),
+}
+
+# DEFAULT_FROM_EMAIL = "you@yourdomain.com"  # Must match your verified domain
+# DEFAULT_FROM_EMAIL = "info@brokerscity.ae"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "info@brokerscity.ae")
+
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

@@ -313,6 +313,23 @@ class Transaction(models.Model):
         help_text="Type of transaction (deposit or withdraw)"
     )
     
+    
+    subtotal = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(0.01)],
+        help_text="Transaction amount"
+    )
+    vat = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(0.01)],
+        help_text="Transaction amount"
+    )
+    
+    
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -946,6 +963,239 @@ class Rental(models.Model):
     
     def __str__(self):
         return self.name
+
+
+
+
+#######################################################
+#######################################################
+# Devolpers
+
+class Developer(models.Model):
+    name = models.CharField(max_length=100, help_text="Developer name", null=True, blank=True)
+    phone = models.CharField(max_length=100, help_text="Developer phone", null=True, blank=True)
+    email = models.CharField(max_length=100, help_text="Rental email address", null=True, blank=True)
+    type = models.CharField(max_length=100, help_text="Developer type", null=True, blank=True)
+    Registered = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text="Whether the unit has parking"
+    )
+
+    def __str__(self):
+        return self.name or f"Developer #{self.pk}"
+
+
+
+class Offersale(models.Model):
+    # ---------- Header ------------------
+    reference_no = models.CharField(max_length=100, help_text="Reference No", null=True, blank=True)
+    date = models.DateField(null=True, blank=True, help_text="Offer date")
+    recipient_name = models.CharField(max_length=200, null=True, blank=True,help_text="Recipient / customer name (Dear X)")
+    
+    # ---------- Project & Unit ----------
+    project = models.CharField(max_length=100, help_text="Project name", null=True, blank=True)
+    unit_no = models.CharField(
+        max_length=100,
+        unique=True,          # ← required for FK to_field
+        null=True,
+        blank=True,
+        help_text="Unit Number",
+    )
+    estimated_completion_date = models.CharField(max_length=100, help_text="Estimated Date", null=True, blank=True)
+
+    # ---------- Listing headline ----------
+    listing_title = models.CharField(max_length=200, null=True, blank=True, help_text="e.g. 6BR Villa for Sale in Saadiyat Lagoons")
+    
+    # ---------- Unit details ----------
+    unit_type = models.CharField(max_length=100, help_text="Unit type", null=True, blank=True)
+    unit_model = models.CharField(max_length=100, help_text="Unit type", null=True, blank=True)
+    bedrooms = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. 6BR Villa")
+    unit_position = models.CharField(max_length=100, null=True, blank=True, help_text="e.g. Single row-Corner")
+    unit_grade = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Premium")
+    unit_note = models.CharField(max_length=100, null=True, blank=True, help_text="Extra note e.g. Cool")
+    
+    # ---------- Area
+    plot_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
+    gross_saleable_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
+    total_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
+    internal_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
+    terrace_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
+
+    # ---------- Property image ----------
+    image = models.ImageField(
+        upload_to="offersale/images/",
+        null=True, blank=True,
+        help_text="Property image"
+    )
+    image_url = models.URLField(
+        null=True, blank=True,
+        help_text="Optional external image URL (alternative to upload)"
+    )
+    # ---------- Currency ----------
+    currency = models.CharField(max_length=10, default="AED", help_text="Currency code",)
+    
+    # ---------- Financial details ----------
+    base_price = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="Original / Base Price"
+    )
+    selling_price = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="Selling price"
+    )
+    premium_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="Premium amount"
+    )
+    noc_fee = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="NOC fee paid by buyer"
+    )
+    transfer_fee = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="Transfer fee (usually 2%)"
+    )
+    agency_fee = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="Agency fee (2% + VAT)"
+    )
+    owner_paid_total = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="Total paid by owner to developer"
+    )
+    buyer_total = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="Total fees and payments to be paid by buyer"
+    )
+
+    # ---------- Promotion & Waivers ----------
+    promotion = models.CharField(
+        max_length=200, help_text="Promotion title", null=True, blank=True
+    )
+    waiver = models.CharField(
+        max_length=100, help_text="Waiver (AMC)", null=True, blank=True,  
+    )
+    waiver_second = models.CharField(
+        max_length=100, help_text="Waiver (DLP)", null=True, blank=True
+    )
+
+
+
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    def __str__(self):
+        return self.reference_no or f"Offersale #{self.pk}"
+
+
+#=======Payment Plan
+
+class PaymentPlan(models.Model):
+    """
+    Payment plan linked to an Offersale via unit_no.
+    Installments are stored as a JSON list of objects:
+    [
+      {"inst_no": 1, "milestone": "Payment 1", "percentage": "5.00",
+       "date": "2024-09-11", "amount": "443777.00"},
+      ...
+    ]
+    """
+    # ---------- ForeignKey to Offersale using unit_no ----------
+    unit_no = models.ForeignKey(
+        "Offersale",
+        to_field="unit_no",           # ← match by unit_no string
+        db_column="unit_no",
+        on_delete=models.CASCADE,
+        related_name="payment_plans",
+        null=True,
+        blank=True,
+    )
+
+    # ---------- Installments (JSON list of objects) ----------
+    installments = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of installment objects "
+                  "(inst_no, milestone, percentage, date, amount)"
+    )
+
+    # ---------- Summary block ----------
+    base_price = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], null=True, blank=True,
+        help_text="Base Price"
+    )
+    final_price = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], null=True, blank=True,
+        help_text="Final Price"
+    )
+    adm_fee = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], null=True, blank=True,
+        help_text="ADM Fee"
+    )
+    adm_admin_fee = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], null=True, blank=True,
+        help_text="ADM Admin Fee"
+    )
+
+    # ---------- Meta ----------
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Payment Plan"
+        verbose_name_plural = "Payment Plans"
+        ordering = ["-id"]
+
+    def __str__(self):
+        return f"Plan for {self.unit_no_id or 'N/A'}"
+
+
+
+
+#================================
+# Monitoring
+#================================
+class Monitor(models.Model):
+    """
+    Monitoring Model
+    """
+    date = models.DateField(null=True, blank=True)
+    month = models.CharField(max_length=20, null=True, blank=True)
+
+    lead_no = models.IntegerField(help_text="Lead No", null=True, blank=True)
+    agent = models.CharField(max_length=100, help_text="Agent name", null=True, blank=True)
+    agent_lead_no = models.IntegerField(help_text="Agent Lead No", null=True, blank=True)
+    agent_contact_duration = models.IntegerField(help_text="Agent contact duration", null=True, blank=True)
+
+    draws = models.FloatField(null=True, blank=True)
+    draws_no = models.IntegerField(help_text="Draws No", null=True, blank=True)
+    draws_cause = models.CharField(max_length=255, help_text="Draws cause", null=True, blank=True)
+
+    # ---------- Meta ----------
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Monitoring for Lead {self.lead_no}"
+
+
+        
 
 
 # created_at field WHEN migrations: 
