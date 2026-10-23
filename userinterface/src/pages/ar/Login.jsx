@@ -527,7 +527,7 @@ function Login() {
         >
             {/* BACKGROUND */}
             <div
-                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+                className="absolute inset-0 z-1 bg-cover bg-center bg-no-repeat"
                 style={{ backgroundImage: `url(${background})` }}
             />
 
@@ -1501,5 +1501,7 @@ function Login() {
         </div>
     );
 }
+
+
 
 export default Login;

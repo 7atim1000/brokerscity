@@ -56,7 +56,8 @@ function App() {
             <Route path="/ar/login" element={<ArLogin />} />    
             <Route path="/login" element={<Login />}/>
             <Route path="/signup" element={<Signup />}/>
-            <Route path="/ar-whatsapp" element={<ArWhatsApp />}/>
+            {/* <Route path="/ar-whatsapp" element={<ArWhatsApp />}/> */}
+            <Route path="#" element={<ArWhatsApp />}/>
                         
 
       {/* Main Layout */}
@@ -89,8 +90,10 @@ function App() {
 
                 <Route path="/ar-developer" element={<ArDeveloper />}/>
                 {/* /ar-developer-email */}
-                <Route path="/ar-developer-email" element={<ArDeveloperEmail />}/>
-                
+                {/* <Route path="/ar-developer-email" element={<ArDeveloperEmail />}/> */}
+                <Route path="#" element={<ArDeveloperEmail />}/>
+
+
                 
                 <Route path="/offer-sale" element={<OfferSalesPDF />}/>
                 <Route path="/ar-sale-offer" element={<ArSaleOffer />}/>

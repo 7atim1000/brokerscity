@@ -21,7 +21,7 @@ import {
     FaUser,
     FaPowerOff,
     FaWifi,
-    FaClock,   // ✅ ADDED — clock icon
+    FaClock,              // ✅ ADDED — clock icon
 } from "react-icons/fa";
 
 import { BsCalendar2Date } from "react-icons/bs";
@@ -383,7 +383,7 @@ const Navbar = () => {
             clearTokens();
             setActionLoading(false);
             setMenuOpen(false);
-            navigate("/ar-login");
+            navigate("/ar/login");
         }
     };
 
@@ -427,7 +427,7 @@ const Navbar = () => {
 */}
 <span
     className="
-        text-[#203A5A]
+        text-[#f8f7f5]
         font-[1000]
         text-[10px]
         sm:text-base
@@ -435,12 +435,16 @@ const Navbar = () => {
         tracking-wide
         scale-110
         whitespace-nowrap
-        drop-shadow-[0_1px_1px_rgba(255,255,255,0.5)]
-        [-webkit-text-stroke:0.5px_#203A5A]
+        drop-shadow-[#f8f7f5]
+        [-webkit-text-stroke:0.5px_#f8f7f5]
     "
 >
     منصة بروكر سيتي العقارية الرقمية
-</span>
+</span> 
+{/* text-[#203A5A] 
+drop-shadow-[0_1px_1px_rgba(255,255,255,0.5)]
+ [-webkit-text-stroke:0.5px_#203A5A]
+*/}
 
 {/* 
   ✅ FONT WEIGHT INCREASE (BOTTOM TEXT):
@@ -450,7 +454,7 @@ const Navbar = () => {
 */}
 <span
     className="
-        text-[#203A5A]
+        text-white/90
         font-black
         text-[13px]
         sm:text-xs
@@ -459,7 +463,7 @@ const Navbar = () => {
         scale-110
         [-webkit-text-stroke:0.3px_#203A5A]
     "
-    style={{ textShadow: "0 1px 2px #f8f7f5" }}
+    style={{ textShadow: "0 1px 2px #835802" }}
 >
     Broker City Real Estate
 </span>

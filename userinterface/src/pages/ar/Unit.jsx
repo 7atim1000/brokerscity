@@ -486,7 +486,7 @@ const Unit = () => {
     // Keeps: logo, unit name, edit icon, delete icon positions
     // =========================================================
     const renderCardsView = () => (
-        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 md:gap-5 max-w-full sm:max-w-[1550px] mx-auto sm:mx-2 px-2 md:px-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-5 max-w-full sm:max-w-[1550px] mx-auto sm:mx-2 px-2 md:px-2">
 
             {filteredUnits.map((unit) => {
 
@@ -561,10 +561,10 @@ const Unit = () => {
                             </div>
 
                             {/* ============ INFO ROW — OWNER / LOCATION / TYPE ============ */}
-                            <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-700 mb-4">
+                            {/* <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-700 mb-4">
 
-                                <div className="flex flex-col sm:flex-row gap-2 items-center md:items-start gap-0.5">
-                                    <span className="text-gray-500 font-bold text-[10px]">
+                                <div className="flex flex-col sm:flex-row justify-between gap-2 items-center md:items-start gap-0.5">
+                                    <span className="text-gray-500 font-bold text-[5px]">
                                         المالك:
                                     </span>
                                     <span className="truncate text-gray-800 w-full text-center md:text-right text-xs">
@@ -573,7 +573,7 @@ const Unit = () => {
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row gap-2 items-center md:items-start gap-0.5">
-                                    <span className="text-gray-500 font-bold text-[10px]">
+                                    <span className="text-gray-500 font-bold text-[5px]">
                                         الموقع:
                                     </span>
                                     <span className="truncate text-gray-800 w-full text-center md:text-right text-xs">
@@ -582,7 +582,7 @@ const Unit = () => {
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row gap-2 items-center md:items-start gap-0.5">
-                                    <span className="text-gray-500 font-bold text-[10px]">
+                                    <span className="text-gray-500 font-bold text-[5px]">
                                         النوع:
                                     </span>
                                     <span className="truncate w-full text-gray-800 text-center md:text-right text-xs">
@@ -590,8 +590,33 @@ const Unit = () => {
                                     </span>
                                 </div>
 
-                            </div>
+                            </div> */}
 
+                            {/* Parent container: stacks on mobile, side-by-side with space between on desktop */}
+<div className="flex flex-col sm:flex-row justify-between items-center w-full gap-2 sm:gap-4">
+    
+    {/* المالك Block */}
+    <div className="flex flex-col sm:flex-row items-center gap-1 w-full sm:w-1/2">
+        <span className="text-gray-500 font-bold text-[10px] sm:text-xs whitespace-nowrap">
+            المالك:
+        </span>
+        <span className="truncate text-gray-800 w-full text-center sm:text-right text-xs">
+            {ownerName || "-"}
+        </span>
+    </div>
+
+    {/* الموقع Block */}
+    <div className="flex flex-col sm:flex-row items-center gap-1 w-full sm:w-1/2">
+        <span className="text-gray-500 font-bold text-[10px] sm:text-xs whitespace-nowrap">
+            الموقع:
+        </span>
+        <span className="truncate text-gray-800 w-full text-center sm:text-right text-xs">
+            {location || "-"}
+        </span>
+    </div>
+
+</div>
+  
                             {/* ============ STATUS + PRICE ============ */}
                             <div className="w-full grid grid-cols-2 gap-2 mb-4">
 
@@ -1020,7 +1045,7 @@ const Unit = () => {
                             title="عرض البطاقات"
                         >
                             <FiGrid size={18} />
-                            بطاقات
+                            
                         </button>
 
                         <button
@@ -1034,7 +1059,7 @@ const Unit = () => {
                             title="عرض الجدول"
                         >
                             <FiList size={18} />
-                            جدول
+                        
                         </button>
 
                     </div>

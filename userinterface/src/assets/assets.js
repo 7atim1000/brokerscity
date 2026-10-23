@@ -132,33 +132,36 @@ export const SidebarMenuLinks = [
             },
         ],
     },
-    {
-        name: "إدارة المطورين",
-        path: "",
-        icon: FaRegBuilding,
-        isExpanded: false,
-        permission: "property_management",   // or create a new permission
-        subItems: [
-            {
-                name: "بيانات المطورين",
-                path: "/ar-developer",
-                icon: MdOutlineRealEstateAgent,
-                permission: "property_management",
-            },
-            {
-                name: "مراسلة المطورين",
-                path: "/ar-developer-email",
-                icon: MdOutlineMarkEmailUnread,
-                permission: "property_management",
-            },
-        ],
-    },
-    {
-        name: "عروض البيع",
-        path: "/ar-developer-email",
-        icon: MdLocalOffer,
-        permission: "property_management",
-    },
+    
+    // {
+    //     name: "إدارة المطورين",
+    //     path: "",
+    //     icon: FaRegBuilding,
+    //     isExpanded: false,
+    //     permission: "property_management",   // or create a new permission
+    //     subItems: [
+    //         {
+    //             name: "بيانات المطورين",
+    //             path: "/ar-developer",
+    //             icon: MdOutlineRealEstateAgent,
+    //             permission: "property_management",
+    //         },
+    //         {
+    //             name: "مراسلة المطورين",
+    //             path: "/ar-developer-email",
+    //             icon: MdOutlineMarkEmailUnread,
+    //             permission: "property_management",
+    //         },
+    //     ],
+    // },
+
+    
+    // {
+    //     name: "عروض البيع",
+    //     path: "/ar-developer-email",
+    //     icon: MdLocalOffer,
+    //     permission: "property_management",
+    // },
     {
         name: "قسم المراقبة",
         path: "/ar-monitor",
