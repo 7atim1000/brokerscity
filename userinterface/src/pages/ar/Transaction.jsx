@@ -1,0 +1,2682 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import AddDeposit from '../../components/ar/transactions/AddDeposit';
+import AddWithdraw from '../../components/ar/transactions/AddWithdraw';
+import TransactionDetails from '../../components/ar/transactions/TransactionDetails';
+import { BiSolidShow } from "react-icons/bi";
+import { MdDeleteForever, MdAccountBalanceWallet, MdModeEdit } from "react-icons/md";
+import {
+    FaFilePdf,
+    FaFileExcel,
+    FaArrowTrendUp,
+    FaArrowTrendDown,
+    FaScaleBalanced,
+    FaRotateRight,
+    FaMagnifyingGlass,
+} from "react-icons/fa6";
+
+import { FaFileSignature } from "react-icons/fa6";
+
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import ExcelJS from 'exceljs';
+
+import logogo from '../../assets/images/logogo-removebg.png'
+
+// Base URL from environment variables
+const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
+
+// Company identity used on the printed worksheet
+const COMPANY_NAME_EN = 'Broker City Properties';
+const COMPANY_NAME_AR = 'بروكر سيتي العقارية';
+
+// FOR fetch account_from, account_to, ...
+const renderAccountValue = (value) => {
+    if (!value) return '-';
+    return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-blue-800">
+            {value}
+        </span>
+    );
+};
+
+const formatMoney = (value) =>
+    (parseFloat(value) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const formatDate = (value) => {
+    if (!value) return '-';
+    try {
+        const d = new Date(value);
+        if (isNaN(d.getTime())) return value;
+
+        const day = String(d.getDate()).padStart(2, '0');
+
+        const monthNames = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+        const month = monthNames[d.getMonth()];
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    } catch {
+        return value;
+    }
+};
+
+const Transactions = () => {
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [showAddWithdrawModal, setShowAddWithdrawModal] = useState(false);
+    const [showAddDepositModal, setShowAddDepositModal] = useState(false);
+    const [selectedTransaction, setSelectedTransaction] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState('');
+    const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
+    const [error, setError] = useState('');
+
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
+    const [nextPage, setNextPage] = useState(null);
+    const [previousPage, setPreviousPage] = useState(null);
+
+    // ✅ NEW: DB-wide totals (all pages, honoring current filters)
+    const [globalTotals, setGlobalTotals] = useState({
+        totalDeposit: 0,
+        totalWithdraw: 0,
+        balance: 0,
+        loaded: false,
+    });
+
+    // Modal state for TransactionDetails
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+
+    // Export state
+    const [printData, setPrintData] = useState([]);
+    const [isExporting, setIsExporting] = useState(false);
+    const [pendingExportAction, setPendingExportAction] = useState(null);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
+
+    const handleViewTransaction = (transactionId) => {
+        setSelectedTransactionId(transactionId);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedTransactionId(null);
+    };
+
+    const buildQuery = ({ page, size }) => {
+        let url = `${BASE}/api/transactions/?page=${page}&page_size=${size}`;
+        if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
+        if (filterType) url += `&type=${filterType}`;
+        if (filterPaymentMethod) url += `&payment_method=${filterPaymentMethod}`;
+        return url;
+    };
+
+    // =========================================================
+    // ✅ NEW: Fetch global totals from the FULL filtered dataset
+    //    (used by the summary cards so they reflect ALL pages, not just current page)
+    // =========================================================
+    const fetchGlobalTotals = async () => {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+
+            // Fetch all filtered rows (no pagination limit)
+            const url = buildQuery({ page: 1, size: 100000 });
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const rows = Array.isArray(data?.results)
+                ? data.results
+                : Array.isArray(data)
+                    ? data
+                    : [];
+
+            const totalDeposit = rows.reduce(
+                (sum, t) => (t.type === 'deposit' ? sum + parseFloat(t.amount || 0) : sum),
+                0
+            );
+            const totalWithdraw = rows.reduce(
+                (sum, t) => (t.type === 'withdraw' ? sum + parseFloat(t.amount || 0) : sum),
+                0
+            );
+
+            setGlobalTotals({
+                totalDeposit,
+                totalWithdraw,
+                balance: totalDeposit - totalWithdraw,
+                loaded: true,
+            });
+        } catch (err) {
+            console.error('Error fetching global totals:', err);
+        }
+    };
+
+    // Fetch transactions with pagination
+    const fetchTransactions = async (page = 1) => {
+        setLoading(true);
+        setError('');
+
+        try {
+            const token = localStorage.getItem('access_token');
+
+            if (!token) {
+                toast.error('يرجى تسجيل الدخول لعرض المعاملات');
+                setLoading(false);
+                return;
+            }
+
+            const url = buildQuery({ page, size: pageSize });
+
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    toast.error('انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى');
+                } else {
+                    toast.error('فشل تحميل المعاملات');
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            const sortDesc = (rows) =>
+                [...rows].sort((a, b) => {
+                    const diff = new Date(b.transaction_date) - new Date(a.transaction_date);
+                    if (diff !== 0) return diff;
+                    return (b.id || 0) - (a.id || 0);
+                });
+
+            if (data && data.results && Array.isArray(data.results)) {
+                setTransactions(sortDesc(data.results));
+                setTotalCount(data.count || 0);
+                setTotalPages(Math.ceil((data.count || 0) / pageSize));
+                setNextPage(data.next);
+                setPreviousPage(data.previous);
+            } else if (data && Array.isArray(data)) {
+                setTransactions(sortDesc(data));
+                setTotalCount(data.length);
+                setTotalPages(Math.ceil(data.length / pageSize));
+                setNextPage(null);
+                setPreviousPage(null);
+            } else {
+                setTransactions([]);
+                setTotalCount(0);
+                setTotalPages(0);
+            }
+
+            setLoading(false);
+        } catch (err) {
+            setError('فشل تحميل المعاملات');
+            setLoading(false);
+            console.error('Error fetching transactions:', err);
+            toast.error('❌ حدث خطأ أثناء جلب المعاملات');
+        }
+    };
+
+    // Handle search with debounce — also refresh global totals
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (currentPage === 1) {
+                fetchTransactions(1);
+            } else {
+                setCurrentPage(1);
+            }
+            // ✅ Refresh global totals whenever filters/search change
+            fetchGlobalTotals();
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm, filterType, filterPaymentMethod]);
+
+    // Fetch on page change
+    useEffect(() => {
+        fetchTransactions(currentPage);
+    }, [currentPage]);
+
+    // Initial fetch — load page + global totals
+    useEffect(() => {
+        fetchTransactions(1);
+        fetchGlobalTotals();
+    }, []);
+
+    // Once the full dataset is fetched, run whichever export action was requested
+    useEffect(() => {
+        if (isExporting || printData.length === 0 || !pendingExportAction) return;
+
+        if (pendingExportAction === 'pdf') {
+            const timer = setTimeout(() => {
+                generatePdf().finally(() => setPendingExportAction(null));
+            }, 200);
+            return () => clearTimeout(timer);
+        }
+
+        if (pendingExportAction === 'excel') {
+            const timer = setTimeout(() => {
+                generateExcel().finally(() => setPendingExportAction(null));
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [isExporting, printData, pendingExportAction]);
+
+    // Delete transaction
+    const handleDelete = async (id) => {
+        if (!window.confirm('هل أنت متأكد من حذف هذه المعاملة؟')) return;
+
+        try {
+            const token = localStorage.getItem('access_token');
+
+            if (!token) {
+                toast.error('يرجى تسجيل الدخول');
+                return;
+            }
+
+            const response = await fetch(
+                `${BASE}/api/transactions/${id}/delete/`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    toast.error('انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى');
+                } else {
+                    toast.error('فشل حذف المعاملة');
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            toast.success('✅ تم حذف المعاملة بنجاح');
+            fetchTransactions(currentPage);
+            // ✅ Refresh global totals after delete
+            fetchGlobalTotals();
+        } catch (error) {
+            console.error('Error deleting transaction:', error);
+            toast.error('❌ حدث خطأ أثناء حذف المعاملة');
+        }
+    };
+
+    // Update transaction
+    const handleUpdate = (transaction) => {
+        setSelectedTransaction(transaction);
+
+        if (transaction.type === 'deposit') {
+            setShowAddDepositModal(true);
+        } else if (transaction.type === 'withdraw') {
+            setShowAddWithdrawModal(true);
+        } else {
+            toast.error('نوع المعاملة غير معروف');
+        }
+    };
+
+    // Handle modal close — refresh both page and global totals
+    const handleModalClose = () => {
+        setShowAddDepositModal(false);
+        setShowAddWithdrawModal(false);
+        setSelectedTransaction(null);
+        fetchTransactions(currentPage);
+        // ✅ Refresh global totals after add/edit
+        fetchGlobalTotals();
+    };
+
+    // Reset all filters back to defaults
+    const handleResetFilters = () => {
+        setSearchTerm('');
+        setFilterType('');
+        setFilterPaymentMethod('');
+        setCurrentPage(1);
+    };
+
+    // Fetch the ENTIRE filtered result set — shared by PDF and Excel export
+    const fetchFullDatasetForExport = async () => {
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            toast.error('يرجى تسجيل الدخول لعرض المعاملات');
+            return null;
+        }
+
+        const url = buildQuery({ page: 1, size: 100000 });
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const rows = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+
+        return [...rows].sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
+    };
+
+    const handleDownloadPdf = async () => {
+        try {
+            setIsExporting(true);
+            setPendingExportAction('pdf');
+            const sorted = await fetchFullDatasetForExport();
+            if (sorted) {
+                setPrintData(sorted);
+            } else {
+                setPendingExportAction(null);
+            }
+        } catch (err) {
+            console.error('Error preparing PDF download data:', err);
+            toast.error('❌ تعذر تجهيز ملف PDF');
+            setPendingExportAction(null);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleDownloadExcel = async () => {
+        try {
+            setIsExporting(true);
+            setPendingExportAction('excel');
+            const sorted = await fetchFullDatasetForExport();
+            if (sorted) {
+                setPrintData(sorted);
+            } else {
+                setPendingExportAction(null);
+            }
+        } catch (err) {
+            console.error('Error preparing Excel download data:', err);
+            toast.error('❌ تعذر تجهيز ملف Excel');
+            setPendingExportAction(null);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // =========================================================
+    // ✅ ENHANCED: PDF generation — much clearer output,
+    //    readable without manual zoom.
+    // =========================================================
+    const generatePdf = async () => {
+        const element = document.querySelector('.print-area');
+        if (!element) return;
+
+        try {
+            setIsGeneratingPdf(true);
+
+            // Give the browser a tick to settle layout/styles
+            await new Promise((r) => setTimeout(r, 100));
+
+            // Higher scale = sharper text, readable without manual zoom
+            const canvas = await html2canvas(element, {
+                scale: 4,
+                backgroundColor: '#ffffff',
+                useCORS: true,
+                logging: false,
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight,
+            });
+
+            // Use JPEG (with high quality) instead of PNG → much smaller
+            // file while remaining visually crisp at this DPI.
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4',
+                compress: true,
+            });
+
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            // Small uniform margin so content doesn't touch edges
+            const margin = 6;
+            const usableWidth = pageWidth - margin * 2;
+            const usableHeight = pageHeight - margin * 2;
+
+            // Fit the ENTIRE canvas width into one page width
+            // → text becomes clearly readable without zooming.
+            const imgWidth = usableWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            // How many page-heights the whole image occupies
+            const totalPagesCount = Math.ceil(imgHeight / usableHeight);
+
+            for (let pageIndex = 0; pageIndex < totalPagesCount; pageIndex++) {
+                if (pageIndex > 0) pdf.addPage();
+
+                // Slice the source image so each page shows its own
+                // portion — this avoids "stretched" or duplicated rows
+                // and keeps every page sharp.
+                const sourceY = (pageIndex * usableHeight * canvas.width) / imgWidth;
+                const sourceHeight = Math.min(
+                    (usableHeight * canvas.width) / imgWidth,
+                    canvas.height - sourceY
+                );
+
+                // Draw only the needed slice onto an offscreen canvas
+                const sliceCanvas = document.createElement('canvas');
+                sliceCanvas.width = canvas.width;
+                sliceCanvas.height = sourceHeight;
+                const sliceCtx = sliceCanvas.getContext('2d');
+                sliceCtx.drawImage(
+                    canvas,
+                    0,
+                    sourceY,
+                    canvas.width,
+                    sourceHeight,
+                    0,
+                    0,
+                    canvas.width,
+                    sourceHeight
+                );
+
+                const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+                const sliceHeightOnPage = (sourceHeight * imgWidth) / canvas.width;
+
+                pdf.addImage(
+                    sliceData,
+                    'JPEG',
+                    margin,
+                    margin,
+                    imgWidth,
+                    sliceHeightOnPage,
+                    undefined,
+                    'FAST'
+                );
+            }
+
+            const fileName = `Broker_City_Transactions_${new Date().toISOString().slice(0, 10)}.pdf`;
+            pdf.save(fileName);
+        } catch (err) {
+            console.error('Error generating PDF:', err);
+            toast.error('❌ تعذر إنشاء ملف PDF');
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
+
+    const generateExcel = async () => {
+        try {
+            setIsGeneratingExcel(true);
+
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = COMPANY_NAME_EN;
+            workbook.created = new Date();
+
+            const sheet = workbook.addWorksheet('Transactions', {
+                views: [{ rightToLeft: false }],
+                pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+            });
+
+            const columnWidths = [10, 13, 16, 24, 34, 18, 18, 14, 14, 16];
+            sheet.columns = columnWidths.map((width) => ({ width }));
+            const columnCount = columnWidths.length;
+
+            const thinBorder = {
+                top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+            };
+
+            sheet.mergeCells(1, 1, 1, columnCount);
+            const titleRow = sheet.getRow(1);
+            titleRow.height = 56;
+            const titleCell = titleRow.getCell(1);
+            titleCell.value =
+                `${COMPANY_NAME_EN} — ${COMPANY_NAME_AR}\n` +
+                'Accounting Worksheet — ورقة عمل المحاسبة';
+            titleCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            titleCell.font = { bold: true, size: 14, color: { argb: 'FF000000' } };
+            titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+            titleCell.border = thinBorder;
+
+            try {
+                const logoResponse = await fetch(logogo);
+                const logoBuffer = await logoResponse.arrayBuffer();
+                const imageId = workbook.addImage({ buffer: logoBuffer, extension: 'jpeg' });
+                sheet.addImage(imageId, {
+                    tl: { col: 0.1, row: 0.1 },
+                    ext: { width: 56, height: 56 },
+                });
+            } catch (imgErr) {
+                console.warn('Logo could not be embedded in the Excel file:', imgErr);
+            }
+
+            const headerRow = sheet.addRow([
+                'Serial No.\nتسلسلي',
+                'Date\nالتاريخ',
+                'Voucher No.\nرقم السند',
+                'Invoice/Receipt No\nرقم الفاتوره / الايصال',
+                'Recipient / Beneficiary\nالمستلم / المستفيد',
+                'Description\nالبيان',
+                'To Account Name\nتم التحويل الى حساب',
+                'Income\nالدخل',
+                'Expense\nالمصروف',
+                'Balance\nالرصيد',
+            ]);
+            headerRow.height = 34;
+            headerRow.eachCell((cell) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBF9000' } };
+                cell.font = { bold: true, color: { argb: 'FF000000' } };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                cell.border = thinBorder;
+            });
+
+            printRows.forEach((t, index) => {
+                const row = sheet.addRow([
+                    index + 1,
+                    formatDate(t.transaction_date),
+                    t.transaction_no,
+                    t.document_no || '-',
+                    t.type === 'withdraw'
+                        ? (t.person_receipt || '-')
+                        : (t.person_deliver || '-'),
+                    t.statement || '-',
+                    t.account_to || '-',
+                    t.type === 'deposit' ? (parseFloat(t.amount) || 0) : null,
+                    t.type === 'withdraw' ? (parseFloat(t.amount) || 0) : null,
+                    t.runningBalance,
+                ]);
+
+                const zebraFill = index % 2 === 0 ? 'FFFFFFFF' : 'FFFAF7F0';
+
+                row.eachCell((cell, colNumber) => {
+                    cell.border = thinBorder;
+                    cell.alignment = {
+                        horizontal: 'center',
+                        vertical: 'middle',
+                        wrapText: colNumber === 5 || colNumber === 6,
+                    };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebraFill } };
+
+                    if (colNumber === 8 || colNumber === 9 || colNumber === 10) {
+                        cell.numFmt = '#,##0.00';
+                    }
+                });
+
+                row.getCell(8).font = { bold: true, color: { argb: 'FF1A7A1A' } };
+                row.getCell(9).font = { bold: true, color: { argb: 'FFB30000' } };
+                row.getCell(10).font = { bold: true, color: { argb: 'FF000000' } };
+            });
+
+            const totalsRow = sheet.addRow([
+                '', '', '', '', '', '',
+                'Gross Total — المجموع الكلي',
+                printTotals.totalIncome,
+                printTotals.totalExpense,
+                printTotals.balance,
+            ]);
+
+            sheet.mergeCells(totalsRow.number, 1, totalsRow.number, 7);
+
+            totalsRow.eachCell((cell, colNumber) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE699' } };
+                cell.font = { bold: true, color: { argb: 'FF000000' } };
+                cell.border = thinBorder;
+                cell.alignment = {
+                    horizontal: colNumber === 1 ? 'right' : 'center',
+                    vertical: 'middle',
+                };
+
+                if (colNumber === 8 || colNumber === 9 || colNumber === 10) {
+                    cell.numFmt = '#,##0.00';
+                }
+            });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Broker_City_Transactions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Error generating Excel file:', err);
+            toast.error('❌ تعذر إنشاء ملف Excel');
+        } finally {
+            setIsGeneratingExcel(false);
+        }
+    };
+
+    const getTypeBadge = (type) => {
+        if (type === 'deposit') {
+            return <span className="px-3 py-1 rounded-xs text-xs font-bold bg-green-100 text-green-800">إيداع</span>;
+        } else if (type === 'withdraw') {
+            return <span className="px-3 py-1 rounded-xs text-xs font-bold bg-red-100 text-red-800">سحب</span>;
+        }
+        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">{type}</span>;
+    };
+
+    const getPaymentMethodBadge = (method) => {
+        if (method === 'banks') {
+            return <span className="px-3 py-1 rounded-xs text-xs font-bold bg-blue-100 text-blue-800">بنوك</span>;
+        } else if (method === 'cash') {
+            return <span className="px-3 py-1 rounded-xs text-xs font-bold bg-yellow-100 text-yellow-800">نقدي</span>;
+        }
+        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">{method}</span>;
+    };
+
+    const getPersonDisplay = (transaction) => {
+        if (transaction.type === 'withdraw') return transaction.person_receipt || '-';
+        if (transaction.type === 'deposit') return transaction.person_deliver || '-';
+        return transaction.person_receipt || transaction.person_deliver || '-';
+    };
+
+    const getAmountDisplay = (transaction) => {
+        const amount = parseFloat(transaction.amount);
+        if (transaction.type === 'deposit') {
+            return <span className="text-green-600 font-bold">+ {amount.toFixed(2)}</span>;
+        } else {
+            return <span className="text-red-600 font-bold">- {amount.toFixed(2)}</span>;
+        }
+    };
+
+    const handlePageChange = (page) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+        }
+    };
+
+    const handlePageSizeChange = (e) => {
+        const newSize = parseInt(e.target.value);
+        setPageSize(newSize);
+        setCurrentPage(1);
+    };
+
+    // Current-page totals (kept for the table footer)
+    const pageStats = useMemo(() => {
+        const totalDeposit = transactions.reduce(
+            (sum, t) => (t.type === 'deposit' ? sum + parseFloat(t.amount || 0) : sum),
+            0
+        );
+        const totalWithdraw = transactions.reduce(
+            (sum, t) => (t.type === 'withdraw' ? sum + parseFloat(t.amount || 0) : sum),
+            0
+        );
+        return { totalDeposit, totalWithdraw, balance: totalDeposit - totalWithdraw };
+    }, [transactions]);
+
+    // Running balance for print/export dataset
+    const printRows = useMemo(() => {
+        let running = 0;
+        return printData.map((t) => {
+            const amount = parseFloat(t.amount || 0);
+            if (t.type === 'deposit') running += amount;
+            else if (t.type === 'withdraw') running -= amount;
+            return { ...t, runningBalance: running };
+        });
+    }, [printData]);
+
+    const printTotals = useMemo(() => {
+        const totalIncome = printData.reduce(
+            (sum, t) => (t.type === 'deposit' ? sum + parseFloat(t.amount || 0) : sum),
+            0
+        );
+        const totalExpense = printData.reduce(
+            (sum, t) => (t.type === 'withdraw' ? sum + parseFloat(t.amount || 0) : sum),
+            0
+        );
+        return { totalIncome, totalExpense, balance: totalIncome - totalExpense };
+    }, [printData]);
+
+    const printGeneratedAt = new Date().toLocaleString('ar-EG');
+
+    const renderPagination = () => {
+        if (totalPages <= 1) return null;
+
+        const pages = [];
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+        if (endPage - startPage < maxVisible - 1) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pages.push(i);
+        }
+
+        return (
+            <div className="flex flex-wrap items-center gap-2 mt-6 justify-center">
+                <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm"
+                >
+                    السابق
+                </button>
+
+                {startPage > 1 && (
+                    <>
+                        <button
+                            onClick={() => handlePageChange(1)}
+                            className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 text-sm"
+                        >
+                            1
+                        </button>
+                        {startPage > 2 && <span className="px-2 text-gray-500">...</span>}
+                    </>
+                )}
+
+                {pages.map((page) => (
+                    <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`px-3 sm:px-4 py-2 rounded-lg border transition-all duration-200 text-sm ${
+                            currentPage === page
+                                ? 'bg-[#a47d52] text-white border-[#a47d52]'
+                                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                        {page}
+                    </button>
+                ))}
+
+                {endPage < totalPages && (
+                    <>
+                        {endPage < totalPages - 1 && <span className="px-2 text-gray-500">...</span>}
+                        <button
+                            onClick={() => handlePageChange(totalPages)}
+                            className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 text-sm"
+                        >
+                            {totalPages}
+                        </button>
+                    </>
+                )}
+
+                <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm"
+                >
+                    التالي
+                </button>
+            </div>
+        );
+    };
+
+    return (
+        <div className="min-h-screen bg-[#f8f7f5] py-6 px-3 sm:py-8 sm:px-4 md:py-10 md:px-6 lg:py-5 lg:px-0 rtl">
+            <style>{`
+                .print-area {
+                    position: absolute;
+                    top: -10000px;
+                    left: -10000px;
+                    width: 1400px;
+                    background: #ffffff;
+                }
+                @media print {
+                    body * { visibility: hidden; }
+                    .no-print { display: none !important; }
+                    .print-area, .print-area * { visibility: visible; }
+                    .print-area {
+                        position: absolute;
+                        inset: 0;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                    }
+                    @page { size: landscape; margin: 10mm; }
+                    .print-area, .print-area table, .print-area th, .print-area td {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                    }
+                    .print-area table { page-break-inside: auto; }
+                    .print-area tr { page-break-inside: avoid; page-break-after: auto; }
+                    .print-area thead { display: table-header-group; }
+                    .print-area tfoot { display: table-footer-group; }
+                }
+            `}</style>
+
+            <ToastContainer
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={true}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+            />
+
+            {/* ================= HEADER ================= */}
+            <div className="no-print flex flex-col shadow-lg justify-between items-center max-w-full mx-auto px-4 md:px-3 mb-5 gap-4 bg-white rounded-lg py-4">
+                <div className="flex items-center gap-4 text-center">
+                    <div>
+                        <h2 className="text-xl sm:text-2xl font-extrabold text-gray-800 tracking-wide">
+                            المعاملات المالية
+                        </h2>
+                        <p className="text-sm sm:text-base text-gray-600 mt-1">
+                            إدارة المعاملات المالية (إيداع / سحب)
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 w-full lg:flex lg:flex-row lg:w-auto lg:gap-3">
+                    <button
+                        className="bg-green-600 cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-green-700 hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto"
+                        onClick={() => {
+                            setSelectedTransaction(null);
+                            setShowAddDepositModal(true);
+                        }}
+                    >
+                        + إيداع
+                    </button>
+
+                    <button
+                        className="bg-[#a47d52] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#8a6a44] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto"
+                        onClick={() => {
+                            setSelectedTransaction(null);
+                            setShowAddWithdrawModal(true);
+                        }}
+                    >
+                        - سحب
+                    </button>
+
+                    <button
+                        className="flex items-center justify-center gap-2 bg-[#E5322D] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#b8241f] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        onClick={handleDownloadPdf}
+                        disabled={isExporting || isGeneratingPdf || isGeneratingExcel}
+                    >
+                        {isGeneratingPdf
+                            ? 'جارٍ إنشاء PDF...'
+                            : isExporting && pendingExportAction === 'pdf'
+                                ? 'جارٍ التجهيز...'
+                                : 'PDF'}
+                        <FaFilePdf className="inline" />
+                    </button>
+
+                    <button
+                        className="flex items-center justify-center gap-2 bg-[#1D6F42] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#155330] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        onClick={handleDownloadExcel}
+                        disabled={isExporting || isGeneratingPdf || isGeneratingExcel}
+                    >
+                        {isGeneratingExcel
+                            ? 'جارٍ إنشاء Excel...'
+                            : isExporting && pendingExportAction === 'excel'
+                                ? 'جارٍ التجهيز...'
+                                : 'Excel'}
+                        <FaFileExcel className="inline" />
+                    </button>
+                </div>
+            </div>
+
+            {/* ================= SUMMARY CARDS ================= */}
+            <div className="no-print max-w-full mx-auto px-4 md:px-3 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex items-center justify-between border-r-4 border-green-500">
+                    <div className="min-w-0">
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                            إجمالي الإيداعات (كل الصفحات)
+                        </p>
+                        <p className="text-lg sm:text-2xl font-extrabold text-green-600 mt-1 break-all">
+                            {formatMoney(globalTotals.totalDeposit)}
+                        </p>
+                    </div>
+                    <FaArrowTrendUp className="text-green-500 shrink-0" size="30" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex items-center justify-between border-r-4 border-red-500">
+                    <div className="min-w-0">
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                            إجمالي السحوبات (كل الصفحات)
+                        </p>
+                        <p className="text-lg sm:text-2xl font-extrabold text-red-600 mt-1 break-all">
+                            {formatMoney(globalTotals.totalWithdraw)}
+                        </p>
+                    </div>
+                    <FaArrowTrendDown className="text-red-500 shrink-0" size="30" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex items-center justify-between border-r-4 border-[#a47d52]">
+                    <div className="min-w-0">
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                            الرصيد (كل الصفحات)
+                        </p>
+                        <p className={`text-lg sm:text-2xl font-extrabold mt-1 break-all ${globalTotals.balance >= 0 ? 'text-[#a47d52]' : 'text-red-600'}`}>
+                            {formatMoney(globalTotals.balance)}
+                        </p>
+                    </div>
+                    <FaScaleBalanced className="text-[#a47d52] shrink-0" size="30" />
+                </div>
+            </div>
+
+            {/* ================= FILTERS ================= */}
+            <div className="no-print max-w-full mx-auto px-4 md:px-3 mb-6">
+                <div className="bg-white rounded-xl shadow-md p-4 flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-center">
+                    <div className="w-full md:w-1/3 relative">
+                        <FaMagnifyingGlass className="absolute top-1/2 -translate-y-1/2 right-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="بحث عن معاملة..."
+                            className="w-full pr-10 pl-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#a47d52] focus:border-transparent bg-white text-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="w-full md:w-1/5">
+                        <select
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#a47d52] focus:border-transparent bg-white text-sm"
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                        >
+                            <option value="">جميع الأنواع</option>
+                            <option value="deposit">إيداع</option>
+                            <option value="withdraw">سحب</option>
+                        </select>
+                    </div>
+                    <div className="w-full md:w-1/5">
+                        <select
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#a47d52] focus:border-transparent bg-white text-sm"
+                            value={filterPaymentMethod}
+                            onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                        >
+                            <option value="">جميع طرق الدفع</option>
+                            <option value="banks">بنوك</option>
+                            <option value="cash">نقدي</option>
+                        </select>
+                    </div>
+                    <div className="w-full md:w-auto flex flex-wrap gap-2 sm:gap-3 items-center justify-between md:justify-start">
+                        <span className="text-gray-600 text-sm whitespace-nowrap">
+                            إجمالي: {totalCount} معاملة
+                        </span>
+                        <select
+                            className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm"
+                            value={pageSize}
+                            onChange={handlePageSizeChange}
+                        >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                        </select>
+                        {(searchTerm || filterType || filterPaymentMethod) && (
+                            <button
+                                onClick={handleResetFilters}
+                                title="إعادة تعيين الفلاتر"
+                                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm hover:bg-gray-50 transition-colors duration-200"
+                            >
+                                <FaRotateRight />
+                                <span className="hidden sm:inline">إعادة تعيين</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* ================= MAIN TABLE ================= */}
+            <div className="no-print max-w-full mx-auto px-4 md:px-3">
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                    {loading ? (
+                        <div className="flex justify-center items-center py-20">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#a47d52]"></div>
+                        </div>
+                    ) : transactions.length === 0 ? (
+                        <div className="text-center py-20">
+                            <MdAccountBalanceWallet className="mx-auto text-gray-300" size="56" />
+                            <p className="text-gray-500 text-lg mt-3">لا توجد معاملات</p>
+                            <p className="text-gray-400 text-sm mt-2">قم بإضافة معاملة جديدة</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[900px]">
+                                    <thead className="bg-[#e9e6e1] text-[#a47d52] sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">#</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">رقم المعاملة</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">التاريخ</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">النوع</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">طريقة الدفع</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">من حساب</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">الى حساب</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">المستلم / المُسلِّم</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">المبلغ</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">البيان</th>
+                                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold">الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {transactions.map((transaction, index) => (
+                                            <tr
+                                                key={transaction.id}
+                                                className="border-b border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-[#f8f2e7] transition-colors duration-200"
+                                            >
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm text-gray-700">
+                                                    {(currentPage - 1) * pageSize + index + 1}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-medium text-gray-800">
+                                                    {transaction.transaction_no}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm text-gray-700" dir="ltr">
+                                                    {formatDate(transaction.transaction_date)}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+                                                    {getTypeBadge(transaction.type)}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+                                                    {getPaymentMethodBadge(transaction.payment_method)}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+                                                    {renderAccountValue(transaction.account_from)}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+                                                    {transaction.account_to}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+                                                    {getPersonDisplay(transaction)}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+                                                    {getAmountDisplay(transaction)}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm text-gray-700 max-w-[150px] truncate" title={transaction.statement || ''}>
+                                                    {transaction.statement || '-'}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                                                    <div className="flex justify-center gap-1 sm:gap-2">
+                                                        <button
+                                                            onClick={() => handleUpdate(transaction)}
+                                                            className="cursor-pointer p-1.5 sm:p-2 bg-white rounded-lg transition-all duration-200 hover:scale-105"
+                                                            title="توقيع"
+                                                        >
+                                                            <FaFileSignature className="text-[#a47d52]" size="18" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleViewTransaction(transaction.id)}
+                                                            className="cursor-pointer p-1.5 sm:p-2 bg-white rounded-lg transition-all duration-200 hover:scale-105"
+                                                            title="عرض"
+                                                        >
+                                                            <BiSolidShow className='text-green-600' size='18' />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(transaction.id)}
+                                                            className="cursor-pointer p-1.5 sm:p-2 bg-white rounded-lg transition-all duration-200 hover:scale-105"
+                                                            title="حذف"
+                                                        >
+                                                            <MdDeleteForever className="text-red-600" size="18" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+
+                                    <tfoot>
+                                        <tr className="bg-[#e6d5c0] border-t-2 border-[#BF9000]">
+                                            <td colSpan="8" className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-extrabold text-gray-900">
+                                                الإجمالي الكلي — الصفحة الحالية
+                                            </td>
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-extrabold text-green-700">
+                                                {formatMoney(pageStats.totalDeposit)}
+                                            </td>
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-extrabold text-red-700">
+                                                {formatMoney(pageStats.totalWithdraw)}
+                                            </td>
+                                            <td className={`px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-extrabold ${pageStats.balance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                                {formatMoney(pageStats.balance)}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <div className="px-3 sm:px-6 py-4 border-t border-gray-200">
+                                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-right">
+                                        عرض {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalCount)} من {totalCount} معاملة
+                                    </div>
+                                    {renderPagination()}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* ================= PRINT / PDF VIEW ================= */}
+            {/* ✅ Fonts enlarged here only — nothing else changed */}
+            <div className="print-area">
+                <table dir="ltr"
+                    style={{ direction: 'ltr', width: '100%', borderCollapse: 'collapse', fontFamily: 'Calibri, Arial, sans-serif' }}>
+                    <thead>
+                        <tr>
+                            <th colSpan={11} style={{ padding: '10px 6px 4px', border: '1px solid #000', borderBottom: 'none', background: '#FFFFFF' }}>
+                                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                    <img src={logogo} alt="logo"
+                                        style={{ height: 72, width: 64, objectFit: 'cover', borderRadius: '50%' }}
+                                        className='object-contain scale-[2.5] transform-gpu my-2'
+                                        />
+                                </div>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th colSpan={11} style={{ padding: '4px 6px 10px', border: '1px solid #000', borderTop: 'none', background: '#FFFFFF' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: 26, fontWeight: 800, color: '#000' }}>
+                                        {COMPANY_NAME_EN} — {COMPANY_NAME_AR}
+                                    </div>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: '#000', marginTop: 6 }}>
+                                        Accounting Worksheet — ورقة عمل المحاسبة
+                                    </div>
+                                    <div style={{ fontSize: 15, fontWeight: 400, color: '#333', marginTop: 4 }}>
+                                        Generated: {printGeneratedAt}
+                                    </div>
+                                </div>
+                            </th>
+                        </tr>
+                        <tr className='bg-[#e6d5c0]'>
+                            <th style={thStyle}>Serial No.{'\n'}الرقم التسلسلي</th>
+                            <th style={thStyle}>Date{'\n'}التاريخ</th>
+                            <th style={thStyle}>Voucher No.{'\n'}رقم السند</th>
+                            <th style={thStyle}>Inv / Receipt No.{'\n'}رقم الفاتوره / الايصال</th>
+                            <th style={thStyle}>Recipient / Deliverer{'\n'}المستلم / المستفيد</th>
+                            <th style={thStyle}>Description{'\n'}البيان</th>
+                            <th style={thStyle}>To Account{'\n'}تم التحويل الى حساب</th>
+                            <th style={thStyle}>Income{'\n'}الدخل</th>
+                            <th style={thStyle}>Expense{'\n'}المصروف</th>
+                            <th style={thStyle}>Balance{'\n'}الرصيد</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {printRows.map((t, index) => (
+                            <tr key={t.id} style={{ background: index % 2 === 0 ? '#FFFFFF' : '#FAF7F0' }}>
+                                <td style={tdStyle}>{index + 1}</td>
+                                <td style={tdStyle} dir="ltr">{formatDate(t.transaction_date)}</td>
+                                <td style={tdStyle}>{t.transaction_no}</td>
+                                <td style={tdStyle}>{t.document_no}</td>
+                                <td style={tdStyle}>{t.type === 'withdraw' ? (t.person_receipt || '-') : (t.person_deliver || '-')}</td>
+                                <td style={{ ...tdStyle, textAlign: 'right', maxWidth: 260 }}>{t.statement || '-'}</td>
+                                <td style={tdStyle}>{t.account_to || '-'}</td>
+                                <td style={{ ...tdStyle, color: '#1a7a1a', fontWeight: 700 }}>{t.type === 'deposit' ? formatMoney(t.amount) : ''}</td>
+                                <td style={{ ...tdStyle, color: '#b30000', fontWeight: 700 }}>{t.type === 'withdraw' ? formatMoney(t.amount) : ''}</td>
+                                <td style={{ ...tdStyle, fontWeight: 800, fontSize: 18 }}>{formatMoney(t.runningBalance)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot>
+                        <tr className="bg-[#e6d5c0] border-t-2 border-[#BF9000]">
+                            <td colSpan={7} style={{ ...tdStyle, fontWeight: 800, textAlign: 'right', fontSize: 18 }}>
+                                Gross Total — المجموع الكلي
+                            </td>
+                            <td style={{ ...tdStyle, fontWeight: 800, color: '#1a7a1a', fontSize: 20 }}>
+                                {formatMoney(printTotals.totalIncome)}
+                            </td>
+                            <td style={{ ...tdStyle, fontWeight: 800, color: '#b30000', fontSize: 20 }}>
+                                {formatMoney(printTotals.totalExpense)}
+                            </td>
+                            <td style={{ ...tdStyle, fontWeight: 800, fontSize: 22 }}>
+                                {formatMoney(printTotals.balance)}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            {/* ================= MODALS ================= */}
+
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto no-print">
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+                        onClick={handleCloseModal}
+                    ></div>
+
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <div className="relative rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto bg-[#f8f7f5]">
+                            <button
+                                onClick={handleCloseModal}
+                                className="sticky top-4 float-end z-10 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors duration-200 m-4"
+                                title="Close"
+                            >
+                                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+
+                            <TransactionDetails
+                                transactionId={selectedTransactionId}
+                                onClose={handleCloseModal}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showAddDepositModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto no-print">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <div className="relative w-full max-w-4xl">
+                            <AddDeposit
+                                onClose={handleModalClose}
+                                initialData={selectedTransaction}
+                                isEditMode={!!selectedTransaction}
+                                onSuccess={() => fetchTransactions(currentPage)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showAddWithdrawModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto no-print">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <div className="relative w-full max-w-4xl">
+                            <AddWithdraw
+                                onClose={handleModalClose}
+                                initialData={selectedTransaction}
+                                isEditMode={!!selectedTransaction}
+                                onSuccess={() => fetchTransactions(currentPage)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ✅ Fonts enlarged — cell text, header text, and footer text all bigger
+const thStyle = {
+    border: '1px solid #000',
+    padding: '10px 8px',
+    fontSize: 15,
+    fontWeight: 700,
+    color: '#000',
+    textAlign: 'center',
+    whiteSpace: 'pre-line',
+};
+
+const tdStyle = {
+    border: '1px solid #ccc',
+    padding: '9px 8px',
+    fontSize: 14,
+    color: '#000',
+    textAlign: 'center',
+};
+
+export default Transactions;
+
+// import React, { useState, useEffect, useMemo } from 'react';
+// import { toast, ToastContainer } from 'react-toastify';
+// import 'react-toastify/dist/ReactToastify.css';
+// import AddDeposit from '../../components/ar/transactions/AddDeposit';
+// import AddWithdraw from '../../components/ar/transactions/AddWithdraw';
+// import TransactionDetails from '../../components/ar/transactions/TransactionDetails';
+// import { BiSolidShow } from "react-icons/bi";
+// import { MdDeleteForever, MdAccountBalanceWallet, MdModeEdit } from "react-icons/md";
+// import {
+//     FaFilePdf,
+//     FaFileExcel,
+//     FaArrowTrendUp,
+//     FaArrowTrendDown,
+//     FaScaleBalanced,
+//     FaRotateRight,
+//     FaMagnifyingGlass,
+// } from "react-icons/fa6";
+
+// import { FaFileSignature } from "react-icons/fa6";
+
+// import html2canvas from 'html2canvas';
+// import jsPDF from 'jspdf';
+// import ExcelJS from 'exceljs';
+
+// import logogo from '../../assets/images/logogo-removebg.png'
+
+// // Base URL from environment variables
+// const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
+
+// // Company identity used on the printed worksheet
+// const COMPANY_NAME_EN = 'Broker City Properties';
+// const COMPANY_NAME_AR = 'بروكر سيتي العقارية';
+
+// // FOR fetch account_from, account_to, ...
+// const renderAccountValue = (value) => {
+//     if (!value) return '-';
+//     return (
+//         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-blue-800">
+//             {value}
+//         </span>
+//     );
+// };
+
+// const formatMoney = (value) =>
+//     (parseFloat(value) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// const formatDate = (value) => {
+//     if (!value) return '-';
+//     try {
+//         const d = new Date(value);
+//         if (isNaN(d.getTime())) return value;
+
+//         const day = String(d.getDate()).padStart(2, '0');
+
+//         const monthNames = [
+//             'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+//             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+//         ];
+//         const month = monthNames[d.getMonth()];
+//         const year = d.getFullYear();
+//         return `${day}/${month}/${year}`;
+//     } catch {
+//         return value;
+//     }
+// };
+
+// const Transactions = () => {
+//     const [transactions, setTransactions] = useState([]);
+//     const [loading, setLoading] = useState(false);
+//     const [showAddWithdrawModal, setShowAddWithdrawModal] = useState(false);
+//     const [showAddDepositModal, setShowAddDepositModal] = useState(false);
+//     const [selectedTransaction, setSelectedTransaction] = useState(null);
+//     const [searchTerm, setSearchTerm] = useState('');
+//     const [filterType, setFilterType] = useState('');
+//     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
+//     const [error, setError] = useState('');
+
+//     // Pagination states
+//     const [currentPage, setCurrentPage] = useState(1);
+//     const [pageSize, setPageSize] = useState(10);
+//     const [totalPages, setTotalPages] = useState(0);
+//     const [totalCount, setTotalCount] = useState(0);
+//     const [nextPage, setNextPage] = useState(null);
+//     const [previousPage, setPreviousPage] = useState(null);
+
+//     // ✅ NEW: DB-wide totals (all pages, honoring current filters)
+//     const [globalTotals, setGlobalTotals] = useState({
+//         totalDeposit: 0,
+//         totalWithdraw: 0,
+//         balance: 0,
+//         loaded: false,
+//     });
+
+//     // Modal state for TransactionDetails
+//     const [isModalOpen, setIsModalOpen] = useState(false);
+//     const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+
+//     // Export state
+//     const [printData, setPrintData] = useState([]);
+//     const [isExporting, setIsExporting] = useState(false);
+//     const [pendingExportAction, setPendingExportAction] = useState(null);
+//     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+//     const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
+
+//     const handleViewTransaction = (transactionId) => {
+//         setSelectedTransactionId(transactionId);
+//         setIsModalOpen(true);
+//     };
+
+//     const handleCloseModal = () => {
+//         setIsModalOpen(false);
+//         setSelectedTransactionId(null);
+//     };
+
+//     const buildQuery = ({ page, size }) => {
+//         let url = `${BASE}/api/transactions/?page=${page}&page_size=${size}`;
+//         if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
+//         if (filterType) url += `&type=${filterType}`;
+//         if (filterPaymentMethod) url += `&payment_method=${filterPaymentMethod}`;
+//         return url;
+//     };
+
+//     // =========================================================
+//     // ✅ NEW: Fetch global totals from the FULL filtered dataset
+//     //    (used by the summary cards so they reflect ALL pages, not just current page)
+//     // =========================================================
+//     const fetchGlobalTotals = async () => {
+//         try {
+//             const token = localStorage.getItem('access_token');
+//             if (!token) return;
+
+//             // Fetch all filtered rows (no pagination limit)
+//             const url = buildQuery({ page: 1, size: 100000 });
+//             const response = await fetch(url, {
+//                 method: "GET",
+//                 headers: {
+//                     "Content-Type": "application/json",
+//                     "Authorization": `Bearer ${token}`
+//                 }
+//             });
+
+//             if (!response.ok) return;
+
+//             const data = await response.json();
+//             const rows = Array.isArray(data?.results)
+//                 ? data.results
+//                 : Array.isArray(data)
+//                     ? data
+//                     : [];
+
+//             const totalDeposit = rows.reduce(
+//                 (sum, t) => (t.type === 'deposit' ? sum + parseFloat(t.amount || 0) : sum),
+//                 0
+//             );
+//             const totalWithdraw = rows.reduce(
+//                 (sum, t) => (t.type === 'withdraw' ? sum + parseFloat(t.amount || 0) : sum),
+//                 0
+//             );
+
+//             setGlobalTotals({
+//                 totalDeposit,
+//                 totalWithdraw,
+//                 balance: totalDeposit - totalWithdraw,
+//                 loaded: true,
+//             });
+//         } catch (err) {
+//             console.error('Error fetching global totals:', err);
+//         }
+//     };
+
+//     // Fetch transactions with pagination
+//     const fetchTransactions = async (page = 1) => {
+//         setLoading(true);
+//         setError('');
+
+//         try {
+//             const token = localStorage.getItem('access_token');
+
+//             if (!token) {
+//                 toast.error('يرجى تسجيل الدخول لعرض المعاملات');
+//                 setLoading(false);
+//                 return;
+//             }
+
+//             const url = buildQuery({ page, size: pageSize });
+
+//             const response = await fetch(url, {
+//                 method: "GET",
+//                 headers: {
+//                     "Content-Type": "application/json",
+//                     "Authorization": `Bearer ${token}`
+//                 }
+//             });
+
+//             if (!response.ok) {
+//                 if (response.status === 401) {
+//                     toast.error('انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى');
+//                 } else {
+//                     toast.error('فشل تحميل المعاملات');
+//                 }
+//                 throw new Error(`HTTP error! status: ${response.status}`);
+//             }
+
+//             const data = await response.json();
+
+//             const sortDesc = (rows) =>
+//                 [...rows].sort((a, b) => {
+//                     const diff = new Date(b.transaction_date) - new Date(a.transaction_date);
+//                     if (diff !== 0) return diff;
+//                     return (b.id || 0) - (a.id || 0);
+//                 });
+
+//             if (data && data.results && Array.isArray(data.results)) {
+//                 setTransactions(sortDesc(data.results));
+//                 setTotalCount(data.count || 0);
+//                 setTotalPages(Math.ceil((data.count || 0) / pageSize));
+//                 setNextPage(data.next);
+//                 setPreviousPage(data.previous);
+//             } else if (data && Array.isArray(data)) {
+//                 setTransactions(sortDesc(data));
+//                 setTotalCount(data.length);
+//                 setTotalPages(Math.ceil(data.length / pageSize));
+//                 setNextPage(null);
+//                 setPreviousPage(null);
+//             } else {
+//                 setTransactions([]);
+//                 setTotalCount(0);
+//                 setTotalPages(0);
+//             }
+
+//             setLoading(false);
+//         } catch (err) {
+//             setError('فشل تحميل المعاملات');
+//             setLoading(false);
+//             console.error('Error fetching transactions:', err);
+//             toast.error('❌ حدث خطأ أثناء جلب المعاملات');
+//         }
+//     };
+
+//     // Handle search with debounce — also refresh global totals
+//     useEffect(() => {
+//         const delayDebounceFn = setTimeout(() => {
+//             if (currentPage === 1) {
+//                 fetchTransactions(1);
+//             } else {
+//                 setCurrentPage(1);
+//             }
+//             // ✅ Refresh global totals whenever filters/search change
+//             fetchGlobalTotals();
+//         }, 500);
+
+//         return () => clearTimeout(delayDebounceFn);
+//     }, [searchTerm, filterType, filterPaymentMethod]);
+
+//     // Fetch on page change
+//     useEffect(() => {
+//         fetchTransactions(currentPage);
+//     }, [currentPage]);
+
+//     // Initial fetch — load page + global totals
+//     useEffect(() => {
+//         fetchTransactions(1);
+//         fetchGlobalTotals();
+//     }, []);
+
+//     // Once the full dataset is fetched, run whichever export action was requested
+//     useEffect(() => {
+//         if (isExporting || printData.length === 0 || !pendingExportAction) return;
+
+//         if (pendingExportAction === 'pdf') {
+//             const timer = setTimeout(() => {
+//                 generatePdf().finally(() => setPendingExportAction(null));
+//             }, 200);
+//             return () => clearTimeout(timer);
+//         }
+
+//         if (pendingExportAction === 'excel') {
+//             const timer = setTimeout(() => {
+//                 generateExcel().finally(() => setPendingExportAction(null));
+//             }, 50);
+//             return () => clearTimeout(timer);
+//         }
+//     }, [isExporting, printData, pendingExportAction]);
+
+//     // Delete transaction
+//     const handleDelete = async (id) => {
+//         if (!window.confirm('هل أنت متأكد من حذف هذه المعاملة؟')) return;
+
+//         try {
+//             const token = localStorage.getItem('access_token');
+
+//             if (!token) {
+//                 toast.error('يرجى تسجيل الدخول');
+//                 return;
+//             }
+
+//             const response = await fetch(
+//                 `${BASE}/api/transactions/${id}/delete/`,
+//                 {
+//                     method: "DELETE",
+//                     headers: {
+//                         "Content-Type": "application/json",
+//                         "Authorization": `Bearer ${token}`
+//                     }
+//                 }
+//             );
+
+//             if (!response.ok) {
+//                 if (response.status === 401) {
+//                     toast.error('انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى');
+//                 } else {
+//                     toast.error('فشل حذف المعاملة');
+//                 }
+//                 throw new Error(`HTTP error! status: ${response.status}`);
+//             }
+
+//             toast.success('✅ تم حذف المعاملة بنجاح');
+//             fetchTransactions(currentPage);
+//             // ✅ Refresh global totals after delete
+//             fetchGlobalTotals();
+//         } catch (error) {
+//             console.error('Error deleting transaction:', error);
+//             toast.error('❌ حدث خطأ أثناء حذف المعاملة');
+//         }
+//     };
+
+//     // Update transaction
+//     const handleUpdate = (transaction) => {
+//         setSelectedTransaction(transaction);
+
+//         if (transaction.type === 'deposit') {
+//             setShowAddDepositModal(true);
+//         } else if (transaction.type === 'withdraw') {
+//             setShowAddWithdrawModal(true);
+//         } else {
+//             toast.error('نوع المعاملة غير معروف');
+//         }
+//     };
+
+//     // Handle modal close — refresh both page and global totals
+//     const handleModalClose = () => {
+//         setShowAddDepositModal(false);
+//         setShowAddWithdrawModal(false);
+//         setSelectedTransaction(null);
+//         fetchTransactions(currentPage);
+//         // ✅ Refresh global totals after add/edit
+//         fetchGlobalTotals();
+//     };
+
+//     // Reset all filters back to defaults
+//     const handleResetFilters = () => {
+//         setSearchTerm('');
+//         setFilterType('');
+//         setFilterPaymentMethod('');
+//         setCurrentPage(1);
+//     };
+
+//     // Fetch the ENTIRE filtered result set — shared by PDF and Excel export
+//     const fetchFullDatasetForExport = async () => {
+//         const token = localStorage.getItem('access_token');
+
+//         if (!token) {
+//             toast.error('يرجى تسجيل الدخول لعرض المعاملات');
+//             return null;
+//         }
+
+//         const url = buildQuery({ page: 1, size: 100000 });
+//         const response = await fetch(url, {
+//             method: "GET",
+//             headers: {
+//                 "Content-Type": "application/json",
+//                 "Authorization": `Bearer ${token}`
+//             }
+//         });
+
+//         if (!response.ok) {
+//             throw new Error(`HTTP error! status: ${response.status}`);
+//         }
+
+//         const data = await response.json();
+//         const rows = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+
+//         return [...rows].sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
+//     };
+
+//     const handleDownloadPdf = async () => {
+//         try {
+//             setIsExporting(true);
+//             setPendingExportAction('pdf');
+//             const sorted = await fetchFullDatasetForExport();
+//             if (sorted) {
+//                 setPrintData(sorted);
+//             } else {
+//                 setPendingExportAction(null);
+//             }
+//         } catch (err) {
+//             console.error('Error preparing PDF download data:', err);
+//             toast.error('❌ تعذر تجهيز ملف PDF');
+//             setPendingExportAction(null);
+//         } finally {
+//             setIsExporting(false);
+//         }
+//     };
+
+//     const handleDownloadExcel = async () => {
+//         try {
+//             setIsExporting(true);
+//             setPendingExportAction('excel');
+//             const sorted = await fetchFullDatasetForExport();
+//             if (sorted) {
+//                 setPrintData(sorted);
+//             } else {
+//                 setPendingExportAction(null);
+//             }
+//         } catch (err) {
+//             console.error('Error preparing Excel download data:', err);
+//             toast.error('❌ تعذر تجهيز ملف Excel');
+//             setPendingExportAction(null);
+//         } finally {
+//             setIsExporting(false);
+//         }
+//     };
+
+//     // =========================================================
+//     // ✅ ENHANCED: PDF generation — much clearer output,
+//     //    readable without manual zoom.
+//     //    Key improvements:
+//     //      • scale 4 (vs 2) for crisp text
+//     //      • JPEG with high quality to keep file size sane
+//     //      • Auto-fit to page width so nothing looks tiny
+//     //      • Manual pagination using the element's own height
+//     // =========================================================
+//     const generatePdf = async () => {
+//         const element = document.querySelector('.print-area');
+//         if (!element) return;
+
+//         try {
+//             setIsGeneratingPdf(true);
+
+//             // Give the browser a tick to settle layout/styles
+//             await new Promise((r) => setTimeout(r, 100));
+
+//             // Higher scale = sharper text, readable without manual zoom
+//             const canvas = await html2canvas(element, {
+//                 scale: 4,
+//                 backgroundColor: '#ffffff',
+//                 useCORS: true,
+//                 logging: false,
+//                 windowWidth: element.scrollWidth,
+//                 windowHeight: element.scrollHeight,
+//             });
+
+//             // Use JPEG (with high quality) instead of PNG → much smaller
+//             // file while remaining visually crisp at this DPI.
+//             const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+//             const pdf = new jsPDF({
+//                 orientation: 'landscape',
+//                 unit: 'mm',
+//                 format: 'a4',
+//                 compress: true,
+//             });
+
+//             const pageWidth = pdf.internal.pageSize.getWidth();
+//             const pageHeight = pdf.internal.pageSize.getHeight();
+
+//             // Small uniform margin so content doesn't touch edges
+//             const margin = 6;
+//             const usableWidth = pageWidth - margin * 2;
+//             const usableHeight = pageHeight - margin * 2;
+
+//             // Fit the ENTIRE canvas width into one page width
+//             // → text becomes clearly readable without zooming.
+//             const imgWidth = usableWidth;
+//             const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+//             // How many page-heights the whole image occupies
+//             const totalPagesCount = Math.ceil(imgHeight / usableHeight);
+
+//             for (let pageIndex = 0; pageIndex < totalPagesCount; pageIndex++) {
+//                 if (pageIndex > 0) pdf.addPage();
+
+//                 // Slice the source image so each page shows its own
+//                 // portion — this avoids "stretched" or duplicated rows
+//                 // and keeps every page sharp.
+//                 const sourceY = (pageIndex * usableHeight * canvas.width) / imgWidth;
+//                 const sourceHeight = Math.min(
+//                     (usableHeight * canvas.width) / imgWidth,
+//                     canvas.height - sourceY
+//                 );
+
+//                 // Draw only the needed slice onto an offscreen canvas
+//                 const sliceCanvas = document.createElement('canvas');
+//                 sliceCanvas.width = canvas.width;
+//                 sliceCanvas.height = sourceHeight;
+//                 const sliceCtx = sliceCanvas.getContext('2d');
+//                 sliceCtx.drawImage(
+//                     canvas,
+//                     0,
+//                     sourceY,
+//                     canvas.width,
+//                     sourceHeight,
+//                     0,
+//                     0,
+//                     canvas.width,
+//                     sourceHeight
+//                 );
+
+//                 const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+//                 const sliceHeightOnPage = (sourceHeight * imgWidth) / canvas.width;
+
+//                 pdf.addImage(
+//                     sliceData,
+//                     'JPEG',
+//                     margin,
+//                     margin,
+//                     imgWidth,
+//                     sliceHeightOnPage,
+//                     undefined,
+//                     'FAST'
+//                 );
+//             }
+
+//             const fileName = `Broker_City_Transactions_${new Date().toISOString().slice(0, 10)}.pdf`;
+//             pdf.save(fileName);
+//         } catch (err) {
+//             console.error('Error generating PDF:', err);
+//             toast.error('❌ تعذر إنشاء ملف PDF');
+//         } finally {
+//             setIsGeneratingPdf(false);
+//         }
+//     };
+
+//     const generateExcel = async () => {
+//         try {
+//             setIsGeneratingExcel(true);
+
+//             const workbook = new ExcelJS.Workbook();
+//             workbook.creator = COMPANY_NAME_EN;
+//             workbook.created = new Date();
+
+//             const sheet = workbook.addWorksheet('Transactions', {
+//                 views: [{ rightToLeft: false }],
+//                 pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+//             });
+
+//             const columnWidths = [10, 13, 16, 24, 34, 18, 18, 14, 14, 16];
+//             sheet.columns = columnWidths.map((width) => ({ width }));
+//             const columnCount = columnWidths.length;
+
+//             const thinBorder = {
+//                 top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+//                 left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+//                 bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+//                 right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+//             };
+
+//             sheet.mergeCells(1, 1, 1, columnCount);
+//             const titleRow = sheet.getRow(1);
+//             titleRow.height = 56;
+//             const titleCell = titleRow.getCell(1);
+//             titleCell.value =
+//                 `${COMPANY_NAME_EN} — ${COMPANY_NAME_AR}\n` +
+//                 'Accounting Worksheet — ورقة عمل المحاسبة';
+//             titleCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+//             titleCell.font = { bold: true, size: 14, color: { argb: 'FF000000' } };
+//             titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+//             titleCell.border = thinBorder;
+
+//             try {
+//                 const logoResponse = await fetch(logogo);
+//                 const logoBuffer = await logoResponse.arrayBuffer();
+//                 const imageId = workbook.addImage({ buffer: logoBuffer, extension: 'jpeg' });
+//                 sheet.addImage(imageId, {
+//                     tl: { col: 0.1, row: 0.1 },
+//                     ext: { width: 56, height: 56 },
+//                 });
+//             } catch (imgErr) {
+//                 console.warn('Logo could not be embedded in the Excel file:', imgErr);
+//             }
+
+//             const headerRow = sheet.addRow([
+//                 'Serial No.\nتسلسلي',
+//                 'Date\nالتاريخ',
+//                 'Voucher No.\nرقم السند',
+//                 'Invoice/Receipt No\nرقم الفاتوره / الايصال',
+//                 'Recipient / Beneficiary\nالمستلم / المستفيد',
+//                 'Description\nالبيان',
+//                 'To Account Name\nتم التحويل الى حساب',
+//                 'Income\nالدخل',
+//                 'Expense\nالمصروف',
+//                 'Balance\nالرصيد',
+//             ]);
+//             headerRow.height = 34;
+//             headerRow.eachCell((cell) => {
+//                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBF9000' } };
+//                 cell.font = { bold: true, color: { argb: 'FF000000' } };
+//                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+//                 cell.border = thinBorder;
+//             });
+
+//             printRows.forEach((t, index) => {
+//                 const row = sheet.addRow([
+//                     index + 1,
+//                     formatDate(t.transaction_date),
+//                     t.transaction_no,
+//                     t.document_no || '-',
+//                     t.type === 'withdraw'
+//                         ? (t.person_receipt || '-')
+//                         : (t.person_deliver || '-'),
+//                     t.statement || '-',
+//                     t.account_to || '-',
+//                     t.type === 'deposit' ? (parseFloat(t.amount) || 0) : null,
+//                     t.type === 'withdraw' ? (parseFloat(t.amount) || 0) : null,
+//                     t.runningBalance,
+//                 ]);
+
+//                 const zebraFill = index % 2 === 0 ? 'FFFFFFFF' : 'FFFAF7F0';
+
+//                 row.eachCell((cell, colNumber) => {
+//                     cell.border = thinBorder;
+//                     cell.alignment = {
+//                         horizontal: 'center',
+//                         vertical: 'middle',
+//                         wrapText: colNumber === 5 || colNumber === 6,
+//                     };
+//                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebraFill } };
+
+//                     if (colNumber === 8 || colNumber === 9 || colNumber === 10) {
+//                         cell.numFmt = '#,##0.00';
+//                     }
+//                 });
+
+//                 row.getCell(8).font = { bold: true, color: { argb: 'FF1A7A1A' } };
+//                 row.getCell(9).font = { bold: true, color: { argb: 'FFB30000' } };
+//                 row.getCell(10).font = { bold: true, color: { argb: 'FF000000' } };
+//             });
+
+//             const totalsRow = sheet.addRow([
+//                 '', '', '', '', '', '',
+//                 'Gross Total — المجموع الكلي',
+//                 printTotals.totalIncome,
+//                 printTotals.totalExpense,
+//                 printTotals.balance,
+//             ]);
+
+//             sheet.mergeCells(totalsRow.number, 1, totalsRow.number, 7);
+
+//             totalsRow.eachCell((cell, colNumber) => {
+//                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE699' } };
+//                 cell.font = { bold: true, color: { argb: 'FF000000' } };
+//                 cell.border = thinBorder;
+//                 cell.alignment = {
+//                     horizontal: colNumber === 1 ? 'right' : 'center',
+//                     vertical: 'middle',
+//                 };
+
+//                 if (colNumber === 8 || colNumber === 9 || colNumber === 10) {
+//                     cell.numFmt = '#,##0.00';
+//                 }
+//             });
+
+//             const buffer = await workbook.xlsx.writeBuffer();
+//             const blob = new Blob([buffer], {
+//                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+//             });
+//             const url = URL.createObjectURL(blob);
+//             const link = document.createElement('a');
+//             link.href = url;
+//             link.download = `Broker_City_Transactions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+//             document.body.appendChild(link);
+//             link.click();
+//             document.body.removeChild(link);
+//             URL.revokeObjectURL(url);
+//         } catch (err) {
+//             console.error('Error generating Excel file:', err);
+//             toast.error('❌ تعذر إنشاء ملف Excel');
+//         } finally {
+//             setIsGeneratingExcel(false);
+//         }
+//     };
+
+//     const getTypeBadge = (type) => {
+//         if (type === 'deposit') {
+//             return <span className="px-3 py-1 rounded-xs text-xs font-bold bg-green-100 text-green-800">إيداع</span>;
+//         } else if (type === 'withdraw') {
+//             return <span className="px-3 py-1 rounded-xs text-xs font-bold bg-red-100 text-red-800">سحب</span>;
+//         }
+//         return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">{type}</span>;
+//     };
+
+//     const getPaymentMethodBadge = (method) => {
+//         if (method === 'banks') {
+//             return <span className="px-3 py-1 rounded-xs text-xs font-bold bg-blue-100 text-blue-800">بنوك</span>;
+//         } else if (method === 'cash') {
+//             return <span className="px-3 py-1 rounded-xs text-xs font-bold bg-yellow-100 text-yellow-800">نقدي</span>;
+//         }
+//         return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">{method}</span>;
+//     };
+
+//     const getPersonDisplay = (transaction) => {
+//         if (transaction.type === 'withdraw') return transaction.person_receipt || '-';
+//         if (transaction.type === 'deposit') return transaction.person_deliver || '-';
+//         return transaction.person_receipt || transaction.person_deliver || '-';
+//     };
+
+//     const getAmountDisplay = (transaction) => {
+//         const amount = parseFloat(transaction.amount);
+//         if (transaction.type === 'deposit') {
+//             return <span className="text-green-600 font-bold">+ {amount.toFixed(2)}</span>;
+//         } else {
+//             return <span className="text-red-600 font-bold">- {amount.toFixed(2)}</span>;
+//         }
+//     };
+
+//     const handlePageChange = (page) => {
+//         if (page >= 1 && page <= totalPages) {
+//             setCurrentPage(page);
+//         }
+//     };
+
+//     const handlePageSizeChange = (e) => {
+//         const newSize = parseInt(e.target.value);
+//         setPageSize(newSize);
+//         setCurrentPage(1);
+//     };
+
+//     // Current-page totals (kept for the table footer)
+//     const pageStats = useMemo(() => {
+//         const totalDeposit = transactions.reduce(
+//             (sum, t) => (t.type === 'deposit' ? sum + parseFloat(t.amount || 0) : sum),
+//             0
+//         );
+//         const totalWithdraw = transactions.reduce(
+//             (sum, t) => (t.type === 'withdraw' ? sum + parseFloat(t.amount || 0) : sum),
+//             0
+//         );
+//         return { totalDeposit, totalWithdraw, balance: totalDeposit - totalWithdraw };
+//     }, [transactions]);
+
+//     // Running balance for print/export dataset
+//     const printRows = useMemo(() => {
+//         let running = 0;
+//         return printData.map((t) => {
+//             const amount = parseFloat(t.amount || 0);
+//             if (t.type === 'deposit') running += amount;
+//             else if (t.type === 'withdraw') running -= amount;
+//             return { ...t, runningBalance: running };
+//         });
+//     }, [printData]);
+
+//     const printTotals = useMemo(() => {
+//         const totalIncome = printData.reduce(
+//             (sum, t) => (t.type === 'deposit' ? sum + parseFloat(t.amount || 0) : sum),
+//             0
+//         );
+//         const totalExpense = printData.reduce(
+//             (sum, t) => (t.type === 'withdraw' ? sum + parseFloat(t.amount || 0) : sum),
+//             0
+//         );
+//         return { totalIncome, totalExpense, balance: totalIncome - totalExpense };
+//     }, [printData]);
+
+//     const printGeneratedAt = new Date().toLocaleString('ar-EG');
+
+//     const renderPagination = () => {
+//         if (totalPages <= 1) return null;
+
+//         const pages = [];
+//         const maxVisible = 5;
+//         let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+//         let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+//         if (endPage - startPage < maxVisible - 1) {
+//             startPage = Math.max(1, endPage - maxVisible + 1);
+//         }
+
+//         for (let i = startPage; i <= endPage; i++) {
+//             pages.push(i);
+//         }
+
+//         return (
+//             <div className="flex flex-wrap items-center gap-2 mt-6 justify-center">
+//                 <button
+//                     onClick={() => handlePageChange(currentPage - 1)}
+//                     disabled={currentPage === 1}
+//                     className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm"
+//                 >
+//                     السابق
+//                 </button>
+
+//                 {startPage > 1 && (
+//                     <>
+//                         <button
+//                             onClick={() => handlePageChange(1)}
+//                             className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 text-sm"
+//                         >
+//                             1
+//                         </button>
+//                         {startPage > 2 && <span className="px-2 text-gray-500">...</span>}
+//                     </>
+//                 )}
+
+//                 {pages.map((page) => (
+//                     <button
+//                         key={page}
+//                         onClick={() => handlePageChange(page)}
+//                         className={`px-3 sm:px-4 py-2 rounded-lg border transition-all duration-200 text-sm ${
+//                             currentPage === page
+//                                 ? 'bg-[#a47d52] text-white border-[#a47d52]'
+//                                 : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+//                         }`}
+//                     >
+//                         {page}
+//                     </button>
+//                 ))}
+
+//                 {endPage < totalPages && (
+//                     <>
+//                         {endPage < totalPages - 1 && <span className="px-2 text-gray-500">...</span>}
+//                         <button
+//                             onClick={() => handlePageChange(totalPages)}
+//                             className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 text-sm"
+//                         >
+//                             {totalPages}
+//                         </button>
+//                     </>
+//                 )}
+
+//                 <button
+//                     onClick={() => handlePageChange(currentPage + 1)}
+//                     disabled={currentPage === totalPages}
+//                     className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm"
+//                 >
+//                     التالي
+//                 </button>
+//             </div>
+//         );
+//     };
+
+//     return (
+//         <div className="min-h-screen bg-[#f8f7f5] py-6 px-3 sm:py-8 sm:px-4 md:py-10 md:px-6 lg:py-5 lg:px-0 rtl">
+//             <style>{`
+//                 .print-area {
+//                     position: absolute;
+//                     top: -10000px;
+//                     left: -10000px;
+//                     width: 1400px;
+//                     background: #ffffff;
+//                 }
+//                 @media print {
+//                     body * { visibility: hidden; }
+//                     .no-print { display: none !important; }
+//                     .print-area, .print-area * { visibility: visible; }
+//                     .print-area {
+//                         position: absolute;
+//                         inset: 0;
+//                         top: 0;
+//                         left: 0;
+//                         width: 100%;
+//                     }
+//                     @page { size: landscape; margin: 10mm; }
+//                     .print-area, .print-area table, .print-area th, .print-area td {
+//                         -webkit-print-color-adjust: exact !important;
+//                         print-color-adjust: exact !important;
+//                         color-adjust: exact !important;
+//                     }
+//                     .print-area table { page-break-inside: auto; }
+//                     .print-area tr { page-break-inside: avoid; page-break-after: auto; }
+//                     .print-area thead { display: table-header-group; }
+//                     .print-area tfoot { display: table-footer-group; }
+//                 }
+//             `}</style>
+
+//             <ToastContainer
+//                 position="top-center"
+//                 autoClose={3000}
+//                 hideProgressBar={false}
+//                 newestOnTop={false}
+//                 closeOnClick
+//                 rtl={true}
+//                 pauseOnFocusLoss
+//                 draggable
+//                 pauseOnHover
+//                 theme="light"
+//             />
+
+//             {/* ================= HEADER ================= */}
+//             <div className="no-print flex flex-col shadow-lg justify-between items-center max-w-full mx-auto px-4 md:px-3 mb-5 gap-4 bg-white rounded-lg py-4">
+//                 <div className="flex items-center gap-4 text-center">
+//                     <div>
+//                         <h2 className="text-xl sm:text-2xl font-extrabold text-gray-800 tracking-wide">
+//                             المعاملات المالية
+//                         </h2>
+//                         <p className="text-sm sm:text-base text-gray-600 mt-1">
+//                             إدارة المعاملات المالية (إيداع / سحب)
+//                         </p>
+//                     </div>
+//                 </div>
+
+//                 {/*
+//                   ✅ Buttons grid:
+//                   - Mobile (< sm): 2 columns × 2 rows (each button takes half the row)
+//                   - Tablet (sm to md): 2 columns × 2 rows (still paired, more space per button)
+//                   - Laptop+ (lg+): single row, 4 across (unchanged desktop design)
+//                 */}
+//                 <div className="grid grid-cols-2 gap-3 w-full lg:flex lg:flex-row lg:w-auto lg:gap-3">
+//                     <button
+//                         className="bg-green-600 cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-green-700 hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto"
+//                         onClick={() => {
+//                             setSelectedTransaction(null);
+//                             setShowAddDepositModal(true);
+//                         }}
+//                     >
+//                         + إيداع
+//                     </button>
+
+//                     <button
+//                         className="bg-[#a47d52] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#8a6a44] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto"
+//                         onClick={() => {
+//                             setSelectedTransaction(null);
+//                             setShowAddWithdrawModal(true);
+//                         }}
+//                     >
+//                         - سحب
+//                     </button>
+
+//                     <button
+//                         className="flex items-center justify-center gap-2 bg-[#E5322D] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#b8241f] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+//                         onClick={handleDownloadPdf}
+//                         disabled={isExporting || isGeneratingPdf || isGeneratingExcel}
+//                     >
+//                         {isGeneratingPdf
+//                             ? 'جارٍ إنشاء PDF...'
+//                             : isExporting && pendingExportAction === 'pdf'
+//                                 ? 'جارٍ التجهيز...'
+//                                 : 'PDF'}
+//                         <FaFilePdf className="inline" />
+//                     </button>
+
+//                     <button
+//                         className="flex items-center justify-center gap-2 bg-[#1D6F42] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#155330] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+//                         onClick={handleDownloadExcel}
+//                         disabled={isExporting || isGeneratingPdf || isGeneratingExcel}
+//                     >
+//                         {isGeneratingExcel
+//                             ? 'جارٍ إنشاء Excel...'
+//                             : isExporting && pendingExportAction === 'excel'
+//                                 ? 'جارٍ التجهيز...'
+//                                 : 'Excel'}
+//                         <FaFileExcel className="inline" />
+//                     </button>
+//                 </div>
+//             </div>
+
+//             {/* ================= SUMMARY CARDS ================= */}
+//             {/*
+//               ✅ UPDATED: now shows GLOBAL totals (all pages from DB, honoring filters),
+//               NOT just the current page.
+//             */}
+//             <div className="no-print max-w-full mx-auto px-4 md:px-3 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+//                 <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex items-center justify-between border-r-4 border-green-500">
+//                     <div className="min-w-0">
+//                         <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+//                             إجمالي الإيداعات (كل الصفحات)
+//                         </p>
+//                         <p className="text-lg sm:text-2xl font-extrabold text-green-600 mt-1 break-all">
+//                             {formatMoney(globalTotals.totalDeposit)}
+//                         </p>
+//                     </div>
+//                     <FaArrowTrendUp className="text-green-500 shrink-0" size="30" />
+//                 </div>
+
+//                 <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex items-center justify-between border-r-4 border-red-500">
+//                     <div className="min-w-0">
+//                         <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+//                             إجمالي السحوبات (كل الصفحات)
+//                         </p>
+//                         <p className="text-lg sm:text-2xl font-extrabold text-red-600 mt-1 break-all">
+//                             {formatMoney(globalTotals.totalWithdraw)}
+//                         </p>
+//                     </div>
+//                     <FaArrowTrendDown className="text-red-500 shrink-0" size="30" />
+//                 </div>
+
+//                 <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex items-center justify-between border-r-4 border-[#a47d52]">
+//                     <div className="min-w-0">
+//                         <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+//                             الرصيد (كل الصفحات)
+//                         </p>
+//                         <p className={`text-lg sm:text-2xl font-extrabold mt-1 break-all ${globalTotals.balance >= 0 ? 'text-[#a47d52]' : 'text-red-600'}`}>
+//                             {formatMoney(globalTotals.balance)}
+//                         </p>
+//                     </div>
+//                     <FaScaleBalanced className="text-[#a47d52] shrink-0" size="30" />
+//                 </div>
+//             </div>
+
+//             {/* ================= FILTERS ================= */}
+//             <div className="no-print max-w-full mx-auto px-4 md:px-3 mb-6">
+//                 <div className="bg-white rounded-xl shadow-md p-4 flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-center">
+//                     <div className="w-full md:w-1/3 relative">
+//                         <FaMagnifyingGlass className="absolute top-1/2 -translate-y-1/2 right-4 text-gray-400" />
+//                         <input
+//                             type="text"
+//                             placeholder="بحث عن معاملة..."
+//                             className="w-full pr-10 pl-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#a47d52] focus:border-transparent bg-white text-sm"
+//                             value={searchTerm}
+//                             onChange={(e) => setSearchTerm(e.target.value)}
+//                         />
+//                     </div>
+//                     <div className="w-full md:w-1/5">
+//                         <select
+//                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#a47d52] focus:border-transparent bg-white text-sm"
+//                             value={filterType}
+//                             onChange={(e) => setFilterType(e.target.value)}
+//                         >
+//                             <option value="">جميع الأنواع</option>
+//                             <option value="deposit">إيداع</option>
+//                             <option value="withdraw">سحب</option>
+//                         </select>
+//                     </div>
+//                     <div className="w-full md:w-1/5">
+//                         <select
+//                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#a47d52] focus:border-transparent bg-white text-sm"
+//                             value={filterPaymentMethod}
+//                             onChange={(e) => setFilterPaymentMethod(e.target.value)}
+//                         >
+//                             <option value="">جميع طرق الدفع</option>
+//                             <option value="banks">بنوك</option>
+//                             <option value="cash">نقدي</option>
+//                         </select>
+//                     </div>
+//                     <div className="w-full md:w-auto flex flex-wrap gap-2 sm:gap-3 items-center justify-between md:justify-start">
+//                         <span className="text-gray-600 text-sm whitespace-nowrap">
+//                             إجمالي: {totalCount} معاملة
+//                         </span>
+//                         <select
+//                             className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm"
+//                             value={pageSize}
+//                             onChange={handlePageSizeChange}
+//                         >
+//                             <option value="5">5</option>
+//                             <option value="10">10</option>
+//                             <option value="20">20</option>
+//                             <option value="50">50</option>
+//                         </select>
+//                         {(searchTerm || filterType || filterPaymentMethod) && (
+//                             <button
+//                                 onClick={handleResetFilters}
+//                                 title="إعادة تعيين الفلاتر"
+//                                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm hover:bg-gray-50 transition-colors duration-200"
+//                             >
+//                                 <FaRotateRight />
+//                                 <span className="hidden sm:inline">إعادة تعيين</span>
+//                             </button>
+//                         )}
+//                     </div>
+//                 </div>
+//             </div>
+
+//             {/* ================= MAIN TABLE ================= */}
+//             <div className="no-print max-w-full mx-auto px-4 md:px-3">
+//                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+//                     {loading ? (
+//                         <div className="flex justify-center items-center py-20">
+//                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#a47d52]"></div>
+//                         </div>
+//                     ) : transactions.length === 0 ? (
+//                         <div className="text-center py-20">
+//                             <MdAccountBalanceWallet className="mx-auto text-gray-300" size="56" />
+//                             <p className="text-gray-500 text-lg mt-3">لا توجد معاملات</p>
+//                             <p className="text-gray-400 text-sm mt-2">قم بإضافة معاملة جديدة</p>
+//                         </div>
+//                     ) : (
+//                         <>
+//                             <div className="overflow-x-auto">
+//                                 <table className="w-full min-w-[900px]">
+//                                     <thead className="bg-[#e9e6e1] text-[#a47d52] sticky top-0 z-10">
+//                                         <tr>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">#</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">رقم المعاملة</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">التاريخ</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">النوع</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">طريقة الدفع</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">من حساب</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">الى حساب</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">المستلم / المُسلِّم</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">المبلغ</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold">البيان</th>
+//                                             <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold">الإجراءات</th>
+//                                         </tr>
+//                                     </thead>
+//                                     <tbody>
+//                                         {transactions.map((transaction, index) => (
+//                                             <tr
+//                                                 key={transaction.id}
+//                                                 className="border-b border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-[#f8f2e7] transition-colors duration-200"
+//                                             >
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm text-gray-700">
+//                                                     {(currentPage - 1) * pageSize + index + 1}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-medium text-gray-800">
+//                                                     {transaction.transaction_no}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm text-gray-700" dir="ltr">
+//                                                     {formatDate(transaction.transaction_date)}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+//                                                     {getTypeBadge(transaction.type)}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+//                                                     {getPaymentMethodBadge(transaction.payment_method)}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+//                                                     {renderAccountValue(transaction.account_from)}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+//                                                     {transaction.account_to}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+//                                                     {getPersonDisplay(transaction)}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm">
+//                                                     {getAmountDisplay(transaction)}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm text-gray-700 max-w-[150px] truncate" title={transaction.statement || ''}>
+//                                                     {transaction.statement || '-'}
+//                                                 </td>
+//                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+//                                                     <div className="flex justify-center gap-1 sm:gap-2">
+//                                                         <button
+//                                                             onClick={() => handleUpdate(transaction)}
+//                                                             className="cursor-pointer p-1.5 sm:p-2 bg-white rounded-lg transition-all duration-200 hover:scale-105"
+//                                                             title="توقيع"
+//                                                         >
+//                                                             <FaFileSignature className="text-[#a47d52]" size="18" />
+//                                                         </button>
+//                                                         <button
+//                                                             onClick={() => handleViewTransaction(transaction.id)}
+//                                                             className="cursor-pointer p-1.5 sm:p-2 bg-white rounded-lg transition-all duration-200 hover:scale-105"
+//                                                             title="عرض"
+//                                                         >
+//                                                             <BiSolidShow className='text-green-600' size='18' />
+//                                                         </button>
+//                                                         <button
+//                                                             onClick={() => handleDelete(transaction.id)}
+//                                                             className="cursor-pointer p-1.5 sm:p-2 bg-white rounded-lg transition-all duration-200 hover:scale-105"
+//                                                             title="حذف"
+//                                                         >
+//                                                             <MdDeleteForever className="text-red-600" size="18" />
+//                                                         </button>
+//                                                     </div>
+//                                                 </td>
+//                                             </tr>
+//                                         ))}
+//                                     </tbody>
+
+//                                     <tfoot>
+//                                         <tr className="bg-[#e6d5c0] border-t-2 border-[#BF9000]">
+//                                             <td colSpan="8" className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-extrabold text-gray-900">
+//                                                 الإجمالي الكلي — الصفحة الحالية
+//                                             </td>
+//                                             <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-extrabold text-green-700">
+//                                                 {formatMoney(pageStats.totalDeposit)}
+//                                             </td>
+//                                             <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-extrabold text-red-700">
+//                                                 {formatMoney(pageStats.totalWithdraw)}
+//                                             </td>
+//                                             <td className={`px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-extrabold ${pageStats.balance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+//                                                 {formatMoney(pageStats.balance)}
+//                                             </td>
+//                                         </tr>
+//                                     </tfoot>
+//                                 </table>
+//                             </div>
+
+//                             <div className="px-3 sm:px-6 py-4 border-t border-gray-200">
+//                                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+//                                     <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-right">
+//                                         عرض {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalCount)} من {totalCount} معاملة
+//                                     </div>
+//                                     {renderPagination()}
+//                                 </div>
+//                             </div>
+//                         </>
+//                     )}
+//                 </div>
+//             </div>
+
+//             {/* ================= PRINT / PDF VIEW (unchanged) ================= */}
+//             <div className="print-area">
+//                 <table dir="ltr"
+//                     style={{ direction: 'ltr', width: '100%', borderCollapse: 'collapse', fontFamily: 'Calibri, Arial, sans-serif' }}>
+//                     <thead>
+//                         <tr>
+//                             <th colSpan={11} style={{ padding: '10px 6px 4px', border: '1px solid #000', borderBottom: 'none', background: '#FFFFFF' }}>
+//                                 <div style={{ display: 'flex', justifyContent: 'center' }}>
+//                                     <img src={logogo} alt="logo"
+//                                         style={{ height: 72, width: 64, objectFit: 'cover', borderRadius: '50%' }}
+//                                         className='object-contain scale-[2.5] transform-gpu my-2'
+//                                         />
+//                                 </div>
+//                             </th>
+//                         </tr>
+//                         <tr>
+//                             <th colSpan={11} style={{ padding: '4px 6px 10px', border: '1px solid #000', borderTop: 'none', background: '#FFFFFF' }}>
+//                                 <div style={{ textAlign: 'center' }}>
+//                                     <div style={{ fontSize: 18, fontWeight: 800, color: '#000' }}>
+//                                         {COMPANY_NAME_EN} — {COMPANY_NAME_AR}
+//                                     </div>
+//                                     <div style={{ fontSize: 14, fontWeight: 700, color: '#000', marginTop: 4 }}>
+//                                         Accounting Worksheet — ورقة عمل المحاسبة
+//                                     </div>
+//                                     <div style={{ fontSize: 11, fontWeight: 400, color: '#333', marginTop: 2 }}>
+//                                         Generated: {printGeneratedAt}
+//                                     </div>
+//                                 </div>
+//                             </th>
+//                         </tr>
+//                         <tr className='bg-[#e6d5c0]'>
+//                             <th style={thStyle}>Serial No.{'\n'}الرقم التسلسلي</th>
+//                             <th style={thStyle}>Date{'\n'}التاريخ</th>
+//                             <th style={thStyle}>Voucher No.{'\n'}رقم السند</th>
+//                             <th style={thStyle}>Inv / Receipt No.{'\n'}رقم الفاتوره / الايصال</th>
+//                             <th style={thStyle}>Recipient / Deliverer{'\n'}المستلم / المستفيد</th>
+//                             <th style={thStyle}>Description{'\n'}البيان</th>
+//                             <th style={thStyle}>To Account{'\n'}تم التحويل الى حساب</th>
+//                             <th style={thStyle}>Income{'\n'}الدخل</th>
+//                             <th style={thStyle}>Expense{'\n'}المصروف</th>
+//                             <th style={thStyle}>Balance{'\n'}الرصيد</th>
+//                         </tr>
+//                     </thead>
+//                     <tbody>
+//                         {printRows.map((t, index) => (
+//                             <tr key={t.id} style={{ background: index % 2 === 0 ? '#FFFFFF' : '#FAF7F0' }}>
+//                                 <td style={tdStyle}>{index + 1}</td>
+//                                 <td style={tdStyle} dir="ltr">{formatDate(t.transaction_date)}</td>
+//                                 <td style={tdStyle}>{t.transaction_no}</td>
+//                                 <td style={tdStyle}>{t.document_no}</td>
+//                                 <td style={tdStyle}>{t.type === 'withdraw' ? (t.person_receipt || '-') : (t.person_deliver || '-')}</td>
+//                                 <td style={{ ...tdStyle, textAlign: 'right', maxWidth: 220 }}>{t.statement || '-'}</td>
+//                                 <td style={tdStyle}>{t.account_to || '-'}</td>
+//                                 <td style={{ ...tdStyle, color: '#1a7a1a', fontWeight: 700 }}>{t.type === 'deposit' ? formatMoney(t.amount) : ''}</td>
+//                                 <td style={{ ...tdStyle, color: '#b30000', fontWeight: 700 }}>{t.type === 'withdraw' ? formatMoney(t.amount) : ''}</td>
+//                                 <td style={{ ...tdStyle, fontWeight: 700 }}>{formatMoney(t.runningBalance)}</td>
+//                             </tr>
+//                         ))}
+//                     </tbody>
+//                     <tfoot>
+//                         <tr className="bg-[#e6d5c0] border-t-2 border-[#BF9000]">
+//                             <td colSpan={7} style={{ ...tdStyle, fontWeight: 800, textAlign: 'right' }}>
+//                                 Gross Total — المجموع الكلي
+//                             </td>
+//                             <td style={{ ...tdStyle, fontWeight: 800, color: '#1a7a1a' }}>{formatMoney(printTotals.totalIncome)}</td>
+//                             <td style={{ ...tdStyle, fontWeight: 800, color: '#b30000' }}>{formatMoney(printTotals.totalExpense)}</td>
+//                             <td style={{ ...tdStyle, fontWeight: 800 }}>{formatMoney(printTotals.balance)}</td>
+//                         </tr>
+//                     </tfoot>
+//                 </table>
+//             </div>
+
+//             {/* ================= MODALS ================= */}
+
+//             {isModalOpen && (
+//                 <div className="fixed inset-0 z-50 overflow-y-auto no-print">
+//                     <div
+//                         className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+//                         onClick={handleCloseModal}
+//                     ></div>
+
+//                     <div className="flex min-h-full items-center justify-center p-4">
+//                         <div className="relative rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto bg-[#f8f7f5]">
+//                             <button
+//                                 onClick={handleCloseModal}
+//                                 className="sticky top-4 float-end z-10 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors duration-200 m-4"
+//                                 title="Close"
+//                             >
+//                                 <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+//                                 </svg>
+//                             </button>
+
+//                             <TransactionDetails
+//                                 transactionId={selectedTransactionId}
+//                                 onClose={handleCloseModal}
+//                             />
+//                         </div>
+//                     </div>
+//                 </div>
+//             )}
+
+//             {showAddDepositModal && (
+//                 <div className="fixed inset-0 z-50 overflow-y-auto no-print">
+//                     <div className="flex min-h-full items-center justify-center p-4">
+//                         <div className="relative w-full max-w-4xl">
+//                             <AddDeposit
+//                                 onClose={handleModalClose}
+//                                 initialData={selectedTransaction}
+//                                 isEditMode={!!selectedTransaction}
+//                                 onSuccess={() => fetchTransactions(currentPage)}
+//                             />
+//                         </div>
+//                     </div>
+//                 </div>
+//             )}
+
+//             {showAddWithdrawModal && (
+//                 <div className="fixed inset-0 z-50 overflow-y-auto no-print">
+//                     <div className="flex min-h-full items-center justify-center p-4">
+//                         <div className="relative w-full max-w-4xl">
+//                             <AddWithdraw
+//                                 onClose={handleModalClose}
+//                                 initialData={selectedTransaction}
+//                                 isEditMode={!!selectedTransaction}
+//                                 onSuccess={() => fetchTransactions(currentPage)}
+//                             />
+//                         </div>
+//                     </div>
+//                 </div>
+//             )}
+//         </div>
+//     );
+// };
+
+// const thStyle = {
+//     border: '1px solid #000',
+//     padding: '8px 6px',
+//     fontSize: 11,
+//     fontWeight: 700,
+//     color: '#000',
+//     textAlign: 'center',
+//     whiteSpace: 'pre-line',
+// };
+
+// const tdStyle = {
+//     border: '1px solid #ccc',
+//     padding: '6px',
+//     fontSize: 10.5,
+//     color: '#000',
+//     textAlign: 'center',
+// };
+
+// export default Transactions;

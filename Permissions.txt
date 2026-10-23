@@ -1,0 +1,21 @@
+When add a new permission : 
+(1)
+Frontend update : 
+
+	AddPermission.jsx	Add 3 fields to defaultFormData, permissionFields, useEffect, submitData	❌
+2	Permissions.jsx	Add 3 to permissionColumns + optional stats cards + footer <td>	❌
+3	PermissionsContext.jsx	Add 3 to default fallback shape	❌
+4	Sidebar.jsx	No change (already generic)	❌
+5	Login.jsx	Call refreshPermissions() after login	❌
+6	Users.jsx	Conditional — either keep reading user.can_* (backend fix) or remove 3 toggles	❌
+7	App.jsx / routes	No change	❌
+
+
+(2)
+
+Step	File	Action	URL change?
+1	models.py	Move 3 fields Profile → Permission	❌ No
+2	Migration	makemigrations + migrate	❌ No
+3	serializers.py	Add 3 fields to PermissionSerializer	❌ No
+4	views.py (my_permissions)	Read from perm instead of perm.user.profile	❌ No
+5	urls.py	No change	❌ No
