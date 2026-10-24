@@ -12,7 +12,10 @@ from .models import (
     # Misc
     WhatsAppMessage, Slider, Offersale, PaymentPlan,
     # Monitoring
-    Monitor, Property, WorkLogComment, DailyWorkLog, Permission
+    Monitor, Property, WorkLogComment, DailyWorkLog, Permission, PropertyColdCalls,
+    
+    PropertyWantedArea
+
 )
 
 
@@ -79,6 +82,8 @@ class PermissionSerializer(serializers.ModelSerializer):
                     "هذا المستخدم لديه صلاحيات بالفعل."
                 )
         return value
+
+
 
 
 # This serializer is only to manage user data.
@@ -2496,6 +2501,50 @@ class MonitorCreateSerializer(serializers.ModelSerializer):
 
         return attrs
         
+
+class PropertyColdCallsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PropertyColdCalls
+        fields = [
+            'id', 
+            'agent', 
+            'coldcalls', 
+            'project', 
+            'created_at'
+        ]
+        # created_at is auto-generated, so we make it read-only
+        read_only_fields = ['id', 'created_at']
+
+    def validate_coldcalls(self, value):
+        # Optional: Add custom validation (e.g., no negative numbers)
+        if value < 0:
+            raise serializers.ValidationError("Number of cold calls cannot be negative.")
+        return value
+
+
+
+class PropertyWantedAreaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PropertyWantedArea
+        fields = [
+            'id', 
+            'location', 
+            'sale', 
+            'rent', 
+            'created_at'
+        ]
+        # created_at is auto-generated, so we make it read-only
+        read_only_fields = ['id', 'created_at']
+
+    def validate(self, data):
+        # ✅ Optional Custom Validation: 
+        # Ensure the client is either looking to Buy OR Rent (not both empty)
+        if not data.get('sale') and not data.get('rent'):
+            raise serializers.ValidationError(
+                "You must select at least one option: 'sale' or 'rent'."
+            )
+        return data
+
 # def validate(self, attrs):
 #     # Optional: require at least one image
 #     images = ['image_1', 'image_2', 'image_3', 'image_4']

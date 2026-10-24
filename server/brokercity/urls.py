@@ -298,9 +298,15 @@ urlpatterns = [
     path("properties/", views.properties_list_view, name="properties-list"),
     path("properties/create/", views.property_create_view, name="property-create"), 
     path("properties/<int:pk>/delete/", views.property_delete_view, name="property-delete"),
+    
+    # Cold Calls 
+    path('cold-calls/', views.PropertyColdCallsListCreateView.as_view(), name='cold-calls-list-create'),
+    
+    # Location and Area
+    path('wanted-areas/', views.PropertyWantedAreaListCreateView.as_view(), name='wanted-areas-list-create'),
+    path('wanted-areas/<int:pk>/delete/', views.PropertyWantedAreaDeleteView.as_view(), name='wanted-areas-delete'),
 
-
-      # Create
+    # Create
     path('monitor/create/', views.monitor_create, name='monitoring-create'),
 
     # Delete
@@ -311,6 +317,7 @@ urlpatterns = [
 
     # Fetch one
     path('monitor/<int:pk>/', views.monitor_detail, name='monitoring-detail'),
+
    
 ]
 

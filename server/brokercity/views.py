@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
-from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, Monitor, Rent, MonthlyPayment, get_or_create_today_log, Property, Permission
+from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, Monitor, Rent, MonthlyPayment, get_or_create_today_log, Property, Permission, PropertyColdCalls, PropertyWantedArea
 from rest_framework.response import Response
 from rest_framework import status, generics, filters
 from django.shortcuts import render, get_object_or_404
@@ -51,6 +51,8 @@ from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from django.core.mail import send_mail  
+
+
 
 
 from .serializers import (
@@ -107,7 +109,10 @@ from .serializers import (
     MonitorSerializer,
     MonitorCreateSerializer,
     PropertySerializer,
-    PermissionSerializer
+    PermissionSerializer,
+
+    PropertyColdCallsSerializer,
+    PropertyWantedAreaSerializer
 
     )
 
@@ -4005,8 +4010,107 @@ def property_create_view(request):
         status=drf_status.HTTP_201_CREATED,
     )
 
+# ========================================================
+class PropertyColdCallsListCreateView(APIView):
+    """
+    GET: List all cold calls
+    POST: Create a new cold call record
+    """
+    # ✅ Requires the user to be logged in (Remove this line if you want it public)
+    permission_classes = [IsAuthenticated] 
 
-# =========================================================
+    def get(self, request):
+        # Fetch all records ordered by newest first
+        queryset = PropertyColdCalls.objects.all().order_by('-created_at')
+
+        # Optional: Filter by agent if provided in URL (e.g., ?agent=Ahmed)
+        agent_name = request.query_params.get('agent')
+        if agent_name:
+            queryset = queryset.filter(agent__icontains=agent_name)
+
+        # Pagination (10 records per page)
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        
+        serializer = PropertyColdCallsSerializer(paginated_queryset, many=True)
+        
+        # Return paginated response
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request):
+        # Pass the incoming data to the serializer
+        serializer = PropertyColdCallsSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Cold call record created successfully!", "data": serializer.data},
+                status=status.HTTP_201_CREATED
+            )
+        
+        # Return validation errors (e.g., if coldcalls is negative)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# ========================================================
+# Property Wanted Locations and Area
+# ========================================================
+class PropertyWantedAreaListCreateView(APIView):
+    """
+    GET: List all wanted areas
+    POST: Create a new wanted area record
+    """
+    # ✅ Requires the user to be logged in
+    permission_classes = [IsAuthenticated] 
+
+    def get(self, request):
+        # Fetch all records ordered by newest first
+        queryset = PropertyWantedArea.objects.all().order_by('-created_at')
+
+        # Optional: Filter by location if provided in URL (e.g., ?location=Marina)
+        location = request.query_params.get('location')
+        if location:
+            queryset = queryset.filter(location__icontains=location)
+
+        # Pagination (10 records per page)
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        
+        serializer = PropertyWantedAreaSerializer(paginated_queryset, many=True)
+        
+        # Return paginated response
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request):
+        serializer = PropertyWantedAreaSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Wanted area record created successfully!", "data": serializer.data},
+                status=status.HTTP_201_CREATED
+            )
+        
+        # Return validation errors (e.g., if both sale and rent are false)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PropertyWantedAreaDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        # Find the record by ID, or return 404 if it doesn't exist
+        wanted_area = get_object_or_404(PropertyWantedArea, pk=pk)
+        
+        # Delete the record
+        wanted_area.delete()
+        
+        return Response(
+            {"message": "تم حذف المنطقة المطلوبة بنجاح"}, 
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
 # PROPERTY — DELETE
 # DELETE /api/properties/<id>/delete/
 # =========================================================

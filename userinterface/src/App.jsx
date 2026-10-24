@@ -39,8 +39,12 @@ import LeadsStagesGuide from './pages/ar/LeadsStagesGuide';
 import ArUsers from './pages/ar/Users';
 import ArProfile from './pages/ar/Profile';
 
+
+
 import ArAttendanceReport from './pages/ar/AttendanceReport';
 import ArProperty from './pages/ar/Property';
+import ArCalledCalls from './pages/ar/CalledCalles'
+import ArArea from './pages/ar/WantedArea'
 
 import ArPermissions from './pages/ar/Permissions' ;
 
@@ -102,6 +106,10 @@ function App() {
                  {/* Monitoring */}
                 <Route path="/ar-monitor" element={<ArMonitor />}/>
                 <Route path="/ar/property" element={<ArProperty />}/>
+                {/* /ar/calledcalls */}
+                <Route path="/ar/calledcalls" element={<ArCalledCalls />}/>
+                {/* /ar/area */}
+                <Route path="/ar/area" element={<ArArea />}/>
               
             </Route>
 

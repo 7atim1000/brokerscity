@@ -158,7 +158,7 @@ const DigitalClock = () => {
             <span
     className="
         font-mono font-black
-        text-[#203A5A]
+        text-[#8e5107]
         text-xs sm:text-sm
         tabular-nums
         tracking-wide
@@ -172,13 +172,13 @@ const DigitalClock = () => {
             {/* <span className="text-white/50 text-[10px] sm:text-xs leading-none">
                 ·
             </span> */}
-            <FaClock className="text-white/90 text-[10px] sm:text-xs shrink-0" />
+            <FaClock className="text-[#f8f7f5] text-[10px] sm:text-xs shrink-0" />
 
             {/* Time — HH:MM:SS */}
             <span
     className="
         font-mono font-black
-        text-[#203A5A]
+        text-[#8e5107]
         text-sm sm:text-base
         tabular-nums
         tracking-wider

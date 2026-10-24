@@ -1566,10 +1566,72 @@ class Property(models.Model):
     draft_no = models.IntegerField(help_text="Draft No", null=True, blank=True)
     sale_no = models.IntegerField(help_text="Sale No", null=True, blank=True)
     rent_no = models.IntegerField(help_text="Rent No", null=True, blank=True)
+    
 
     def __str__(self):
         return f"Property #{self.property_no or self.pk} - {self.month or ''}"
 
+
+
+
+class PropertyColdCalls(models.Model):
+    agent = models.CharField(
+        max_length=100, 
+        help_text="Agent name", 
+        null=True, 
+        blank=True
+    )
+
+    # ✅ FIXED: Added () to instantiate the field. Added default=0.
+    coldcalls = models.IntegerField(default=0, help_text="Number of cold calls")
+    project = models.CharField(
+        max_length=100, 
+        help_text="Project name", # ✅ FIXED: Changed from "Agent name"
+        null=True, 
+        blank=True
+    )
+    
+    # Optional: Add created_at so you know when the call was logged
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def __str__(self):
+        # ✅ FIXED: Removed non-existent fields (property_no, month)
+        # Now shows the Agent and the Project
+        return f"{self.agent or 'Unknown Agent'} - {self.project or 'No Project'} ({self.coldcalls} calls)"
+
+
+
+
+class PropertyWantedArea(models.Model):
+    location = models.CharField(
+        max_length=100, 
+        help_text="Desired location", # ✅ FIXED: Changed from "Agent name"
+        null=True, 
+        blank=True
+    )
+    # ✅ FIXED: Added () and default=False
+    sale = models.BooleanField(
+        default=False, 
+        help_text="Is the client looking to buy (Sale)?"
+    )
+    # ✅ FIXED: Added () and default=False
+    rent = models.BooleanField(
+        default=False, 
+        help_text="Is the client looking to rent?"
+    )
+    
+    # Optional: Add created_at
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def __str__(self):
+        # ✅ FIXED: Removed non-existent fields (property_no, month)
+        # Now shows the Location and what the client wants
+        wants = []
+        if self.sale: wants.append("Sale")
+        if self.rent: wants.append("Rent")
+        action = " & ".join(wants) if wants else "Unknown"
+        
+        return f"{self.location or 'Unknown Location'} - ({action})"
 
 
 class Monitor(models.Model):

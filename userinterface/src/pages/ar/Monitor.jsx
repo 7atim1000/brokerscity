@@ -11,6 +11,9 @@ import { FaBuilding } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { FiCalendar } from 'react-icons/fi';
 
+import { ImLocation2 } from "react-icons/im";
+import { IoCallSharp } from "react-icons/io5";
+
 const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
 
 const MONTHS = [
@@ -904,6 +907,23 @@ const Monitor = () => {
                     >
                         <FaBuilding className="text-xl" />
                         Listing
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/ar/calledcalls')}
+                        className="bg-white border-2 border-[#a47d52] cursor-pointer text-[#a47d52] px-5 md:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#a47d52] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap flex items-center gap-2"
+                    >
+                        <IoCallSharp className="text-xl" />
+                        Called Calls
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/ar/area')}
+                        className="bg-white border-2 border-[#a47d52] cursor-pointer text-[#a47d52] px-5 md:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#a47d52] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap flex items-center gap-2"
+                    >
+                        <ImLocation2 className="text-xl" />
+                        Wanted Locations
+                        
                     </button>
                 </div>
             </div>
