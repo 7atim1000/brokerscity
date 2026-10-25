@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast"; // ✅ Changed to react-hot-toast
+import { Toaster } from "react-hot-toast";
 
 import {
     FaSave,
@@ -68,6 +68,7 @@ const EditUnit = ({
         type: "apartment",
         status: "occupied",
         floor: "first",
+        kind: "", // ✅ Added Kind
 
         price: "",
         area: "",
@@ -78,8 +79,7 @@ const EditUnit = ({
         has_parking: false,
         parking: "",
 
-        furnished: false,
-        unfurnished: false,
+        furnished: "unfurnished", // ✅ Changed to dropdown string
 
         image_1: null,
         image_2: null,
@@ -153,7 +153,7 @@ const EditUnit = ({
                     ),
 
                     fetch(
-                        `${BASE}/api/categories/`,
+                        `${BASE}/api/buildings/`, // ✅ Using buildings endpoint (same as AddUnit)
                         {
                             method: "GET",
                             headers,
@@ -212,7 +212,7 @@ const EditUnit = ({
                 const extractedCategories =
                     Array.isArray(categoriesData)
                         ? categoriesData
-                        : categoriesData?.categories ||
+                        : categoriesData?.buildings || // ✅ Match AddUnit
                           categoriesData?.data ||
                           categoriesData?.results ||
                           [];
@@ -246,6 +246,9 @@ const EditUnit = ({
                         unit?.floor ??
                         "first",
 
+                    kind:
+                        unit?.kind ?? "", // ✅ Load Kind
+
                     price:
                         unit?.price ?? "",
 
@@ -267,14 +270,7 @@ const EditUnit = ({
                         unit?.parking ?? "",
 
                     furnished:
-                        Boolean(
-                            unit?.furnished
-                        ),
-
-                    unfurnished:
-                        Boolean(
-                            unit?.unfurnished
-                        ),
+                        unit?.furnished ?? "unfurnished", // ✅ Load string
 
                     image_1: null,
                     image_2: null,
@@ -383,6 +379,7 @@ const EditUnit = ({
 
                 const owner =
                     category?.owner?.name ||
+                    category?.owner_details?.name ||
                     category?.owner_name ||
                     "";
 
@@ -519,12 +516,6 @@ const EditUnit = ({
 
     /* =========================================================
        REMOVE IMAGE
-
-       For existing image:
-       sending empty value tells Django to clear it.
-
-       For newly selected image:
-       simply removes the new file.
     ========================================================= */
 
     const handleRemoveImage = (
@@ -897,7 +888,7 @@ const EditUnit = ({
     };
 
     /* =========================================================
-       TAB STYLE
+       TAB STYLE (✅ Updated Gradient Colors)
     ========================================================= */
 
     const tabButtonClass = (
@@ -920,10 +911,11 @@ const EditUnit = ({
             transition-all
             duration-300
             whitespace-nowrap
+            cursor-pointer
             ${
                 active
-                    ? "bg-[#a47d52] text-white shadow-md"
-                    : "bg-[#e9e6e1] text-gray-600 hover:bg-[#ddd8d1]"
+                    ? "bg-gradient-to-l from-[#b88d63]/30 to-[#a47d52] text-white shadow-md"
+                    : "bg-[#f8f7f5] text-gray-600 hover:bg-[#e9e6e1]"
             }
         `;
     };
@@ -1171,6 +1163,7 @@ const EditUnit = ({
                 p-4
             "
         >
+            <Toaster position="top-center" reverseOrder={false} />
 
             <div className="
                 w-full
@@ -1311,7 +1304,7 @@ const EditUnit = ({
                             disabled={loading}
                         >
                             <FaMapMarkerAlt />
-                            التسعير والمساحة
+                            التسعير والموقع
                         </button>
 
                         <button
@@ -1493,6 +1486,39 @@ const EditUnit = ({
 
                                     </div>
 
+                                    {/* Kind (✅ Added right after Floor) */}
+
+                                    <div>
+                                        <label
+                                            className="
+                                            block
+                                            mb-2
+                                            font-bold
+                                            text-gray-700
+                                        "
+                                        >
+                                            نوع الوحدة (Kind)
+                                        </label>
+
+                                        <select
+                                            name="kind"
+                                            value={formData.kind}
+                                            onChange={handleChange}
+                                            disabled={loading}
+                                            className={inputClass("kind")}
+                                        >
+                                            <option value="">اختر النوع...</option>
+                                            <option value="2BHK">2BHK</option>
+                                            <option value="Shop">Shop</option>
+                                        </select>
+
+                                        {errors.kind && (
+                                            <p className="text-red-500 text-xs mt-1">
+                                                {errors.kind}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div>
 
                                         <label className="
@@ -1657,205 +1683,47 @@ const EditUnit = ({
 
                                 </div>
 
-                                <div className="
-                                    border
-                                    border-gray-200
-                                    rounded-xl
-                                    bg-white
-                                    p-5
-                                ">
-
-                                    <div className="
-                                        flex
-                                        items-center
-                                        justify-between
-                                        mb-4
-                                    ">
-
-                                        <div>
-
-                                            <h4 className="
-                                                font-extrabold
-                                                text-gray-800
-                                            ">
-                                                مواقف السيارات
-                                            </h4>
-
-                                            <p className="
-                                                text-xs
-                                                text-gray-500
-                                                mt-1
-                                            ">
-                                                تحديد وجود مواقف وعددها
-                                            </p>
-
-                                        </div>
-
-                                        <label className="
-                                            flex
-                                            items-center
-                                            gap-2
-                                            cursor-pointer
-                                            font-bold
-                                            text-gray-700
-                                        ">
-
-                                            <input
-                                                type="checkbox"
-                                                name="has_parking"
-                                                checked={
-                                                    formData.has_parking
-                                                }
-                                                onChange={
-                                                    handleChange
-                                                }
-                                                disabled={loading}
-                                                className="
-                                                    w-5
-                                                    h-5
-                                                    accent-[#a47d52]
-                                                    cursor-pointer
-                                                "
-                                            />
-
-                                            يوجد موقف
-
+                                {/* Furnished + Parking */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    
+                                    {/* ✅ Furnished (Changed to select dropdown to match AddUnit) */}
+                                    <div>
+                                        <label className="block mb-2 font-bold text-gray-700">
+                                            حالة الفرش
                                         </label>
-
+                                        <select
+                                            name="furnished"
+                                            value={formData.furnished}
+                                            onChange={handleChange}
+                                            disabled={loading}
+                                            className={inputClass("furnished")}
+                                        >
+                                            <option value="furnished">مفروشة</option>
+                                            <option value="unfurnished">غير مفروشة</option>
+                                        </select>
                                     </div>
 
-                                    {formData.has_parking && (
-
-                                        <div>
-
-                                            <label className="
-                                                block
-                                                mb-2
-                                                font-bold
-                                                text-gray-700
-                                            ">
-                                                عدد المواقف
-                                            </label>
-
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                name="parking"
-                                                value={
-                                                    formData.parking
-                                                }
-                                                onChange={
-                                                    handleChange
-                                                }
-                                                disabled={loading}
-                                                placeholder="عدد المواقف"
-                                                className={
-                                                    inputClass(
-                                                        "parking"
-                                                    )
-                                                }
-                                            />
-
-                                            {errors.parking && (
-                                                <p className="
-                                                    text-red-500
-                                                    text-xs
-                                                    mt-1
-                                                ">
-                                                    {errors.parking}
-                                                </p>
-                                            )}
-
-                                        </div>
-                                    )}
-
-                                </div>
-
-                                <div className="
-                                    grid
-                                    grid-cols-1
-                                    md:grid-cols-2
-                                    gap-4
-                                ">
-
-                                    <label className="
-                                        flex
-                                        items-center
-                                        gap-3
-                                        p-4
-                                        bg-white
-                                        border
-                                        border-gray-200
-                                        rounded-xl
-                                        cursor-pointer
-                                        hover:border-[#a47d52]
-                                    ">
-
+                                    {/* Parking */}
+                                    <div>
+                                        <label className="block mb-2 font-bold text-gray-700">
+                                            عدد مواقف السيارات
+                                        </label>
                                         <input
-                                            type="checkbox"
-                                            name="furnished"
-                                            checked={
-                                                formData.furnished
-                                            }
-                                            onChange={
-                                                handleChange
-                                            }
+                                            type="number"
+                                            min="0"
+                                            name="parking"
+                                            value={formData.parking}
+                                            onChange={handleChange}
                                             disabled={loading}
-                                            className="
-                                                w-5
-                                                h-5
-                                                accent-[#a47d52]
-                                            "
+                                            placeholder="0"
+                                            className={inputClass("parking")}
                                         />
-
-                                        <span className="
-                                            font-bold
-                                            text-gray-700
-                                        ">
-                                            مفروشة
-                                        </span>
-
-                                    </label>
-
-                                    <label className="
-                                        flex
-                                        items-center
-                                        gap-3
-                                        p-4
-                                        bg-white
-                                        border
-                                        border-gray-200
-                                        rounded-xl
-                                        cursor-pointer
-                                        hover:border-[#a47d52]
-                                    ">
-
-                                        <input
-                                            type="checkbox"
-                                            name="unfurnished"
-                                            checked={
-                                                formData.unfurnished
-                                            }
-                                            onChange={
-                                                handleChange
-                                            }
-                                            disabled={loading}
-                                            className="
-                                                w-5
-                                                h-5
-                                                accent-[#a47d52]
-                                            "
-                                        />
-
-                                        <span className="
-                                            font-bold
-                                            text-gray-700
-                                        ">
-                                            غير مفروشة
-                                        </span>
-
-                                    </label>
-
+                                        {errors.parking && (
+                                            <p className="text-red-500 text-xs mt-1">
+                                                {errors.parking}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
                             </div>
@@ -1945,7 +1813,7 @@ const EditUnit = ({
                                             font-bold
                                             text-gray-700
                                         ">
-                                            المساحة
+                                            الموقع
                                         </label>
 
                                         <input
@@ -2147,6 +2015,7 @@ const EditUnit = ({
                                                         ">
                                                             {
                                                                 selectedCategory?.owner?.name ||
+                                                                selectedCategory?.owner_details?.name ||
                                                                 selectedCategory?.owner_name ||
                                                                 "-"
                                                             }
@@ -2383,6 +2252,7 @@ const EditUnit = ({
                                                                 ">
                                                                     {
                                                                         category?.owner?.name ||
+                                                                        category?.owner_details?.name ||
                                                                         category?.owner_name ||
                                                                         "-"
                                                                     }
@@ -2567,6 +2437,7 @@ const EditUnit = ({
                             </button>
                         )}
 
+                        {/* ✅ Next Button Updated Gradient Colors */}
                         {activeTab !== "images" && (
 
                             <button
@@ -2581,14 +2452,16 @@ const EditUnit = ({
                                     gap-2
                                     cursor-pointer
                                     font-extrabold
-                                    bg-[#a47d52]
+                                    bg-gradient-to-l
+                                    from-[#b88d63]/40
+                                    to-[#a47d52]
                                     text-white
                                     px-6
                                     py-3
                                     rounded-lg
                                     transition-all
                                     duration-300
-                                    hover:bg-[#8a6a44]
+                                    hover:opacity-90
                                     hover:scale-[1.02]
                                     disabled:opacity-50
                                 "
@@ -2685,3 +2558,4 @@ const EditUnit = ({
 };
 
 export default EditUnit;
+

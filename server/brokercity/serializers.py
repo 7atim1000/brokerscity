@@ -1362,6 +1362,8 @@ class OwnerSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'phone',
+            'id_number',
+            'email',
             'address',
             'balance',
             'balance_opening',
@@ -1469,6 +1471,9 @@ class BuildingSerializer(serializers.ModelSerializer):
 #     owner_details = serializers.SerializerMethodField()
 #     floor_display = serializers.SerializerMethodField()
 
+#     # ✅ Expose the derived property as a read-only boolean
+#     has_parking = serializers.SerializerMethodField()
+
 #     class Meta:
 #         model = Unit
 #         fields = [
@@ -1489,12 +1494,12 @@ class BuildingSerializer(serializers.ModelSerializer):
 #             'bedrooms',
 #             'bathrooms',
 
-#             'has_parking',
+#             'has_parking',           # ✅ read-only (SerializerMethodField)
 #             'parking',
 
-#             'furnished',
-#             #'unfurnished',
-
+#             'furnished',             # ✅ string field ("furnished" / "unfurnished")
+#             # 'unfurnished',         # ❌ REMOVED — no longer a model field
+#             'kind',
 #             'image_1',
 #             'image_2',
 #             'image_3',
@@ -1509,13 +1514,13 @@ class BuildingSerializer(serializers.ModelSerializer):
 #             'category_details',
 #             'owner_details',
 #             'floor_display',
-#             'has_parking',
+#             'has_parking',           # ✅ now read-only
 #             'created_at',
 #             'updated_at',
 #         ]
 
-    
 #     # ---------- existing methods (unchanged) ----------
+
 #     def get_floor_display(self, obj):
 #         if not obj.floor:
 #             return None
@@ -1545,6 +1550,7 @@ class BuildingSerializer(serializers.ModelSerializer):
 #             'area': category.area,
 #             'location': category.location,
 #             'owner': owner_details,
+#             'kind' : kind_of_unit,
 #         }
 
 #     def get_owner_details(self, obj):
@@ -1557,10 +1563,18 @@ class BuildingSerializer(serializers.ModelSerializer):
 #             'id': owner.id,
 #             'name': owner.name,
 #             'phone': owner.phone,
+        
 #             'address': owner.address,
 #             'balance_opening': owner.balance_opening,
 #             'balance': owner.balance,
 #         }
+
+#     # ---------- 👇 new property field ----------
+
+#     def get_has_parking(self, obj):
+#         return bool(obj.parking and obj.parking > 0)
+
+#     # ---------- validation ----------
 
 #     def validate_name(self, value):
 #         if value:
@@ -1599,14 +1613,13 @@ class BuildingSerializer(serializers.ModelSerializer):
 #                 "Parking spaces cannot be negative."
 #             )
 #         return value
-#     # ... rest of your methods unchanged
-#     def validate_security_deposit(self, value):    # ✅ NEW
+
+#     def validate_security_deposit(self, value):
 #         if value is not None and value < 0:
 #             raise serializers.ValidationError(
 #                 "Security deposit cannot be negative."
 #             )
 #         return value
-
 
 class UnitSerializer(serializers.ModelSerializer):
     category_details = serializers.SerializerMethodField()
@@ -1630,18 +1643,17 @@ class UnitSerializer(serializers.ModelSerializer):
             'floor',
             'floor_display',
             'price',
-            'security_deposit',      # ✅ NEW
+            'security_deposit',
 
             'area',
             'bedrooms',
             'bathrooms',
 
-            'has_parking',           # ✅ read-only (SerializerMethodField)
+            'has_parking',
             'parking',
 
-            'furnished',             # ✅ string field ("furnished" / "unfurnished")
-            # 'unfurnished',         # ❌ REMOVED — no longer a model field
-
+            'furnished',
+            'kind',
             'image_1',
             'image_2',
             'image_3',
@@ -1656,12 +1668,10 @@ class UnitSerializer(serializers.ModelSerializer):
             'category_details',
             'owner_details',
             'floor_display',
-            'has_parking',           # ✅ now read-only
+            'has_parking',
             'created_at',
             'updated_at',
         ]
-
-    # ---------- existing methods (unchanged) ----------
 
     def get_floor_display(self, obj):
         if not obj.floor:
@@ -1681,6 +1691,7 @@ class UnitSerializer(serializers.ModelSerializer):
                 'id': category.owner.id,
                 'name': category.owner.name,
                 'phone': category.owner.phone,
+                'id_number': category.owner.id_number, # ✅ Added ID Number
                 'address': category.owner.address,
             }
 
@@ -1692,6 +1703,9 @@ class UnitSerializer(serializers.ModelSerializer):
             'area': category.area,
             'location': category.location,
             'owner': owner_details,
+            # ✅ FIXED: Replaced the invalid 'kind_of_unit' variable with 'obj.kind'.
+            # The 'kind' field belongs to the Unit model, so we reference the current Unit object (obj).
+            'kind': obj.kind,
         }
 
     def get_owner_details(self, obj):
@@ -1704,6 +1718,7 @@ class UnitSerializer(serializers.ModelSerializer):
             'id': owner.id,
             'name': owner.name,
             'phone': owner.phone,
+            'id_number': owner.id_number, # ✅ Added ID Number
             'address': owner.address,
             'balance_opening': owner.balance_opening,
             'balance': owner.balance,
@@ -1760,6 +1775,7 @@ class UnitSerializer(serializers.ModelSerializer):
                 "Security deposit cannot be negative."
             )
         return value
+
 
 class RentalSerializer(serializers.ModelSerializer):
     class Meta:
@@ -1980,6 +1996,136 @@ class RentSerializer(serializers.ModelSerializer):
 # MONTHLY PAYMENT SERIALIZER
 # ============================================================
 
+# class MonthlyPaymentSerializer(serializers.ModelSerializer):
+#     # Read-only convenience fields pulled from the related Unit via Rent
+#     unit_id = serializers.SerializerMethodField()
+#     unit_display = serializers.SerializerMethodField()
+#     unit_price = serializers.SerializerMethodField()
+#     unit_security_deposit = serializers.SerializerMethodField()
+
+#     # Computed property exposed on the API
+#     amount_remaining = serializers.DecimalField(
+#         max_digits=10,
+#         decimal_places=2,
+#         read_only=True,
+#     )
+
+#     tenant_name = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = MonthlyPayment
+#         fields = [
+#             "id",
+#             "rent",
+#             "month",
+#             "amount_due",
+#             "amount_paid",
+#             "amount_remaining",
+#             "security_deposit",
+#             "due_date",
+#             "paid_date",
+#             "status",
+#             "notes",
+#             # convenience / read-only
+#             "tenant_name",
+#             "unit_id",
+#             "unit_display",
+#             "unit_price",
+#             "unit_security_deposit",
+#             "created_at",
+#             "updated_at",
+#         ]
+#         read_only_fields = [
+#             "id",
+#             "amount_remaining",
+#             "tenant_name",
+#             "unit_id",
+#             "unit_display",
+#             "unit_price",
+#             "unit_security_deposit",
+#             "created_at",
+#             "updated_at",
+#         ]
+
+#     # ---------- helpers ----------
+
+#     def _get_unit(self, obj):
+#         if not obj.rent or not obj.rent.unit_name:
+#             return None
+#         return obj.rent.unit_name
+
+#     def get_unit_id(self, obj):
+#         unit = self._get_unit(obj)
+#         return unit.pk if unit else None
+
+#     def get_unit_display(self, obj):
+#         unit = self._get_unit(obj)
+#         if not unit:
+#             return None
+#         return getattr(unit, "name", None) or f"Unit #{unit.pk}"
+
+#     def get_unit_price(self, obj):
+#         unit = self._get_unit(obj)
+#         return getattr(unit, "price", None) if unit else None
+
+#     def get_unit_security_deposit(self, obj):
+#         unit = self._get_unit(obj)
+#         return getattr(unit, "security_deposit", None) if unit else None
+
+#     def get_tenant_name(self, obj):
+#         if not obj.rent or not obj.rent.rental_name:
+#             return None
+#         rental = obj.rent.rental_name
+#         return (
+#             getattr(rental, "name", None)
+#             or getattr(rental, "tenant_name", None)
+#             or str(rental)
+#         )
+
+#     # ---------- auto-fill from Unit ----------
+
+#     def create(self, validated_data):
+#         rent = validated_data.get("rent")
+#         unit = rent.unit_name if rent else None
+
+#         # If client didn't send a security_deposit, auto-fill from Unit
+#         if not validated_data.get("security_deposit") and unit:
+#             validated_data["security_deposit"] = (
+#                 getattr(unit, "security_deposit", None) or Decimal("0.00")
+#             )
+
+#         # If client didn't send amount_due, auto-fill from Unit price
+#         if not validated_data.get("amount_due") and unit:
+#             validated_data["amount_due"] = (
+#                 getattr(unit, "price", None) or Decimal("0.00")
+#             )
+
+#         return super().create(validated_data)
+
+#     # ---------- validation ----------
+
+#     def validate_amount_due(self, value):
+#         if value is not None and value < 0:
+#             raise serializers.ValidationError("Amount due cannot be negative.")
+#         return value
+
+#     def validate_amount_paid(self, value):
+#         if value is not None and value < 0:
+#             raise serializers.ValidationError("Amount paid cannot be negative.")
+#         return value
+
+#     def validate_security_deposit(self, value):
+#         if value is not None and value < 0:
+#             raise serializers.ValidationError(
+#                 "Security deposit cannot be negative."
+#             )
+#         return value
+
+
+from rest_framework import serializers
+from decimal import Decimal
+from .models import MonthlyPayment
+
 class MonthlyPaymentSerializer(serializers.ModelSerializer):
     # Read-only convenience fields pulled from the related Unit via Rent
     unit_id = serializers.SerializerMethodField()
@@ -2066,6 +2212,38 @@ class MonthlyPaymentSerializer(serializers.ModelSerializer):
             or str(rental)
         )
 
+    # ---------- validation ----------
+
+    # ✅ Added month validation to handle the new text field safely
+    def validate_month(self, value):
+        if not value:
+            return None
+        return str(value).strip()
+
+    # ✅ Fixed Decimals: Converts empty strings ("") to 0.00 so Django doesn't crash
+    def validate_amount_due(self, value):
+        if value == "" or value is None:
+            return Decimal("0.00")
+        if value < 0:
+            raise serializers.ValidationError("Amount due cannot be negative.")
+        return value
+
+    def validate_amount_paid(self, value):
+        if value == "" or value is None:
+            return Decimal("0.00")
+        if value < 0:
+            raise serializers.ValidationError("Amount paid cannot be negative.")
+        return value
+
+    def validate_security_deposit(self, value):
+        if value == "" or value is None:
+            return Decimal("0.00")
+        if value < 0:
+            raise serializers.ValidationError(
+                "Security deposit cannot be negative."
+            )
+        return value
+
     # ---------- auto-fill from Unit ----------
 
     def create(self, validated_data):
@@ -2085,26 +2263,6 @@ class MonthlyPaymentSerializer(serializers.ModelSerializer):
             )
 
         return super().create(validated_data)
-
-    # ---------- validation ----------
-
-    def validate_amount_due(self, value):
-        if value is not None and value < 0:
-            raise serializers.ValidationError("Amount due cannot be negative.")
-        return value
-
-    def validate_amount_paid(self, value):
-        if value is not None and value < 0:
-            raise serializers.ValidationError("Amount paid cannot be negative.")
-        return value
-
-    def validate_security_deposit(self, value):
-        if value is not None and value < 0:
-            raise serializers.ValidationError(
-                "Security deposit cannot be negative."
-            )
-        return value
-
 
 
 ###############################################################

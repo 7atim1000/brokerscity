@@ -384,7 +384,7 @@ const RentList = () => {
                                         className="text-sm font-extrabold text-green-700"
                                         dir="ltr"
                                     >
-                                        {formatAmount(rent.installment_no)}
+                                        {formatAmount(rent.installment_amount)}
                                     </p>
                                 </div>
 
@@ -458,7 +458,10 @@ const RentList = () => {
                                     إلى تاريخ
                                 </th>
                                 <th className="px-6 py-4 text-right text-sm font-bold">
-                                    قيمة القسط
+                                    عدد الاقساط
+                                </th>
+                                <th className="px-6 py-4 text-right text-sm font-bold">
+                                   قيمة القسط
                                 </th>
                                 <th className="px-6 py-4 text-right text-sm font-bold">
                                     الحالة
@@ -501,6 +504,12 @@ const RentList = () => {
                                         dir="ltr"
                                     >
                                         {formatAmount(rent.installment_no)}
+                                    </td>
+                                    <td
+                                        className="px-6 py-4 text-right text-sm text-gray-700"
+                                        dir="ltr"
+                                    >
+                                        {formatAmount(rent.installment_amount)}
                                     </td>
                                     <td className="px-6 py-4 text-right text-sm">
                                         {getStatusBadge(rent)}

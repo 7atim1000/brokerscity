@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast"; // ✅ Changed to react-hot-toast
+import { Toaster } from "react-hot-toast";
 
 import {
     FaBuilding,
@@ -202,7 +202,7 @@ const DetailUnit = ({ unitData, onClose }) => {
     // Furnished
     // =========================================================
     const getFurnishedStatus = () => {
-        if (unit?.furnished === true) {
+        if (unit?.furnished === true || unit?.furnished === "furnished") {
             return (
                 <span className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
                     مفروشة
@@ -210,7 +210,7 @@ const DetailUnit = ({ unitData, onClose }) => {
             );
         }
 
-        if (unit?.unfurnished === true) {
+        if (unit?.unfurnished === true || unit?.furnished === "unfurnished") {
             return (
                 <span className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">
                     غير مفروشة
@@ -227,15 +227,6 @@ const DetailUnit = ({ unitData, onClose }) => {
 
     // =========================================================
     // Category
-    //
-    // Unit no longer has owner/location directly.
-    //
-    // Everything comes from:
-    //
-    // Unit
-    //   -> category
-    //       -> owner
-    //       -> location
     // =========================================================
     const getCategory = () => {
         return (
@@ -349,6 +340,7 @@ const DetailUnit = ({ unitData, onClose }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <Toaster position="top-center" reverseOrder={false} />
 
             <div
                 className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
@@ -464,6 +456,25 @@ const DetailUnit = ({ unitData, onClose }) => {
 
                                     <p className="text-gray-800 font-semibold">
                                         {getTypeLabel(unit.type)}
+                                    </p>
+
+                                </div>
+
+                                {/* ✅ KIND (Added) */}
+                                <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+
+                                    <div className="flex items-center gap-3 mb-2">
+
+                                        <FaTag className="text-[#a47d52]" />
+
+                                        <span className="text-sm font-bold text-gray-600">
+                                            النوع (Kind)
+                                        </span>
+
+                                    </div>
+
+                                    <p className="text-gray-800 font-semibold">
+                                        {unit.kind || "-"}
                                     </p>
 
                                 </div>

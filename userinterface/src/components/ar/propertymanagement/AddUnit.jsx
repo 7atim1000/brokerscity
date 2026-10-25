@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast"; 
+import { Toaster } from "react-hot-toast";
 
 import {
     FaSave,
@@ -14,6 +14,7 @@ import {
     FaChevronLeft,
     FaChevronRight,
     FaCheck,
+    FaTag, 
 } from "react-icons/fa";
 
 import { MdClose } from "react-icons/md";
@@ -62,12 +63,11 @@ const AddUnit = ({ onClose, onSuccess }) => {
         type: "apartment",
         status: "available",
         floor: "first",
+        kind: "", // ✅ Added Kind
 
         price: "",
         security_deposit: "",
 
-        // These are inherited from Category.
-        // They are NOT submitted to Unit.
         location: "",
         area: "",
 
@@ -382,15 +382,12 @@ const AddUnit = ({ onClose, onSuccess }) => {
 
     /* =========================================================
        AUTO-CALCULATE SECURITY DEPOSIT (price * 5%)
-       Runs whenever `price` changes and the deposit has NOT been
-       manually edited by the user.
     ========================================================= */
 
     const [securityDepositManuallyEdited, setSecurityDepositManuallyEdited] =
         useState(false);
 
     useEffect(() => {
-        // If the user has already manually edited the deposit, don't override.
         if (securityDepositManuallyEdited) return;
 
         const priceNum = Number(formData.price);
@@ -442,13 +439,10 @@ const AddUnit = ({ onClose, onSuccess }) => {
             return;
         }
 
-        // ✅ Mark security deposit as manually edited so auto-calc stops.
         if (name === "security_deposit") {
             setSecurityDepositManuallyEdited(true);
         }
 
-        // ✅ If the user clears the price, reset the auto-edit flag so
-        //    entering a new price triggers auto-calc again.
         if (name === "price" && (value === "" || Number(value) <= 0)) {
             setSecurityDepositManuallyEdited(false);
         }
@@ -739,7 +733,7 @@ const AddUnit = ({ onClose, onSuccess }) => {
     };
 
     /* =========================================================
-       TAB BUTTON
+       TAB BUTTON (✅ Updated Gradient Colors)
     ========================================================= */
 
     const tabButtonClass = (tab) => {
@@ -758,10 +752,11 @@ const AddUnit = ({ onClose, onSuccess }) => {
             transition-all
             duration-300
             whitespace-nowrap
+            cursor-pointer
             ${
                 active
-                    ? "bg-[#a47d52] text-white shadow-md"
-                    : "bg-[#e9e6e1] text-gray-600 hover:bg-[#ddd8d1]"
+                    ? "bg-gradient-to-l from-[#b88d63]/30 to-[#a47d52] text-white shadow-md"
+                    : "bg-[#f8f7f5] text-gray-600 hover:bg-[#e9e6e1]"
             }
         `;
     };
@@ -894,6 +889,8 @@ const AddUnit = ({ onClose, onSuccess }) => {
                 p-4
             "
         >
+            <Toaster position="top-center" reverseOrder={false} />
+
             <div
                 className="
                     w-full
@@ -1124,7 +1121,7 @@ const AddUnit = ({ onClose, onSuccess }) => {
                                             text-gray-700
                                         "
                                         >
-                                            اسم الوحدة
+                                            اسم / رقم الوحدة
                                         </label>
 
                                         <input
@@ -1178,6 +1175,39 @@ const AddUnit = ({ onClose, onSuccess }) => {
                                         {errors.floor && (
                                             <p className="text-red-500 text-xs mt-1">
                                                 {errors.floor}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Kind (✅ Added right after Floor) */}
+
+                                    <div>
+                                        <label
+                                            className="
+                                            block
+                                            mb-2
+                                            font-bold
+                                            text-gray-700
+                                        "
+                                        >
+                                            نوع الوحدة (Kind)
+                                        </label>
+
+                                        <select
+                                            name="kind"
+                                            value={formData.kind}
+                                            onChange={handleChange}
+                                            disabled={loading}
+                                            className={inputClass("kind")}
+                                        >
+                                            <option value="">اختر النوع...</option>
+                                            <option value="2BHK">2BHK</option>
+                                            <option value="Shop">Shop</option>
+                                        </select>
+
+                                        {errors.kind && (
+                                            <p className="text-red-500 text-xs mt-1">
+                                                {errors.kind}
                                             </p>
                                         )}
                                     </div>
@@ -1994,8 +2024,8 @@ const AddUnit = ({ onClose, onSuccess }) => {
                                                     text-xs
                                                     text-gray-400
                                                     mb-1
-                                                "
-                                                    >
+                                                    "
+                                                >
                                                     الموقع
                                                 </p>
 
@@ -2467,7 +2497,7 @@ const AddUnit = ({ onClose, onSuccess }) => {
                             </button>
                         )}
 
-                        {/* Next */}
+                        {/* Next (✅ Updated Gradient Colors) */}
 
                         {activeTab !== "images" && (
                             <button
@@ -2482,14 +2512,16 @@ const AddUnit = ({ onClose, onSuccess }) => {
                                     gap-2
                                     cursor-pointer
                                     font-extrabold
-                                    bg-[#a47d52]
+                                    bg-gradient-to-l
+                                    from-[#b88d63]/40
+                                    to-[#a47d52]
                                     text-white
                                     px-6
                                     py-3
                                     rounded-lg
                                     transition-all
                                     duration-300
-                                    hover:bg-[#8a6a44]
+                                    hover:opacity-90
                                     hover:scale-[1.02]
                                     disabled:opacity-50
                                     disabled:cursor-not-allowed
@@ -2576,11 +2608,10 @@ const AddUnit = ({ onClose, onSuccess }) => {
 
 export default AddUnit;
 
-
-
 // import React, { useEffect, useMemo, useState } from "react";
 // import { toast } from "react-toastify";
 // import "react-toastify/dist/ReactToastify.css";
+
 // import {
 //     FaSave,
 //     FaBuilding,
@@ -2643,6 +2674,7 @@ export default AddUnit;
 //         floor: "first",
 
 //         price: "",
+//         security_deposit: "",
 
 //         // These are inherited from Category.
 //         // They are NOT submitted to Unit.
@@ -2652,11 +2684,9 @@ export default AddUnit;
 //         bedrooms: "",
 //         bathrooms: "",
 
-//         has_parking: false,
 //         parking: "",
 
-//         furnished: false,
-//         unfurnished: false,
+//         furnished: "unfurnished",
 
 //         image_1: null,
 //         image_2: null,
@@ -2683,8 +2713,6 @@ export default AddUnit;
 
 //     /* =========================================================
 //        ENTER-KEY NAVIGATION
-//        Moves focus to the next focusable field inside the form
-//        in DOM (visual) order.
 //     ========================================================= */
 
 //     const handleEnterNavigation = (e) => {
@@ -2692,16 +2720,13 @@ export default AddUnit;
 
 //         const target = e.target;
 
-//         // Allow default Enter inside textarea (multi-line).
 //         if (target.tagName === "TEXTAREA") return;
 
-//         // Prevent form submit on Enter everywhere else.
 //         e.preventDefault();
 
 //         const form = target.form;
 //         if (!form) return;
 
-//         // All focusable candidates in visual/DOM order.
 //         const focusableSelector = [
 //             'input:not([type="hidden"]):not([disabled])',
 //             "select:not([disabled])",
@@ -2711,9 +2736,7 @@ export default AddUnit;
 //         const focusables = Array.from(
 //             form.querySelectorAll(focusableSelector)
 //         ).filter((el) => {
-//             // Skip file inputs (browsers handle those specially).
 //             if (el.type === "file") return false;
-//             // Skip invisible / off-screen fields.
 //             if (el.offsetParent === null && el.type !== "checkbox") {
 //                 return false;
 //             }
@@ -2728,7 +2751,6 @@ export default AddUnit;
 
 //         if (next) {
 //             next.focus();
-//             // If it's a text/number input, select its content for quick replace.
 //             if (
 //                 next.tagName === "INPUT" &&
 //                 ["text", "number", "search", "email", "tel", "url"].includes(
@@ -2742,9 +2764,6 @@ export default AddUnit;
 //                 }
 //             }
 //         }
-//         // On last field, pressing Enter does nothing (no submit).
-//         // To submit, user must click the Save button or reach the images tab
-//         // and press the Save button explicitly.
 //     };
 
 //     /* =========================================================
@@ -2959,11 +2978,8 @@ export default AddUnit;
 //         setFormData((prev) => ({
 //             ...prev,
 
-//             // This is the ONLY category relationship
-//             // submitted to Unit.
 //             category: categoryId,
 
-//             // These are inherited only for display.
 //             location: getCategoryLocation(category),
 //             area: getCategoryArea(category),
 //         }));
@@ -2975,6 +2991,31 @@ export default AddUnit;
 //     };
 
 //     /* =========================================================
+//        AUTO-CALCULATE SECURITY DEPOSIT (price * 5%)
+//        Runs whenever `price` changes and the deposit has NOT been
+//        manually edited by the user.
+//     ========================================================= */
+
+//     const [securityDepositManuallyEdited, setSecurityDepositManuallyEdited] =
+//         useState(false);
+
+//     useEffect(() => {
+//         // If the user has already manually edited the deposit, don't override.
+//         if (securityDepositManuallyEdited) return;
+
+//         const priceNum = Number(formData.price);
+
+//         if (!formData.price || isNaN(priceNum) || priceNum <= 0) {
+//             setFormData((prev) => ({ ...prev, security_deposit: "" }));
+//             return;
+//         }
+
+//         const auto = (priceNum * 0.05).toFixed(2);
+
+//         setFormData((prev) => ({ ...prev, security_deposit: auto }));
+//     }, [formData.price, securityDepositManuallyEdited]);
+
+//     /* =========================================================
 //        INPUT HANDLER
 //     ========================================================= */
 
@@ -2983,10 +3024,6 @@ export default AddUnit;
 
 //         const newValue = type === "checkbox" ? checked : value;
 
-//         /*
-//          * Category needs special handling because
-//          * location and area come from Category.
-//          */
 //         if (name === "category") {
 //             const category = categories.find(
 //                 (item) => String(item?.id) === String(value)
@@ -3011,12 +3048,19 @@ export default AddUnit;
 //             return;
 //         }
 
-//         /*
-//          * Location and area are inherited from Category.
-//          * They cannot be manually changed.
-//          */
 //         if (name === "location" || name === "area") {
 //             return;
+//         }
+
+//         // ✅ Mark security deposit as manually edited so auto-calc stops.
+//         if (name === "security_deposit") {
+//             setSecurityDepositManuallyEdited(true);
+//         }
+
+//         // ✅ If the user clears the price, reset the auto-edit flag so
+//         //    entering a new price triggers auto-calc again.
+//         if (name === "price" && (value === "" || Number(value) <= 0)) {
+//             setSecurityDepositManuallyEdited(false);
 //         }
 
 //         setFormData((prev) => ({
@@ -3097,16 +3141,20 @@ export default AddUnit;
 //     const validateForm = () => {
 //         const newErrors = {};
 
-//         /*
-//          * Category is required because the Unit
-//          * now belongs to a Category.
-//          */
 //         if (!formData.category) {
 //             newErrors.category = "يرجى اختيار تصنيف الوحدة.";
 //         }
 
 //         if (formData.price !== "" && Number(formData.price) < 0) {
 //             newErrors.price = "السعر لا يمكن أن يكون سالباً.";
+//         }
+
+//         if (
+//             formData.security_deposit !== "" &&
+//             Number(formData.security_deposit) < 0
+//         ) {
+//             newErrors.security_deposit =
+//                 "مبلغ التأمين لا يمكن أن يكون سالباً.";
 //         }
 
 //         if (formData.bedrooms !== "" && Number(formData.bedrooms) < 0) {
@@ -3153,27 +3201,8 @@ export default AddUnit;
 
 //             const data = new FormData();
 
-//             /*
-//              * IMPORTANT:
-//              *
-//              * Do NOT submit:
-//              * owner
-//              * location
-//              *
-//              * because Unit no longer has these fields.
-//              *
-//              * category is submitted as the ForeignKey.
-//              */
-
 //             Object.entries(formData).forEach(([key, value]) => {
 //                 if (key === "location" || key === "area") {
-//                     /*
-//                      * Area IS a Unit field, so it must
-//                      * still be submitted.
-//                      *
-//                      * Only location is inherited and
-//                      * must NOT be submitted.
-//                      */
 //                     if (key === "area") {
 //                         if (
 //                             value !== null &&
@@ -3705,7 +3734,7 @@ export default AddUnit;
 //                                             text-gray-700
 //                                         "
 //                                         >
-//                                             اسم الوحدة
+//                                             اسم / رقم الوحدة
 //                                         </label>
 
 //                                         <input
@@ -3894,171 +3923,78 @@ export default AddUnit;
 //                                     </div>
 //                                 </div>
 
-//                                 {/* Parking */}
-
-//                                 <div
-//                                     className="
-//                                     border
-//                                     border-gray-200
-//                                     rounded-xl
-//                                     bg-white
-//                                     p-5
-//                                 "
-//                                 >
-//                                     <div
-//                                         className="
-//                                         flex
-//                                         items-center
-//                                         justify-between
-//                                         mb-4
-//                                     "
-//                                     >
-//                                         <div>
-//                                             <h4 className="font-extrabold text-gray-800">
-//                                                 مواقف السيارات
-//                                             </h4>
-
-//                                             <p className="text-xs text-gray-500 mt-1">
-//                                                 تحديد وجود مواقف وعددها
-//                                             </p>
-//                                         </div>
-
-//                                         <label
-//                                             className="
-//                                             flex
-//                                             items-center
-//                                             gap-2
-//                                             cursor-pointer
-//                                             font-bold
-//                                             text-gray-700
-//                                         "
-//                                         >
-//                                             <input
-//                                                 type="checkbox"
-//                                                 name="has_parking"
-//                                                 checked={formData.has_parking}
-//                                                 onChange={handleChange}
-//                                                 disabled={loading}
-//                                                 className="
-//                                                     w-5
-//                                                     h-5
-//                                                     accent-[#a47d52]
-//                                                     cursor-pointer
-//                                                 "
-//                                             />
-
-//                                             يوجد موقف
-//                                         </label>
-//                                     </div>
-
-//                                     {formData.has_parking && (
-//                                         <div>
-//                                             <label
-//                                                 className="
-//                                                 block
-//                                                 mb-2
-//                                                 font-bold
-//                                                 text-gray-700
-//                                             "
-//                                             >
-//                                                 عدد المواقف
-//                                             </label>
-
-//                                             <input
-//                                                 type="number"
-//                                                 min="0"
-//                                                 name="parking"
-//                                                 value={formData.parking}
-//                                                 onChange={handleChange}
-//                                                 disabled={loading}
-//                                                 placeholder="عدد المواقف"
-//                                                 className={inputClass(
-//                                                     "parking"
-//                                                 )}
-//                                             />
-
-//                                             {errors.parking && (
-//                                                 <p className="text-red-500 text-xs mt-1">
-//                                                     {errors.parking}
-//                                                 </p>
-//                                             )}
-//                                         </div>
-//                                     )}
-//                                 </div>
-
-//                                 {/* Furnished */}
+//                                 {/* Furnished + Parking */}
 
 //                                 <div
 //                                     className="
 //                                     grid
 //                                     grid-cols-1
 //                                     md:grid-cols-2
-//                                     gap-4
+//                                     gap-5
 //                                 "
 //                                 >
-//                                     <label
-//                                         className="
-//                                         flex
-//                                         items-center
-//                                         gap-3
-//                                         p-4
-//                                         bg-white
-//                                         border
-//                                         border-gray-200
-//                                         rounded-xl
-//                                         cursor-pointer
-//                                         hover:border-[#a47d52]
-//                                     "
-//                                     >
-//                                         <input
-//                                             type="checkbox"
+//                                     {/* Furnished */}
+
+//                                     <div>
+//                                         <label
+//                                             className="
+//                                             block
+//                                             mb-2
+//                                             font-bold
+//                                             text-gray-700
+//                                         "
+//                                         >
+//                                             حالة الفرش
+//                                         </label>
+
+//                                         <select
 //                                             name="furnished"
-//                                             checked={formData.furnished}
+//                                             value={formData.furnished}
 //                                             onChange={handleChange}
 //                                             disabled={loading}
+//                                             className={inputClass("furnished")}
+//                                         >
+//                                             <option value="furnished">
+//                                                 مفروشة
+//                                             </option>
+
+//                                             <option value="unfurnished">
+//                                                 غير مفروشة
+//                                             </option>
+//                                         </select>
+//                                     </div>
+
+//                                     {/* Parking */}
+
+//                                     <div>
+//                                         <label
 //                                             className="
-//                                                 w-5
-//                                                 h-5
-//                                                 accent-[#a47d52]
-//                                             "
-//                                         />
+//                                             block
+//                                             mb-2
+//                                             font-bold
+//                                             text-gray-700
+//                                         "
+//                                         >
+//                                             عدد مواقف السيارات
+//                                         </label>
 
-//                                         <span className="font-bold text-gray-700">
-//                                             مفروشة
-//                                         </span>
-//                                     </label>
-
-//                                     <label
-//                                         className="
-//                                         flex
-//                                         items-center
-//                                         gap-3
-//                                         p-4
-//                                         bg-white
-//                                         border
-//                                         border-gray-200
-//                                         rounded-xl
-//                                         cursor-pointer
-//                                         hover:border-[#a47d52]
-//                                     "
-//                                     >
 //                                         <input
-//                                             type="checkbox"
-//                                             name="unfurnished"
-//                                             checked={formData.unfurnished}
+//                                             type="number"
+//                                             min="0"
+//                                             name="parking"
+//                                             value={formData.parking}
 //                                             onChange={handleChange}
 //                                             disabled={loading}
-//                                             className="
-//                                                 w-5
-//                                                 h-5
-//                                                 accent-[#a47d52]
-//                                             "
+//                                             placeholder="0"
+//                                             className={inputClass("parking")}
 //                                         />
 
-//                                         <span className="font-bold text-gray-700">
-//                                             غير مفروشة
-//                                         </span>
-//                                     </label>
+//                                         {errors.parking && (
+//                                             <p className="text-red-500 text-xs mt-1">
+//                                                 {errors.parking}
+//                                             </p>
+//                                         )}
+//                                     </div>
 //                                 </div>
 //                             </div>
 //                         )}
@@ -4669,7 +4605,7 @@ export default AddUnit;
 //                                                     text-gray-400
 //                                                     mb-1
 //                                                 "
-//                                                 >
+//                                                     >
 //                                                     الموقع
 //                                                 </p>
 
@@ -4688,7 +4624,7 @@ export default AddUnit;
 //                                     </div>
 //                                 )}
 
-//                                 {/* Price */}
+//                                 {/* Price + Security Deposit */}
 
 //                                 <div
 //                                     className="
@@ -4698,6 +4634,8 @@ export default AddUnit;
 //                                     gap-5
 //                                 "
 //                                 >
+//                                     {/* Price */}
+
 //                                     <div className="w-full">
 //                                         <label
 //                                             className="
@@ -4712,7 +4650,7 @@ export default AddUnit;
 
 //                                         <input
 //                                             type="number"
-//                                             min="10"
+//                                             min="0"
 //                                             step="0.01"
 //                                             name="price"
 //                                             value={formData.price}
@@ -4731,16 +4669,55 @@ export default AddUnit;
 //                                         )}
 //                                     </div>
 
-//                                     {/* Area inherited from category */}
+//                                     {/* Security Deposit */}
 
-//                                     <div>
-//                                         {errors.area && (
+//                                     <div className="w-full">
+//                                         <label
+//                                             className="
+//                                             block
+//                                             mb-2
+//                                             font-bold
+//                                             text-gray-700
+//                                         "
+//                                         >
+//                                             مبلغ التأمين (Security Deposit)
+//                                         </label>
+
+//                                         <input
+//                                             type="number"
+//                                             min="0"
+//                                             step="0.01"
+//                                             name="security_deposit"
+//                                             value={formData.security_deposit}
+//                                             onChange={handleChange}
+//                                             disabled={loading}
+//                                             placeholder="0.00"
+//                                             className={`!w-full max-w-none ${inputClass(
+//                                                 "security_deposit"
+//                                             )}`}
+//                                         />
+
+//                                         {errors.security_deposit && (
 //                                             <p className="text-red-500 text-xs mt-1">
-//                                                 {errors.area}
+//                                                 {errors.security_deposit}
 //                                             </p>
 //                                         )}
+
+//                                         <p className="text-xs text-gray-400 mt-1">
+//                                             يتم احتساب مبلغ التأمين تلقائياً
+//                                             كنسبة 5% من السعر، ويمكنك تعديله
+//                                             يدوياً.
+//                                         </p>
 //                                     </div>
 //                                 </div>
+
+//                                 {/* Area error (inherited) */}
+
+//                                 {errors.area && (
+//                                     <p className="text-red-500 text-xs mt-1">
+//                                         {errors.area}
+//                                     </p>
+//                                 )}
 //                             </div>
 //                         )}
 
@@ -5208,5 +5185,4 @@ export default AddUnit;
 // };
 
 // export default AddUnit;
-
 

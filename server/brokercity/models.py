@@ -888,6 +888,10 @@ class Owner(models.Model):
         help_text="Phone number of the owner"
     )
 
+    # New field
+    id_number = models.CharField(max_length=100, help_text="Ownwe id number", null=True,)
+    email = models.CharField(max_length=100, help_text="Owner email", null=True,)
+
     address = models.CharField(
         max_length=255,
         db_index=True,
@@ -1101,6 +1105,8 @@ class Unit(models.Model):
         null=True,
         help_text="Area of unit",
     )
+
+    
     bedrooms = models.PositiveIntegerField(blank=True, null=True)
     bathrooms = models.PositiveIntegerField(blank=True, null=True)
 
@@ -1109,6 +1115,15 @@ class Unit(models.Model):
         null=True,
         help_text="Number of parking spaces",
     )
+
+    # New field
+    kind = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Kind of unit",
+    )
+
     # has_parking can be derived:
     @property
     def has_parking(self):
@@ -1250,7 +1265,13 @@ class MonthlyPayment(models.Model):
         related_name="monthly_payments",
     )
 
-    month = models.DateField(help_text="First day of the month")
+     # ✅ UPDATED: Max length increased for text ("October")
+    month = models.CharField(
+        max_length=20, 
+        help_text="Month name (e.g., October)", 
+        blank=True, 
+        null=True
+    )
 
     amount_due = models.DecimalField(
         max_digits=10,
@@ -1288,7 +1309,7 @@ class MonthlyPayment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-month"]
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["rent", "month"],
@@ -1296,8 +1317,11 @@ class MonthlyPayment(models.Model):
             ),
         ]
 
+    # def __str__(self):
+    #     return f"{self.rent} — {self.month:%Y-%m} — {self.status}"
     def __str__(self):
-        return f"{self.rent} — {self.month:%Y-%m} — {self.status}"
+        # ✅ FIXED: Removed the Date formatting (%Y-%m) to prevent a crash
+        return f"{self.rent} — {self.month or 'No Month'} — {self.status}"
 
     # 👇 computed, always correct
     @property

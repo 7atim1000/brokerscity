@@ -2822,7 +2822,7 @@ def get_all_monthly_payments(request):
             "rent__unit_name",
         )
         .all()
-        .order_by("-month")
+        .order_by("-created_at") # ✅ Changed from "-month" because text sorting fails
     )
 
     # Optional filter by rent id
@@ -2839,7 +2839,7 @@ def get_all_monthly_payments(request):
         },
         status=status.HTTP_200_OK,
     )
-
+    
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
