@@ -1864,10 +1864,125 @@ class RentalListSerializer(serializers.ModelSerializer):
 # RENT SERIALIZER
 # ============================================================
 
-from decimal import Decimal, InvalidOperation
-from rest_framework import serializers
+# class RentSerializer(serializers.ModelSerializer):
+#     # Read-only convenience fields
+#     tenant_name = serializers.SerializerMethodField()
+#     unit_display = serializers.SerializerMethodField()
+#     unit_price = serializers.SerializerMethodField()
+#     unit_security_deposit = serializers.SerializerMethodField()
+#     monthly_payments_count = serializers.SerializerMethodField()
 
-from .models import Rent
+#     class Meta:
+#         model = Rent
+#         fields = [
+#             "id",
+#             "rental_name",
+#             "unit_name",
+#             "start_date",
+#             "end_date",
+#             "total_months",
+#             "installment_no",
+#             "installment_amount",
+#             "tenant_name",
+#             "unit_display",
+#             "unit_price",
+#             "unit_security_deposit",
+#             "monthly_payments_count",
+#             "created_at",
+#             "updated_at",
+#         ]
+#         read_only_fields = [
+#             "id",
+#             "total_months",
+#             "tenant_name",
+#             "unit_display",
+#             "unit_price",
+#             "unit_security_deposit",
+#             "monthly_payments_count",
+#             "created_at",
+#             "updated_at",
+#         ]
+
+#     # ---------- helpers ----------
+
+#     def get_tenant_name(self, obj):
+#         if not obj.rental_name:
+#             return None
+#         rental = obj.rental_name
+#         return (
+#             getattr(rental, "name", None)
+#             or getattr(rental, "tenant_name", None)
+#             or getattr(rental, "full_name", None)
+#             or str(rental)
+#         )
+
+#     def get_unit_display(self, obj):
+#         if not obj.unit_name:
+#             return None
+#         return getattr(obj.unit_name, "name", None) or f"Unit #{obj.unit_name.pk}"
+
+#     def get_unit_price(self, obj):
+#         if not obj.unit_name:
+#             return None
+#         return getattr(obj.unit_name, "price", None)
+
+#     def get_unit_security_deposit(self, obj):
+#         if not obj.unit_name:
+#             return None
+#         return getattr(obj.unit_name, "security_deposit", None)
+
+#     def get_monthly_payments_count(self, obj):
+#         return obj.monthly_payments.count()
+
+#     # ---------- validation & calculations ----------
+
+#     def validate(self, attrs):
+#         start_date = attrs.get("start_date") or getattr(self.instance, "start_date", None)
+#         end_date = attrs.get("end_date") or getattr(self.instance, "end_date", None)
+#         installment_no = attrs.get("installment_no") or getattr(self.instance, "installment_no", None)
+
+#         # 1) Date sanity check
+#         if start_date and end_date and end_date < start_date:
+#             raise serializers.ValidationError(
+#                 {"end_date": "End date must be after start date."}
+#             )
+
+#         # 2) Installment count must be > 0
+#         if installment_no is not None and installment_no <= 0:
+#             raise serializers.ValidationError(
+#                 {"installment_no": "Number of installments must be greater than 0."}
+#             )
+
+#         # 3) Calculate total_months
+#         if start_date and end_date:
+#             months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+#             attrs["total_months"] = max(months, 0)
+
+#         # 4) Calculate installment_amount = total contract value / installment_no
+#         #    The client sends the TOTAL value in `installment_amount`.
+#         #    On PATCH without new value, we recompute from the stored total.
+#         raw_total = attrs.get("installment_amount")
+#         if raw_total is None and self.instance is not None:
+#             # Recover the original total from stored values
+#             raw_total = self.instance.installment_amount * self.instance.installment_no
+
+#         if raw_total is not None and installment_no:
+#             try:
+#                 attrs["installment_amount"] = (
+#                     Decimal(str(raw_total)) / Decimal(installment_no)
+#                 ).quantize(Decimal("0.01"))
+#             except (InvalidOperation, ZeroDivisionError, TypeError):
+#                 raise serializers.ValidationError(
+#                     {"installment_amount": "Invalid amount or installment number."}
+#                 )
+
+#         return attrs
+
+#     def validate_installment_no(self, value):
+#         if value is not None and value < 0:
+#             raise serializers.ValidationError("Installment number cannot be negative.")
+#         return value
+
 
 
 class RentSerializer(serializers.ModelSerializer):
@@ -1877,6 +1992,10 @@ class RentSerializer(serializers.ModelSerializer):
     unit_price = serializers.SerializerMethodField()
     unit_security_deposit = serializers.SerializerMethodField()
     monthly_payments_count = serializers.SerializerMethodField()
+    
+    # ✅ ADDED: Unit Category and Owner fields
+    unit_category = serializers.SerializerMethodField()
+    unit_owner = serializers.SerializerMethodField()
 
     class Meta:
         model = Rent
@@ -1894,6 +2013,8 @@ class RentSerializer(serializers.ModelSerializer):
             "unit_price",
             "unit_security_deposit",
             "monthly_payments_count",
+            "unit_category", # ✅ Added
+            "unit_owner",    # ✅ Added
             "created_at",
             "updated_at",
         ]
@@ -1905,6 +2026,8 @@ class RentSerializer(serializers.ModelSerializer):
             "unit_price",
             "unit_security_deposit",
             "monthly_payments_count",
+            "unit_category", # ✅ Added
+            "unit_owner",    # ✅ Added
             "created_at",
             "updated_at",
         ]
@@ -1940,6 +2063,34 @@ class RentSerializer(serializers.ModelSerializer):
     def get_monthly_payments_count(self, obj):
         return obj.monthly_payments.count()
 
+    # ✅ Get Category Name
+    def get_unit_category(self, obj):
+        if not obj.unit_name:
+            return None
+        category = getattr(obj.unit_name, "category", None)
+        if not category:
+            return None
+        return getattr(category, "name", str(category))
+
+    # ✅ Get Owner Name via Category (Building)
+    def get_unit_owner(self, obj):
+        if not obj.unit_name:
+            return None
+        category = getattr(obj.unit_name, "category", None)
+        if not category:
+            return None
+        
+        owner = getattr(category, "owner", None)
+        if not owner:
+            return None
+            
+        return (
+            getattr(owner, "name", None)
+            or getattr(owner, "full_name", None)
+            or getattr(owner, "owner_name", None)
+            or str(owner)
+        )
+
     # ---------- validation & calculations ----------
 
     def validate(self, attrs):
@@ -1947,29 +2098,22 @@ class RentSerializer(serializers.ModelSerializer):
         end_date = attrs.get("end_date") or getattr(self.instance, "end_date", None)
         installment_no = attrs.get("installment_no") or getattr(self.instance, "installment_no", None)
 
-        # 1) Date sanity check
         if start_date and end_date and end_date < start_date:
             raise serializers.ValidationError(
                 {"end_date": "End date must be after start date."}
             )
 
-        # 2) Installment count must be > 0
         if installment_no is not None and installment_no <= 0:
             raise serializers.ValidationError(
                 {"installment_no": "Number of installments must be greater than 0."}
             )
 
-        # 3) Calculate total_months
         if start_date and end_date:
             months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
             attrs["total_months"] = max(months, 0)
 
-        # 4) Calculate installment_amount = total contract value / installment_no
-        #    The client sends the TOTAL value in `installment_amount`.
-        #    On PATCH without new value, we recompute from the stored total.
         raw_total = attrs.get("installment_amount")
         if raw_total is None and self.instance is not None:
-            # Recover the original total from stored values
             raw_total = self.instance.installment_amount * self.instance.installment_no
 
         if raw_total is not None and installment_no:
@@ -1988,8 +2132,6 @@ class RentSerializer(serializers.ModelSerializer):
         if value is not None and value < 0:
             raise serializers.ValidationError("Installment number cannot be negative.")
         return value
-
-
         
 
 # ============================================================
