@@ -8,7 +8,7 @@ import Navbar from "../components/ar/shared/Navbar";
 import Sidebar from "../components/ar/shared/Sidebar";
 
 //import bgImage from '../assets/images/logogo.jpeg' ;
-import bgImage from '../assets/images/background.jpeg'
+import bgImage from '../assets/images/background1.jpeg'
 
 const MainLayout = () => {
     const [sidebarExpanded, setSidebarExpanded] = useState(false);

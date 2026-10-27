@@ -158,12 +158,12 @@ const DigitalClock = () => {
             <span
     className="
         font-mono font-black
-        text-[#8e5107]
+        text-white
         text-xs sm:text-sm
         tabular-nums
         tracking-wide
         leading-none
-        [-webkit-text-stroke:0.3px_#203A5A]
+        [-webkit-text-stroke:0.3px_white]
     "
 >
     {dateStr}
@@ -178,12 +178,12 @@ const DigitalClock = () => {
             <span
     className="
         font-mono font-black
-        text-[#8e5107]
+        text-white
         text-sm sm:text-base
         tabular-nums
         tracking-wider
         leading-none
-        [-webkit-text-stroke:0.3px_#203A5A]
+        [-webkit-text-stroke:0.3px_white]
     "
 >
     {hh}:{mm}:{ss}
@@ -454,17 +454,18 @@ drop-shadow-[0_1px_1px_rgba(255,255,255,0.5)]
 */}
 <span
     className="
-        text-white/90
+        text-white
         font-black
         text-[13px]
         sm:text-xs
         tracking-wider
         whitespace-nowrap
         scale-110
-        [-webkit-text-stroke:0.3px_#203A5A]
+        [-webkit-text-stroke:0.3px_#835802]
     "
-    style={{ textShadow: "0 1px 2px #835802" }}
->
+    // #835802 #203A5A
+    style={{ textShadow: "0 1px 2px white" }}
+>   
     Broker City Real Estate
 </span>
                 </div>

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveTokens } from "../../utils/auth";
 import logo from "../../assets/images/white-logo.png";
-import background from "../../assets/images/background.jpeg";
+import background from "../../assets/images/background1.jpeg";
 import {
     FaEye,
     FaEyeSlash,

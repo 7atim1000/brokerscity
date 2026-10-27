@@ -80,7 +80,7 @@ export const SidebarMenuLinks = [
                 permission: "property_management",
             },
             {
-                name: "إدارة الايجار",
+                name: "إدارةالعقود",
                 path: "/ar-rent",
                 icon: BsCalendar2DateFill,
                 permission: "property_management",

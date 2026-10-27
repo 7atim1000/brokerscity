@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { saveTokens } from "../../utils/auth";
 import logo from '../../assets/images/white-logo.png';
 // import background from "../../assets/images/background.jpg";
-import background from "../../assets/images/background.jpg";
+import background from "../../assets/images/background1.jpeg";
 import { FaEye, FaEyeSlash, FaBuilding, FaShieldAlt, FaUserTie, FaBalanceScale, FaChartLine, FaUsers, FaTasks } from "react-icons/fa";
 import { FaLanguage } from "react-icons/fa6";
 import { IoMegaphoneOutline, IoShield, IoSparkles, IoBusiness, IoPeople } from 'react-icons/io5';
