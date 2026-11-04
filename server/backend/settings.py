@@ -16,12 +16,13 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 load_dotenv()
+from dotenv import load_dotenv
 
 from datetime import timedelta
 
 #
 import dj_database_url
-
+# pip install dj-database-url psycopg2-binary
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -125,11 +126,47 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 
+# DATABASES = {
+#     "default": dj_database_url.config(
+#         default=os.getenv("DATABASE_URL")
+#     )
+# }
+
+
+# ✅ UPDATED: PostgreSQL configuration
 DATABASES = {
-    "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL")
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,                 # Keeps connections open for 10 minutes (good for performance)
+        conn_health_checks=True,          # Verifies connection before using it
+        ssl_require=True                  # ✅ REQUIRED for Render PostgreSQL
     )
 }
+
+
+# conn_max_age ########################################
+
+# How it works:
+# When a user makes a request: Django opens a connection to the PostgreSQL database.
+
+# After the request finishes: Django does not close the connection. It keeps it open in the background (this is called Connection Pooling).
+
+# During the next 600 seconds (10 minutes): If another user makes a request, Django reuses that same open connection. This is much faster because it skips the "handshake" process of logging into the database every time.
+
+# After 10 minutes of inactivity: If no one has used that connection for 10 minutes, Django automatically closes it to free up resources on the database server.
+
+# Why is this important?
+# Without conn_max_age (or set to 0): Django opens and closes a connection for every single request. This is very slow and can easily overload your database (especially on a free tier like Render).
+
+# With conn_max_age=600: Your app becomes significantly faster because it reuses active connections. 10 minutes is a very safe number.
+
+# ⚠️ Important Warning for Render's Free Tier:
+# Render's Free PostgreSQL databases have a hard limit on the number of active connections (usually around 20 to 25 connections).
+
+# If you have multiple Gunicorn workers running, and they each hold onto connections for 10 minutes, you could hit this limit and get a "Too many connections" error.
+
+##################################3
+
 
 
 

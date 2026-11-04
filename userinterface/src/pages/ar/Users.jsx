@@ -83,15 +83,16 @@ const getStatusConfig = (status) =>
     STATUS_CONFIG[status] || STATUS_CONFIG.offline;
 
 /* ============================================================
-   ROLE CONFIG
+   ROLE CONFIG (Matches Backend ROLE_CHOICES)
 ============================================================ */
 const ROLE_OPTIONS = [
-    { value: "user", label: "مستخدم" },
-    { value: "vendor", label: "مورد" },
- 
-    { value: "listing", label: "ليستنق" },
-    { value: "agent", label: "وكيل" },
-    { value: "manager", label: "مدير" },
+    { value: "test_account",  label: "Test Account — حساب تجريبي" },
+    { value: "user",          label: "User — مستخدم" },
+    { value: "listing",       label: "Listing — ليستنق" },
+    { value: "sales_agent",   label: "Sales Agent — وكيل بيع" },
+    { value: "leasing_agent", label: "Leasing Agent — وكيل إيجار" },
+    { value: "manager",       label: "Manager — مدير" },
+    { value: "admin",         label: "Admin — مسؤول" },
 ];
 
 const ROLE_LABELS = ROLE_OPTIONS.reduce((acc, r) => {
@@ -172,11 +173,9 @@ const Users = () => {
 
             const params = new URLSearchParams();
             if (search.trim()) params.append("search", search.trim());
-            if (statusFilter !== "all")
-                params.append("status", statusFilter);
+            if (statusFilter !== "all") params.append("status", statusFilter);
             if (roleFilter !== "all") params.append("role", roleFilter);
-            if (activeFilter !== "all")
-                params.append("active", activeFilter);
+            if (activeFilter !== "all") params.append("active", activeFilter);
 
             const url = `${BASE}/api/users/${
                 params.toString() ? `?${params.toString()}` : ""
@@ -248,8 +247,7 @@ const Users = () => {
             is_active: user.is_active ?? true,
             can_view_users: user.can_view_users ?? false,
             can_manage_users: user.can_manage_users ?? false,
-            can_manage_permissions:
-                user.can_manage_permissions ?? false,
+            can_manage_permissions: user.can_manage_permissions ?? false,
         });
         setEditErrors({});
         setShowEdit(true);
@@ -475,8 +473,8 @@ const Users = () => {
                         />
                         تحديث
                     </button>
-                    
-                    {/* 🔄 ADDED — attendance button */}
+
+                    {/* Attendance button */}
                     <button
                         onClick={() => navigate("/ar/attendance")}
                         className="
@@ -493,7 +491,6 @@ const Users = () => {
                         <FaClockRotateLeft size={14} />
                         الحضور والانصراف
                     </button>
-                    {/* 🔄 END ADDED */}
 
                     <button
                         onClick={handleOpenRegistration}
@@ -509,7 +506,7 @@ const Users = () => {
                         <FaUserPlus />
                         مستخدم جديد
                     </button>
-                    
+
                     <button
                         onClick={() => navigate('/ar/permissions')}
                         className="
@@ -521,8 +518,7 @@ const Users = () => {
                             cursor-pointer
                         "
                     >
-                        <IoMdSettings className = 'text-green-600' size={30}/>
-                        
+                        <IoMdSettings className='text-green-600' size={30} />
                     </button>
                 </div>
             </div>
@@ -542,17 +538,18 @@ const Users = () => {
                             `}
                         >
                             <div className="flex items-center justify-between mb-2">
-                                <FaCircle
-                                    className={`${card.iconColor}`}
-                                    size={8}
-                                />
+                                <FaCircle className={`${card.iconColor}`} size={8} />
                                 <span className="text-xs text-gray-500 font-bold">
                                     {card.label}
                                 </span>
+                                <span className="text-2xl font-extrabold text-gray-800">
+                                    {card.value}
+                                </span>
                             </div>
-                            <div className="text-2xl font-extrabold text-gray-800">
+                            {/* ✅ FIXED: Value on its own line for better readability */}
+                            {/* <div className="text-2xl font-extrabold text-gray-800">
                                 {card.value}
-                            </div>
+                            </div> */}
                         </div>
                     ))}
                 </div>
@@ -1078,8 +1075,7 @@ const Users = () => {
                                         transition-all duration-300 cursor-pointer
                                         disabled:opacity-50
                                         ${
-                                            editForm.is_active                                                ? "bg-emerald-500"
-                                                : "bg-gray-300"
+                                            editForm.is_active ? "bg-emerald-500" : "bg-gray-300"
                                         }
                                     `}
                                 >
@@ -1088,9 +1084,7 @@ const Users = () => {
                                             absolute top-1 w-6 h-6 rounded-full bg-white shadow-md
                                             transition-all duration-300
                                             ${
-                                                editForm.is_active
-                                                    ? "right-1"
-                                                    : "right-7"
+                                                editForm.is_active ? "right-1" : "right-7"
                                             }
                                         `}
                                     />
@@ -1109,31 +1103,21 @@ const Users = () => {
                                         label="عرض المستخدمين"
                                         description="يمكنه رؤية قائمة جميع المستخدمين"
                                         checked={editForm.can_view_users}
-                                        onChange={() =>
-                                            handleEditToggle("can_view_users")
-                                        }
+                                        onChange={() => handleEditToggle("can_view_users")}
                                         disabled={saving}
                                     />
                                     <PermissionRow
                                         label="إدارة المستخدمين"
                                         description="يمكنه تعديل وحذف المستخدمين"
                                         checked={editForm.can_manage_users}
-                                        onChange={() =>
-                                            handleEditToggle("can_manage_users")
-                                        }
+                                        onChange={() => handleEditToggle("can_manage_users")}
                                         disabled={saving}
                                     />
                                     <PermissionRow
                                         label="إدارة الصلاحيات"
                                         description="يمكنه تعديل صلاحيات الآخرين"
-                                        checked={
-                                            editForm.can_manage_permissions
-                                        }
-                                        onChange={() =>
-                                            handleEditToggle(
-                                                "can_manage_permissions"
-                                            )
-                                        }
+                                        checked={editForm.can_manage_permissions}
+                                        onChange={() => handleEditToggle("can_manage_permissions")}
                                         disabled={saving}
                                     />
                                 </div>
@@ -1233,10 +1217,7 @@ const Users = () => {
                             <div className="relative">
                                 <div className="absolute inset-0 rounded-full bg-red-500/20 blur-xl animate-pulse"></div>
                                 <div className="relative w-16 h-16 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center">
-                                    <FaExclamationTriangle
-                                        className="text-red-500"
-                                        size={28}
-                                    />
+                                    <FaExclamationTriangle className="text-red-500" size={28} />
                                 </div>
                             </div>
                         </div>
@@ -1384,7 +1365,4 @@ const PermissionRow = ({ label, description, checked, onChange, disabled }) => (
     </button>
 );
 
-export default Users ;
-
-
-
+export default Users;

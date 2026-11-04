@@ -10,9 +10,9 @@ const AGENTS = [
     'Mohammed Alrawi',
     'Amro Ahmed',
     'Sultan',
-    'Hala Musa',
+    
     'Mohammed Sabri',
-    'Mohammed Elmusa',
+    
     'Ebraheem Elbtal',
     
     'Mohammed Saleem',
@@ -21,9 +21,9 @@ const AGENTS = [
     'Nora',
     'Abdalla',
     'Ahmed Rezg',
-    'Wesam Mohammed',
+   
     'Mohammed Alahmed',
-    'Yamin',
+    'Alaa AbuYazen',
 ];
 
 // ---------- Month list ----------

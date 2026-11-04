@@ -7,8 +7,17 @@ import {
     FaCheck,
     FaBuilding,
     FaMoneyBillWave,
-    FaUsers,          // ✅ ADDED — used in permissionFields for can_view_users
-    FaUserShield,     // ✅ ADDED — used in permissionFields for can_manage_users
+    FaUsers,          
+    FaUserShield,     
+    FaBullhorn,       
+    FaAddressCard,    
+    // ✅ ADDED: New Icons for Lead Permissions
+    FaEye,
+    FaUserTag,
+    FaPlusCircle,
+    FaEdit,
+    FaExchangeAlt,
+    FaTrashAlt,
 } from 'react-icons/fa';
 
 const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
@@ -34,9 +43,20 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
         property_management: false,
         financials: false,
 
-        can_view_users: false,          // ✅ ADD
-        can_manage_users: false,        // ✅ ADD
-        can_manage_permissions: false,  // ✅ ADD
+        can_view_users: false,          
+        can_manage_users: false,        
+        can_manage_permissions: false,  
+        ads: false, 
+        leads: false, 
+
+        // ✅ ADDED: CRM Lead Permissions
+        view_all_lead: false,
+        view_my_lead: false,
+        create_new_lead: false,
+        update_lead: false,
+        update_lead_stage: false,
+        update_lead_responsible: false,
+        delete_lead: false,
     };
 
     const [formData, setFormData] = useState(defaultFormData);
@@ -88,8 +108,6 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
             }
 
             const data = await response.json();
-            console.log('Users API response:', data);
-
             let list = [];
             if (Array.isArray(data)) {
                 list = data;
@@ -99,8 +117,6 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 list = data.results;
             } else if (Array.isArray(data.data)) {
                 list = data.data;
-            } else {
-                console.warn('Unexpected users response shape:', data);
             }
 
             setUsers(list);
@@ -129,15 +145,23 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 ListWorkLog: permissionData.ListWorkLog || false,
                 monitoring: permissionData.monitoring || false,
                 add_monitor: permissionData.add_monitor || false,
-                property_management:
-                    permissionData.property_management || false,
+                property_management: permissionData.property_management || false,
                 financials: permissionData.financials || false,
 
-                // ✅ ADD:
                 can_view_users: permissionData.can_view_users || false,
                 can_manage_users: permissionData.can_manage_users || false,
-                can_manage_permissions:
-                    permissionData.can_manage_permissions || false,
+                can_manage_permissions: permissionData.can_manage_permissions || false,
+                ads: permissionData.ads || false,
+                leads: permissionData.leads || false,
+
+                // ✅ ADDED: Populate new Lead fields
+                view_all_lead: permissionData.view_all_lead || false,
+                view_my_lead: permissionData.view_my_lead || false,
+                create_new_lead: permissionData.create_new_lead || false,
+                update_lead: permissionData.update_lead || false,
+                update_lead_stage: permissionData.update_lead_stage || false,
+                update_lead_responsible: permissionData.update_lead_responsible || false,
+                delete_lead: permissionData.delete_lead || false,
             });
         } else {
             setFormData(defaultFormData);
@@ -149,13 +173,11 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
     // =========================================================
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-
         if (type === 'checkbox') {
             setFormData((prev) => ({ ...prev, [name]: checked }));
         } else {
             setFormData((prev) => ({ ...prev, [name]: value }));
         }
-
         setErrors((prev) => ({ ...prev, [name]: '' }));
     };
 
@@ -177,11 +199,7 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 return;
             }
 
-            // -----------------------------------------
-            // VALIDATION
-            // -----------------------------------------
             const newErrors = {};
-
             if (!isEditMode && !formData.user) {
                 newErrors.user = 'يرجى اختيار المستخدم';
             }
@@ -193,37 +211,38 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 return;
             }
 
-            // -----------------------------------------
-            // BUILD PAYLOAD
-            // -----------------------------------------
+            // ✅ ADDED: Include all new Lead fields in the payload
             const submitData = {
                 ListWorkLog: formData.ListWorkLog,
                 monitoring: formData.monitoring,
                 add_monitor: formData.add_monitor,
                 property_management: formData.property_management,
                 financials: formData.financials,
-                // ✅ ADD:
                 can_view_users: formData.can_view_users,
                 can_manage_users: formData.can_manage_users,
                 can_manage_permissions: formData.can_manage_permissions,
+                ads: formData.ads, 
+                leads: formData.leads, 
+                
+                view_all_lead: formData.view_all_lead,
+                view_my_lead: formData.view_my_lead,
+                create_new_lead: formData.create_new_lead,
+                update_lead: formData.update_lead,
+                update_lead_stage: formData.update_lead_stage,
+                update_lead_responsible: formData.update_lead_responsible,
+                delete_lead: formData.delete_lead,
             };
 
             if (!isEditMode) {
                 submitData.user = parseInt(formData.user, 10);
             }
 
-            // -----------------------------------------
-            // URL + METHOD
-            // -----------------------------------------
             const url = isEditMode
                 ? `${BASE}/api/permissions/${permissionData.id}/update/`
                 : `${BASE}/api/permissions/create/`;
 
             const method = isEditMode ? 'PATCH' : 'POST';
 
-            // -----------------------------------------
-            // SEND
-            // -----------------------------------------
             const response = await fetch(url, {
                 method,
                 headers: {
@@ -233,9 +252,6 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 body: JSON.stringify(submitData),
             });
 
-            // -----------------------------------------
-            // HANDLE ERROR
-            // -----------------------------------------
             if (!response.ok) {
                 let errorData = null;
                 try {
@@ -256,17 +272,12 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                             errorMessages.push(`${key}: ${value}`);
                         }
                     });
-                    throw new Error(
-                        errorMessages.join('\n') || 'فشل حفظ الصلاحيات'
-                    );
+                    throw new Error(errorMessages.join('\n') || 'فشل حفظ الصلاحيات');
                 }
 
                 throw new Error('فشل حفظ الصلاحيات');
             }
 
-            // -----------------------------------------
-            // SUCCESS
-            // -----------------------------------------
             const result = await response.json();
             console.log('Permission saved:', result);
 
@@ -297,13 +308,13 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
     };
 
     // =========================================================
-    // PERMISSION FIELDS — 8 total
+    // PERMISSION FIELDS
     // =========================================================
     const permissionFields = [
         {
             key: 'ListWorkLog',
             label: 'عرض سجل الحضور',
-            description: 'السماح بعرض سجل الحض ور',
+            description: 'السماح بعرض سجل الحضور',
             Icon: FaShieldAlt,
         },
         {
@@ -330,7 +341,6 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
             description: 'السماح بإدارة الشؤون المالية',
             Icon: FaMoneyBillWave,
         },
-        // ✅ ADD:
         {
             key: 'can_view_users',
             label: 'عرض المستخدمين',
@@ -349,6 +359,61 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
             description: 'السماح بتعديل صلاحيات الآخرين',
             Icon: FaShieldAlt,
         },
+        {
+            key: 'ads',
+            label: 'إدارة الإعلانات',
+            description: 'السماح بإدارة صفحات الهبوط للإعلانات',
+            Icon: FaBullhorn,
+        },
+        {
+            key: 'leads',
+            label: 'إدارة العملاء المحتملين (الرئيسية)',
+            description: 'السماح بالوصول إلى قسم الليدز بالكامل',
+            Icon: FaAddressCard,
+        },
+        // ✅ ADDED: New CRM Lead Fields
+        {
+            key: 'view_all_lead',
+            label: 'عرض جميع الليدز',
+            description: 'السماح للمستخدم بعرض جميع الليدز في النظام',
+            Icon: FaEye,
+        },
+        {
+            key: 'view_my_lead',
+            label: 'عرض ليدزي فقط',
+            description: 'السماح للمستخدم بعرض الليدز المخصصة له فقط',
+            Icon: FaUserTag,
+        },
+        {
+            key: 'create_new_lead',
+            label: 'إنشاء ليد جديد',
+            description: 'السماح للمستخدم بإنشاء ليد جديد',
+            Icon: FaPlusCircle,
+        },
+        {
+            key: 'update_lead',
+            label: 'تعديل بيانات الليد',
+            description: 'السماح بتعديل جميع معلومات الليد',
+            Icon: FaEdit,
+        },
+        {
+            key: 'update_lead_stage',
+            label: 'تعديل مرحلة الليد',
+            description: 'السماح بتغيير مرحلة الليد (Kanban)',
+            Icon: FaExchangeAlt,
+        },
+        {
+            key: 'update_lead_responsible',
+            label: 'تعديل المسؤول',
+            description: 'السماح بتغيير الشخص المسؤول عن الليد',
+            Icon: FaUserShield,
+        },
+        {
+            key: 'delete_lead',
+            label: 'حذف الليد',
+            description: 'السماح بحذف الليد نهائياً',
+            Icon: FaTrashAlt,
+        },
     ];
 
     // =========================================================
@@ -365,17 +430,14 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                     <div className="flex justify-between items-center gap-4 px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-200 sticky top-0 z-20 bg-white/95 backdrop-blur-xl shadow-sm">
                         <div>
                             <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">
-                                {isEditMode
-                                    ? 'تعديل الصلاحيات'
-                                    : 'إضافة صلاحيات جديدة'}
+                                {isEditMode ? 'تعديل الصلاحيات' : 'إضافة صلاحيات جديدة'}
                             </h3>
 
                             {isEditMode && permissionData?.username && (
                                 <p className="text-xs sm:text-sm text-slate-500 mt-1">
                                     المستخدم:{' '}
                                     <span className="font-bold text-[#a47d52] bg-[#a47d52]/10 px-2 py-0.5 rounded-md">
-                                        {permissionData.user_full_name ||
-                                            permissionData.username}
+                                        {permissionData.user_full_name || permissionData.username}
                                     </span>
                                 </p>
                             )}
@@ -401,21 +463,15 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                             <div className="bg-white border border-[#a47d52]/20 rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
                                 <div className="flex gap-3 items-center text-sm bg-slate-50 rounded-xl px-3 py-2.5">
                                     <FaUser className="text-[#a47d52]" />
-                                    <span className="text-gray-600">
-                                        المستخدم:
-                                    </span>
+                                    <span className="text-gray-600">المستخدم:</span>
                                     <span className="font-semibold text-[#a47d52]">
-                                        {permissionData?.user_full_name ||
-                                            permissionData?.username ||
-                                            '-'}
+                                        {permissionData?.user_full_name || permissionData?.username || '-'}
                                     </span>
                                 </div>
 
                                 {permissionData?.user_email && (
                                     <div className="flex gap-3 items-center text-sm bg-slate-50 rounded-xl px-3 py-2.5">
-                                        <span className="text-gray-600">
-                                            البريد الإلكتروني:
-                                        </span>
+                                        <span className="text-gray-600">البريد الإلكتروني:</span>
                                         <span className="font-semibold text-[#a47d52]">
                                             {permissionData.user_email}
                                         </span>
@@ -430,8 +486,7 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                                 <label className="block text-sm font-semibold text-slate-700">
                                     <span className="flex items-center gap-2">
                                         <FaUser className="text-[#a47d52] text-xs" />
-                                        المستخدم{' '}
-                                        <span className="text-red-500">*</span>
+                                        المستخدم <span className="text-red-500">*</span>
                                     </span>
                                 </label>
 
@@ -445,16 +500,10 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                                         borderTopColor: 'transparent',
                                         borderBottomColor: 'white',
                                         borderLeftColor: 'transparent',
-                                        borderRightColor: getFieldBorderColor(
-                                            isUserFilled,
-                                            errors.user
-                                        ),
+                                        borderRightColor: getFieldBorderColor(isUserFilled, errors.user),
                                         borderWidth: '2px',
                                         borderStyle: 'solid',
-                                        boxShadow: getFieldShadow(
-                                            isUserFilled,
-                                            errors.user
-                                        ),
+                                        boxShadow: getFieldShadow(isUserFilled, errors.user),
                                     }}
                                     required
                                     disabled={loading || loadingUsers}
@@ -471,31 +520,23 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                                     {users.map((user) => (
                                         <option key={user.id} value={user.id}>
                                             {user.first_name || user.username}
-                                            {user.last_name
-                                                ? ` ${user.last_name}`
-                                                : ''}
-                                            {user.email
-                                                ? ` — ${user.email}`
-                                                : ''}
+                                            {user.last_name ? ` ${user.last_name}` : ''}
+                                            {user.email ? ` — ${user.email}` : ''}
                                         </option>
                                     ))}
                                 </select>
 
                                 {errors.user && (
-                                    <p className="text-red-500 text-sm mt-1">
-                                        {errors.user}
-                                    </p>
+                                    <p className="text-red-500 text-sm mt-1">{errors.user}</p>
                                 )}
                             </div>
                         )}
 
-                        {/* PERMISSION TOGGLES — 4 cols on large screens */}
+                        {/* PERMISSION TOGGLES */}
                         <div className="space-y-3 pt-2 border-t border-slate-200">
                             <div className="flex items-center gap-2 mb-3">
                                 <FaShieldAlt className="text-[#a47d52] text-sm" />
-                                <h4 className="text-sm font-bold text-slate-700">
-                                    الصلاحيات
-                                </h4>
+                                <h4 className="text-sm font-bold text-slate-700">الصلاحيات</h4>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -514,11 +555,7 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                                                         ? 'border-[#a47d52] bg-[#a47d52]/5 shadow-sm'
                                                         : 'border-slate-200 bg-white hover:border-[#a47d52]/40'
                                                 }
-                                                ${
-                                                    loading
-                                                        ? 'opacity-60 cursor-not-allowed'
-                                                        : ''
-                                                }
+                                                ${loading ? 'opacity-60 cursor-not-allowed' : ''}
                                             `}
                                         >
                                             <div className="flex items-start justify-between gap-2">
@@ -530,19 +567,13 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                                                     className={`
                                                         relative w-12 h-6 rounded-full
                                                         transition-colors duration-300 shrink-0
-                                                        ${
-                                                            formData[field.key]
-                                                                ? 'bg-green-600'
-                                                                : 'bg-slate-300'
-                                                        }
+                                                        ${formData[field.key] ? 'bg-green-600' : 'bg-slate-300'}
                                                     `}
                                                 >
                                                     <input
                                                         type="checkbox"
                                                         name={field.key}
-                                                        checked={
-                                                            formData[field.key]
-                                                        }
+                                                        checked={formData[field.key]}
                                                         onChange={handleChange}
                                                         className="sr-only"
                                                         disabled={loading}
@@ -554,17 +585,13 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                                                             transition-all duration-300
                                                             flex items-center justify-center
                                                             ${
-                                                                formData[
-                                                                    field.key
-                                                                ]
+                                                                formData[field.key]
                                                                     ? 'right-0.5'
                                                                     : 'right-[calc(100%-1.375rem)]'
                                                             }
                                                         `}
                                                     >
-                                                        {formData[
-                                                            field.key
-                                                        ] && (
+                                                        {formData[field.key] && (
                                                             <FaCheck className="text-green-500 text-[8px]" />
                                                         )}
                                                     </span>
@@ -627,5 +654,7 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
         </>
     );
 };
+
+
 
 export default AddPermission;

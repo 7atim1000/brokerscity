@@ -17,6 +17,14 @@ import {
     FaUserCheck,
     FaUserCog,
     FaKey,
+    FaBullhorn,
+    FaAddressCard,
+    // ✅ ADDED: Icons for new Lead columns
+    FaEye,
+    FaUserTag,
+    FaPlusCircle,
+    FaEdit,
+    FaExchangeAlt,
 } from "react-icons/fa";
 import { MdModeEdit } from "react-icons/md";
 
@@ -223,23 +231,25 @@ const Permissions = () => {
     const workLogCount = permissions.filter((p) => p.ListWorkLog).length;
     const monitoringCount = permissions.filter((p) => p.monitoring).length;
     const addMonitorCount = permissions.filter((p) => p.add_monitor).length;
-    const propertyManagementCount = permissions.filter(
-        (p) => p.property_management
-    ).length;
+    const propertyManagementCount = permissions.filter((p) => p.property_management).length;
     const financialsCount = permissions.filter((p) => p.financials).length;
-    // ✅ ADDED — stats for the 3 new fields
-    const canViewUsersCount = permissions.filter(
-        (p) => p.can_view_users
-    ).length;
-    const canManageUsersCount = permissions.filter(
-        (p) => p.can_manage_users
-    ).length;
-    const canManagePermissionsCount = permissions.filter(
-        (p) => p.can_manage_permissions
-    ).length;
+    const canViewUsersCount = permissions.filter((p) => p.can_view_users).length;
+    const canManageUsersCount = permissions.filter((p) => p.can_manage_users).length;
+    const canManagePermissionsCount = permissions.filter((p) => p.can_manage_permissions).length;
+    const adsCount = permissions.filter((p) => p.ads).length;
+    
+    // ✅ ADDED: Leads Stats
+    const leadsCount = permissions.filter((p) => p.leads).length;
+    const viewAllLeadCount = permissions.filter((p) => p.view_all_lead).length;
+    const viewMyLeadCount = permissions.filter((p) => p.view_my_lead).length;
+    const createNewLeadCount = permissions.filter((p) => p.create_new_lead).length;
+    const updateLeadCount = permissions.filter((p) => p.update_lead).length;
+    const updateLeadStageCount = permissions.filter((p) => p.update_lead_stage).length;
+    const updateLeadResponsibleCount = permissions.filter((p) => p.update_lead_responsible).length;
+    const deleteLeadCount = permissions.filter((p) => p.delete_lead).length;
 
     // =========================================================
-    // PERMISSION COLUMNS CONFIG — 8 columns
+    // PERMISSION COLUMNS CONFIG
     // =========================================================
     const permissionColumns = [
         { key: "ListWorkLog", label: "سجل الحضور" },
@@ -250,6 +260,16 @@ const Permissions = () => {
         { key: "can_view_users", label: "عرض المستخدمين" },
         { key: "can_manage_users", label: "إدارة المستخدمين" },
         { key: "can_manage_permissions", label: "إدارة الصلاحيات" },
+        { key: "ads", label: "الإعلانات" },
+        { key: "leads", label: "الليدز (Leads)" },
+        // ✅ ADDED: New CRM Lead Columns
+        { key: "view_all_lead", label: "عرض كل الليدز" },
+        { key: "view_my_lead", label: "عرض ليدزي" },
+        { key: "create_new_lead", label: "إنشاء ليد" },
+        { key: "update_lead", label: "تعديل ليد" },
+        { key: "update_lead_stage", label: "تعديل المرحلة" },
+        { key: "update_lead_responsible", label: "تعديل المسؤول" },
+        { key: "delete_lead", label: "حذف ليد" },
     ];
 
     // =========================================================
@@ -306,141 +326,152 @@ const Permissions = () => {
                 </div>
             </div>
 
-            {/* SUMMARY CARDS — 9 total (1 total + 8 permissions) */}
-            <div className="max-w-full mx-auto px-2 md:px-3 mb-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3 md:gap-4">
-                {/* Total */}
+            {/* SUMMARY CARDS */}
+            {/* ✅ UPDATED: Made the grid wrap better on large screens with the new cards */}
+            <div className="max-w-full mx-auto px-2 md:px-3 mb-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-4">
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-[#a47d52]">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            الإجمالي
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-[#a47d52] mt-1">
-                            {totalPermissions}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">الإجمالي</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-[#a47d52] mt-1">{totalPermissions}</p>
                     </div>
                     <FaShieldAlt className="text-[#a47d52]/50" size="24" />
                 </div>
 
-                {/* ListWorkLog */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-emerald-500">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            سجل العمل
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-emerald-600 mt-1">
-                            {workLogCount}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">سجل العمل</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-emerald-600 mt-1">{workLogCount}</p>
                     </div>
-                    <FaUserCircle
-                        className="text-emerald-500/50"
-                        size="24"
-                    />
+                    <FaUserCircle className="text-emerald-500/50" size="24" />
                 </div>
 
-                {/* Monitoring */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-blue-500">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            المراقبة
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-blue-600 mt-1">
-                            {monitoringCount}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">المراقبة</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-blue-600 mt-1">{monitoringCount}</p>
                     </div>
                     <FaUsers className="text-blue-500/50" size="24" />
                 </div>
 
-                {/* Add Monitor */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-amber-500">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            إضافة مراقبة
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-amber-600 mt-1">
-                            {addMonitorCount}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">إضافة مراقبة</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-amber-600 mt-1">{addMonitorCount}</p>
                     </div>
-                    <FaUserShield
-                        className="text-amber-500/50"
-                        size="24"
-                    />
+                    <FaUserShield className="text-amber-500/50" size="24" />
                 </div>
 
-                {/* Property Management */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-purple-500">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            إدارة العقارات
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-purple-600 mt-1">
-                            {propertyManagementCount}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">إدارة العقارات</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-purple-600 mt-1">{propertyManagementCount}</p>
                     </div>
                     <FaBuilding className="text-purple-500/50" size="24" />
                 </div>
 
-                {/* Financials */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-rose-500">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            الإدارة المالية
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-rose-600 mt-1">
-                            {financialsCount}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">الإدارة المالية</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-rose-600 mt-1">{financialsCount}</p>
                     </div>
-                    <FaMoneyBillWave
-                        className="text-rose-500/50"
-                        size="24"
-                    />
+                    <FaMoneyBillWave className="text-rose-500/50" size="24" />
                 </div>
 
-                {/* ✅ ADDED — Can View Users */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-indigo-500">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            عرض المستخدمين
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-indigo-600 mt-1">
-                            {canViewUsersCount}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">عرض المستخدمين</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-indigo-600 mt-1">{canViewUsersCount}</p>
                     </div>
-                    <FaUserCheck
-                        className="text-indigo-500/50"
-                        size="24"
-                    />
+                    <FaUserCheck className="text-indigo-500/50" size="24" />
                 </div>
 
-                {/* ✅ ADDED — Can Manage Users */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-cyan-500">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            إدارة المستخدمين
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-cyan-600 mt-1">
-                            {canManageUsersCount}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">إدارة المستخدمين</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-cyan-600 mt-1">{canManageUsersCount}</p>
                     </div>
-                    <FaUserCog
-                        className="text-cyan-500/50"
-                        size="24"
-                    />
+                    <FaUserCog className="text-cyan-500/50" size="24" />
                 </div>
 
-                {/* ✅ ADDED — Can Manage Permissions */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-slate-600">
                     <div>
-                        <p className="text-xs text-gray-500 font-medium">
-                            إدارة الصلاحيات
-                        </p>
-                        <p className="text-xl md:text-2xl font-extrabold text-slate-700 mt-1">
-                            {canManagePermissionsCount}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">إدارة الصلاحيات</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-slate-700 mt-1">{canManagePermissionsCount}</p>
                     </div>
-                    <FaKey
-                        className="text-slate-600/50"
-                        size="24"
-                    />
+                    <FaKey className="text-slate-600/50" size="24" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-pink-500">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">الإعلانات</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-pink-600 mt-1">{adsCount}</p>
+                    </div>
+                    <FaBullhorn className="text-pink-500/50" size="24" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-teal-500">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">الليدز</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-teal-600 mt-1">{leadsCount}</p>
+                    </div>
+                    <FaAddressCard className="text-teal-500/50" size="24" />
+                </div>
+
+                {/* ✅ ADDED: New Stats Cards for Lead Permissions */}
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-orange-500">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">عرض كل الليدز</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-orange-600 mt-1">{viewAllLeadCount}</p>
+                    </div>
+                    <FaEye className="text-orange-500/50" size="24" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-lime-500">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">عرض ليدزي</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-lime-600 mt-1">{viewMyLeadCount}</p>
+                    </div>
+                    <FaUserTag className="text-lime-500/50" size="24" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-fuchsia-500">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">إنشاء ليد</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-fuchsia-600 mt-1">{createNewLeadCount}</p>
+                    </div>
+                    <FaPlusCircle className="text-fuchsia-500/50" size="24" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-sky-500">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">تعديل ليد</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-sky-600 mt-1">{updateLeadCount}</p>
+                    </div>
+                    <FaEdit className="text-sky-500/50" size="24" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-violet-500">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">تعديل المرحلة</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-violet-600 mt-1">{updateLeadStageCount}</p>
+                    </div>
+                    <FaExchangeAlt className="text-violet-500/50" size="24" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-emerald-600">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">تعديل المسؤول</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-emerald-700 mt-1">{updateLeadResponsibleCount}</p>
+                    </div>
+                    <FaUserShield className="text-emerald-600/50" size="24" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-red-600">
+                    <div>
+                        <p className="text-xs text-gray-500 font-medium">حذف ليد</p>
+                        <p className="text-xl md:text-2xl font-extrabold text-red-700 mt-1">{deleteLeadCount}</p>
+                    </div>
+                    <FaTrash className="text-red-600/50" size="24" />
                 </div>
             </div>
 
@@ -476,15 +507,11 @@ const Permissions = () => {
                     {loading ? (
                         <div className="flex flex-col justify-center items-center py-24 gap-3">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#a47d52]" />
-                            <p className="text-gray-500 text-sm">
-                                جاري تحميل الصلاحيات...
-                            </p>
+                            <p className="text-gray-500 text-sm">جاري تحميل الصلاحيات...</p>
                         </div>
                     ) : error ? (
                         <div className="text-center py-20">
-                            <p className="text-red-600 text-lg font-semibold">
-                                {error}
-                            </p>
+                            <p className="text-red-600 text-lg font-semibold">{error}</p>
                             <button
                                 onClick={() => fetchPermissions(searchTerm)}
                                 className="mt-4 px-5 py-2 bg-[#a47d52] text-white rounded-lg text-sm"
@@ -494,43 +521,27 @@ const Permissions = () => {
                         </div>
                     ) : permissions.length === 0 ? (
                         <div className="text-center py-20">
-                            <FaUserShield
-                                className="mx-auto text-gray-300"
-                                size="56"
-                            />
+                            <FaUserShield className="mx-auto text-gray-300" size="56" />
                             <p className="text-gray-500 text-lg mt-3">
-                                {searchTerm
-                                    ? "لا توجد نتائج مطابقة للبحث"
-                                    : "لا توجد صلاحيات"}
+                                {searchTerm ? "لا توجد نتائج مطابقة للبحث" : "لا توجد صلاحيات"}
                             </p>
                             <p className="text-gray-400 text-sm mt-2">
-                                {searchTerm
-                                    ? "جرّب كلمة بحث أخرى"
-                                    : "قم بإضافة صلاحيات جديدة"}
+                                {searchTerm ? "جرّب كلمة بحث أخرى" : "قم بإضافة صلاحيات جديدة"}
                             </p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            <table className="w-full min-w-max">
                                 <thead className="bg-[#e9e6e1] text-[#a47d52]">
                                     <tr>
-                                        <th className="px-3 md:px-4 py-4 text-right text-sm font-bold">
-                                            #
-                                        </th>
-                                        <th className="px-3 md:px-4 py-4 text-right text-sm font-bold">
-                                            المستخدم
-                                        </th>
+                                        <th className="px-3 md:px-4 py-4 text-right text-sm font-bold">#</th>
+                                        <th className="px-3 md:px-4 py-4 text-right text-sm font-bold">المستخدم</th>
                                         {permissionColumns.map((col) => (
-                                            <th
-                                                key={col.key}
-                                                className="px-3 md:px-4 py-4 text-center text-sm font-bold"
-                                            >
+                                            <th key={col.key} className="px-2 md:px-3 py-4 text-center text-xs md:text-sm font-bold">
                                                 {col.label}
                                             </th>
                                         ))}
-                                        <th className="px-3 md:px-4 py-4 text-center text-sm font-bold">
-                                            الإجراءات
-                                        </th>
+                                        <th className="px-3 md:px-4 py-4 text-center text-sm font-bold">الإجراءات</th>
                                     </tr>
                                 </thead>
 
@@ -540,82 +551,43 @@ const Permissions = () => {
                                             key={row.id}
                                             className="border-b border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-[#f8f2e7] transition-colors duration-200"
                                         >
-                                            <td className="px-3 md:px-4 py-4 text-right text-sm text-gray-700">
-                                                {index + 1}
-                                            </td>
+                                            <td className="px-3 md:px-4 py-4 text-right text-sm text-gray-700">{index + 1}</td>
 
                                             <td className="px-3 md:px-4 py-4 text-right">
-                                                <div className="font-semibold text-gray-800 text-sm">
-                                                    {row.user_full_name ||
-                                                        row.username ||
-                                                        "-"}
+                                                <div className="font-semibold text-gray-800 text-sm whitespace-nowrap">
+                                                    {row.user_full_name || row.username || "-"}
                                                 </div>
-                                                <div className="text-xs text-gray-500 mt-0.5">
-                                                    {row.username}
-                                                    {row.user_email
-                                                        ? ` — ${row.user_email}`
-                                                        : ""}
+                                                <div className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">
+                                                    {row.username}{row.user_email ? ` — ${row.user_email}` : ""}
                                                 </div>
                                             </td>
 
                                             {permissionColumns.map((col) => (
-                                                <td
-                                                    key={col.key}
-                                                    className="px-3 md:px-4 py-4 text-center"
-                                                >
+                                                <td key={col.key} className="px-2 md:px-3 py-4 text-center">
                                                     <button
                                                         type="button"
-                                                        onClick={() =>
-                                                            handleToggle(
-                                                                row,
-                                                                col.key
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            togglingId ===
-                                                            `${row.id}-${col.key}`
-                                                        }
-                                                        title={
-                                                            row[col.key]
-                                                                ? "إيقاف"
-                                                                : "تفعيل"
-                                                        }
+                                                        onClick={() => handleToggle(row, col.key)}
+                                                        disabled={togglingId === `${row.id}-${col.key}`}
+                                                        title={row[col.key] ? "إيقاف" : "تفعيل"}
                                                         className={`
                                                             relative inline-flex
-                                                            h-6 w-11 rounded-full
+                                                            h-5 w-9 md:h-6 md:w-11 rounded-full
                                                             transition-colors duration-300
-                                                            ${
-                                                                row[col.key]
-                                                                    ? "bg-green-600"
-                                                                    : "bg-gray-300"
-                                                            }
-                                                            ${
-                                                                togglingId ===
-                                                                `${row.id}-${col.key}`
-                                                                    ? "opacity-60 cursor-wait"
-                                                                    : "cursor-pointer hover:opacity-90"
-                                                            }
+                                                            ${row[col.key] ? "bg-green-600" : "bg-gray-300"}
+                                                            ${togglingId === `${row.id}-${col.key}` ? "opacity-60 cursor-wait" : "cursor-pointer hover:opacity-90"}
                                                         `}
                                                     >
                                                         <span
                                                             className={`
                                                                 absolute top-0.5
-                                                                h-5 w-5 bg-white rounded-full shadow-md
+                                                                h-4 w-4 md:h-5 md:w-5 bg-white rounded-full shadow-md
                                                                 transition-all duration-300
                                                                 flex items-center justify-center
-                                                                ${
-                                                                    row[
-                                                                        col.key
-                                                                    ]
-                                                                        ? "right-0.5"
-                                                                        : "right-[calc(100%-1.375rem)]"
-                                                                }
+                                                                ${row[col.key] ? "right-0.5" : "right-[calc(100%-1.375rem)]"}
                                                             `}
                                                         >
                                                             {row[col.key] && (
-                                                                <span className="text-[#a47d52] text-[10px] font-bold">
-                                                                    ✓
-                                                                </span>
+                                                                <span className="text-[#a47d52] text-[8px] md:text-[10px] font-bold">✓</span>
                                                             )}
                                                         </span>
                                                     </button>
@@ -625,33 +597,20 @@ const Permissions = () => {
                                             <td className="px-3 md:px-4 py-4 text-center">
                                                 <div className="flex justify-center gap-2">
                                                     <button
-                                                        onClick={() =>
-                                                            handleOpenEdit(row)
-                                                        }
+                                                        onClick={() => handleOpenEdit(row)}
                                                         className="cursor-pointer px-2 py-2 bg-white rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-110 hover:bg-blue-50"
                                                         title="تعديل"
                                                     >
-                                                        <MdModeEdit
-                                                            className="text-blue-600"
-                                                            size="20"
-                                                        />
+                                                        <MdModeEdit className="text-blue-600" size="20" />
                                                     </button>
 
                                                     <button
-                                                        onClick={() =>
-                                                            handleDelete(row.id)
-                                                        }
-                                                        disabled={
-                                                            deletingId ===
-                                                            row.id
-                                                        }
+                                                        onClick={() => handleDelete(row.id)}
+                                                        disabled={deletingId === row.id}
                                                         className="cursor-pointer px-2 py-2 bg-white rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-110 hover:bg-red-50 disabled:opacity-50"
                                                         title="حذف"
                                                     >
-                                                        <FaTrash
-                                                            className="text-red-600"
-                                                            size="18"
-                                                        />
+                                                        <FaTrash className="text-red-600" size="18" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -659,41 +618,33 @@ const Permissions = () => {
                                     ))}
                                 </tbody>
 
-                                {/* SUMMARY FOOTER — 8 permission totals + record count */}
+                                {/* SUMMARY FOOTER */}
                                 <tfoot>
                                     <tr className="bg-[#e6d5c0] border-t-2 border-[#BF9000]">
-                                        <td
-                                            colSpan={2}
-                                            className="px-3 md:px-4 py-4 text-right text-sm font-extrabold text-gray-900"
-                                        >
+                                        <td colSpan={2} className="px-3 md:px-4 py-4 text-right text-sm font-extrabold text-gray-900 whitespace-nowrap">
                                             الإجمالي
                                         </td>
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm font-extrabold text-[#a47d52]">
-                                            {workLogCount}
-                                        </td>
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm font-extrabold text-[#a47d52]">
-                                            {monitoringCount}
-                                        </td>
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm font-extrabold text-[#a47d52]">
-                                            {addMonitorCount}
-                                        </td>
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm font-extrabold text-[#a47d52]">
-                                            {propertyManagementCount}
-                                        </td>
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm font-extrabold text-[#a47d52]">
-                                            {financialsCount}
-                                        </td>
-                                        {/* ✅ ADDED — 3 new totals */}
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm font-extrabold text-[#a47d52]">
-                                            {canViewUsersCount}
-                                        </td>
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm font-extrabold text-[#a47d52]">
-                                            {canManageUsersCount}
-                                        </td>
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm font-extrabold text-[#a47d52]">
-                                            {canManagePermissionsCount}
-                                        </td>
-                                        <td className="px-3 md:px-4 py-4 text-center text-sm text-gray-700">
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{workLogCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{monitoringCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{addMonitorCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{propertyManagementCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{financialsCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{canViewUsersCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{canManageUsersCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{canManagePermissionsCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{adsCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{leadsCount}</td>
+                                        
+                                        {/* ✅ ADDED: New Lead Totals in footer */}
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{viewAllLeadCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{viewMyLeadCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{createNewLeadCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{updateLeadCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{updateLeadStageCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{updateLeadResponsibleCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{deleteLeadCount}</td>
+
+                                        <td className="px-3 md:px-4 py-4 text-center text-sm text-gray-700 whitespace-nowrap">
                                             {totalPermissions} سجل
                                         </td>
                                     </tr>

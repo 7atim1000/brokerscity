@@ -10,11 +10,13 @@ from .models import (
     # Property
     Building, Unit, Rental, Rent, MonthlyPayment, 
     # Misc
-    WhatsAppMessage, Slider, Offersale, PaymentPlan,
+    WhatsAppMessage, Slider, Offersale, OfferInstallment, OfferFee, PaymentPlan,
     # Monitoring
     Monitor, Property, WorkLogComment, DailyWorkLog, Permission, PropertyColdCalls,
-    
-    PropertyWantedArea
+    PropertyWantedArea, AdLead, LandingPageConfig, 
+
+    # CRM
+    Lead, Comment, Activity # Assuming you have Comment and Activity models
 
 )
 
@@ -32,6 +34,9 @@ from django.contrib.auth import authenticate
 #################################################
 # Start Authentication + Permission 
 #################################################
+
+
+
 
 class PermissionSerializer(serializers.ModelSerializer):
     """Full serializer — used for create, update, and list."""
@@ -53,12 +58,26 @@ class PermissionSerializer(serializers.ModelSerializer):
             "user_email",        # read-only
             "ListWorkLog",
             "monitoring",
-            "property_management",   # ✅ ADD THIS
-            "financials",            # ✅ ADD THIS
+            "property_management",
+            "financials",
             "add_monitor",
-            "can_view_users",           # ✅ ADDED
-            "can_manage_users",         # ✅ ADDED
-            "can_manage_permissions",   # ✅ ADDED
+            "can_view_users",
+            "can_manage_users",
+            "can_manage_permissions",
+            
+            # Ad
+            "ads",
+            "leads",
+
+            # CRM Lead
+            "view_all_lead",
+            "view_my_lead",
+            "create_new_lead",
+            "update_lead",
+            "update_lead_stage",
+            "update_lead_responsible",
+            "delete_lead",
+
             "created_at",
             "updated_at",
         ]
@@ -73,8 +92,6 @@ class PermissionSerializer(serializers.ModelSerializer):
     def validate_user(self, value):
         """
         Prevent duplicate permission rows for the same user.
-        OneToOneField enforces this at DB level, but we check
-        explicitly for a cleaner error message.
         """
         if self.instance is None:  # create
             if Permission.objects.filter(user=value).exists():
@@ -83,34 +100,100 @@ class PermissionSerializer(serializers.ModelSerializer):
                 )
         return value
 
-
-
-
 # This serializer is only to manage user data.
-class UserListSerializer(serializers.ModelSerializer):
-    """
-    Lightweight user serializer for list views.
-    Includes status + role + key profile info.
+# class UserListSerializer(serializers.ModelSerializer):
+#     """
+#     Lightweight user serializer for list views.
+#     Includes status + role + key profile info.
 
-    NOTE: Permission flags (can_view_users / can_manage_users /
-    can_manage_permissions) are intentionally NOT included here.
-    They live in the Permission model and are exposed via the
-    dedicated endpoint GET /api/permissions/me/ — the frontend
-    reads them from PermissionsContext.
-    """
+#     NOTE: Permission flags (can_view_users / can_manage_users /
+#     can_manage_permissions) are intentionally NOT included here.
+#     They live in the Permission model and are exposed via the
+#     dedicated endpoint GET /api/permissions/me/ — the frontend
+#     reads them from PermissionsContext.
+#     """
+#     image = serializers.ImageField(source="profile.image", read_only=True)
+#     role = serializers.CharField(source="profile.role", read_only=True)
+#     role_display = serializers.CharField(
+#         source="profile.get_role_display", read_only=True
+#     )
+
+#     # Activity
+#     status = serializers.CharField(source="profile.status", read_only=True)
+#     status_display = serializers.CharField(
+#         source="profile.get_status_display", read_only=True
+#     )
+
+#     # Timestamps
+#     last_login_at = serializers.DateTimeField(
+#         source="profile.last_login_at", read_only=True
+#     )
+#     last_logout_at = serializers.DateTimeField(
+#         source="profile.last_logout_at", read_only=True
+#     )
+#     last_seen_at = serializers.DateTimeField(
+#         source="profile.last_seen_at", read_only=True
+#     )
+
+#     # Durations
+#     total_online_days = serializers.FloatField(
+#         source="profile.total_online_days", read_only=True
+#     )
+#     total_pause_days = serializers.FloatField(
+#         source="profile.total_pause_days", read_only=True
+#     )
+#     total_offline_days = serializers.FloatField(
+#         source="profile.total_offline_days", read_only=True
+#     )
+#     total_logged_out_days = serializers.FloatField(
+#         source="profile.total_logged_out_days", read_only=True
+#     )
+
+#     class Meta:
+#         model = User
+#         fields = [
+#             "id",
+#             "username",
+#             "email",
+#             "is_active",           # Django's is_active
+#             "date_joined",
+#             "last_login",          # Django's built-in field
+#             "image",
+#             "role",
+#             "role_display",
+#             # activity
+#             "status",
+#             "status_display",
+#             # timestamps from profile
+#             "last_login_at",
+#             "last_logout_at",
+#             "last_seen_at",
+#             # durations
+#             "total_online_days",
+#             "total_pause_days",
+#             "total_offline_days",
+#             "total_logged_out_days",
+#         ]
+#=========================================
+# Users Serializers
+#========================================
+# This serializer is only used to return user data.
+class UserListSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(source="profile.image", read_only=True)
+    
+    # ✅ ADDED: Extract the Profile ID for the ForeignKey
+    profile_id = serializers.IntegerField(source="profile.id", read_only=True)
+    
     role = serializers.CharField(source="profile.role", read_only=True)
     role_display = serializers.CharField(
         source="profile.get_role_display", read_only=True
     )
 
-    # Activity
     status = serializers.CharField(source="profile.status", read_only=True)
     status_display = serializers.CharField(
         source="profile.get_status_display", read_only=True
     )
 
-    # Timestamps
     last_login_at = serializers.DateTimeField(
         source="profile.last_login_at", read_only=True
     )
@@ -121,7 +204,6 @@ class UserListSerializer(serializers.ModelSerializer):
         source="profile.last_seen_at", read_only=True
     )
 
-    # Durations
     total_online_days = serializers.FloatField(
         source="profile.total_online_days", read_only=True
     )
@@ -139,31 +221,27 @@ class UserListSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
+            "profile_id",      # ✅ ADDED HERE
             "username",
             "email",
-            "is_active",           # Django's is_active
+            "is_active",
             "date_joined",
-            "last_login",          # Django's built-in field
+            "last_login",
             "image",
             "role",
             "role_display",
-            # activity
             "status",
             "status_display",
-            # timestamps from profile
             "last_login_at",
             "last_logout_at",
             "last_seen_at",
-            # durations
             "total_online_days",
             "total_pause_days",
             "total_offline_days",
             "total_logged_out_days",
         ]
-#=========================================
-# Users Serializers
-#========================================
-# This serializer is only used to return user data.
+
+        
 
 class UserSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(source="profile.image", read_only=True)
@@ -199,9 +277,8 @@ class UserSerializer(serializers.ModelSerializer):
     total_offline_days = serializers.FloatField(
         source="profile.total_offline_days", read_only=True
     )
-    total_logged_out_days = serializers.FloatField(
-        source="profile.total_logged_out_days", read_only=True
-    )
+    
+    # ✅ REMOVED: total_logged_out_days (since logged_out is gone)
 
     class Meta:
         model = User
@@ -223,10 +300,8 @@ class UserSerializer(serializers.ModelSerializer):
             "total_online_days",
             "total_pause_days",
             "total_offline_days",
-            "total_logged_out_days",
+            # ✅ REMOVED: total_logged_out_days
         ]
-
-
 #============================================
 # Register/ Signup 
 #===========================================
@@ -294,22 +369,24 @@ class RegisterSerializer(serializers.ModelSerializer):
 # =======================================
 # MANAGER UPDATE — Manager can change role + permissions
 # =======================================
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+
+
+User = get_user_model()
+
 class ManagerUserUpdateSerializer(serializers.ModelSerializer):
     """
     Used by managers to update OTHER users.
-    Fields:
+    Only allows updating:
       - role (in Profile)
       - is_active (Django's User.is_active)
-      - can_view_users, can_manage_users, can_manage_permissions
     """
 
     role = serializers.ChoiceField(
         choices=Profile.ROLE_CHOICES,
         required=False,
     )
-    can_view_users = serializers.BooleanField(required=False)
-    can_manage_users = serializers.BooleanField(required=False)
-    can_manage_permissions = serializers.BooleanField(required=False)
 
     class Meta:
         model = User
@@ -319,48 +396,30 @@ class ManagerUserUpdateSerializer(serializers.ModelSerializer):
             "email",
             "is_active",
             "role",
-            "can_view_users",
-            "can_manage_users",
-            "can_manage_permissions",
         ]
         read_only_fields = ["id", "username", "email"]
 
     def validate_role(self, value):
-        # Ensure the role exists in choices
-        valid_roles = [c[0] for c in Profile.ROLE_CHOICES]
-        if value not in valid_roles:
+        if value not in [c[0] for c in Profile.ROLE_CHOICES]:
             raise serializers.ValidationError("دور غير صالح.")
         return value
 
     def update(self, instance, validated_data):
-        # Extract profile-level fields
+        # Extract role (Profile field)
         role = validated_data.pop("role", None)
-        can_view_users = validated_data.pop("can_view_users", None)
-        can_manage_users = validated_data.pop("can_manage_users", None)
-        can_manage_permissions = validated_data.pop(
-            "can_manage_permissions", None
-        )
 
-        # Update User fields (is_active)
+        # Update User fields (is_active, etc.)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Update Profile fields
-        profile, _ = Profile.objects.get_or_create(user=instance)
+        # Update Profile — only `role`
         if role is not None:
+            profile, _ = Profile.objects.get_or_create(user=instance)
             profile.role = role
-        if can_view_users is not None:
-            profile.can_view_users = can_view_users
-        if can_manage_users is not None:
-            profile.can_manage_users = can_manage_users
-        if can_manage_permissions is not None:
-            profile.can_manage_permissions = can_manage_permissions
-        profile.save()
+            profile.save()
 
         return instance
-
-
 # =========================================================
 # USER SELF UPDATE — user edits own profile
 # =========================================================
@@ -529,8 +588,10 @@ class DailyWorkLogSerializer(serializers.ModelSerializer):
         source="user.profile.image", read_only=True
     )
 
-    total_work_hours = serializers.CharField(read_only=True)   # "0h 34m"
+    # ✅ Standardized formatting for frontend table (HH:MM)
+    total_work_hours = serializers.SerializerMethodField()
     break_hours = serializers.SerializerMethodField()
+    
     reason_display = serializers.CharField(
         source="get_reason_for_change_display", read_only=True
     )
@@ -561,6 +622,10 @@ class DailyWorkLogSerializer(serializers.ModelSerializer):
         m = (obj.break_seconds % 3600) // 60
         return f"{h:02d}:{m:02d}"
 
+    def get_total_work_hours(self, obj):
+        h = obj.total_work_seconds // 3600
+        m = (obj.total_work_seconds % 3600) // 60
+        return f"{h:02d}:{m:02d}"
 
 class AttendanceGridRowSerializer(serializers.Serializer):
     """
@@ -571,15 +636,71 @@ class AttendanceGridRowSerializer(serializers.Serializer):
     username = serializers.CharField()
     role_display = serializers.CharField()
     user_image = serializers.ImageField(allow_null=True)
-    days = serializers.DictField()   # {"2026-10-01": {...}, ...}
+    days = serializers.DictField()   # {"2026-10-01": {...}, ...} 
+###################################
+# End Worklog
+###################################
+
+
+##################################
+# Ad Lead
+###################################
+# class AdLeadSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = AdLead
+#         fields = '__all__'
+
+#     def validate_phone_number(self, value):
+#         # You can add UAE phone validation here
+#         if len(value) < 9:
+#             raise serializers.ValidationError("Invalid phone number.")
+#         return value
+
+
+class AdLeadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AdLead
+        fields = '__all__'
+
+class LandingPageConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LandingPageConfig
+        fields = '__all__'
+
+
+####################### START CRM ###########################
+class LeadSerializer(serializers.ModelSerializer):
+    # Optional: If you want to show the source description in the API response
+    source_description = serializers.ReadOnlyField()
     
-###################################
-# End Work log
-###################################
+    # Optional: If you want to show the responsible person's name instead of just the ID
+    # responsible_name = serializers.CharField(source='responsible.name', read_only=True)
 
+    class Meta:
+        model = Lead
+        fields = '__all__'
+        # If you want to explicitly list fields (recommended for security):
+        # fields = ['id', 'name', 'phone', 'stage', 'source', 'responsible', 'source_description', ...]
 
+    def validate_phone(self, value):
+        # You can add custom validation here if needed
+        if value and not value.startswith('+'):
+            raise serializers.ValidationError("Phone number must start with a country code (e.g., +971).")
+        return value
 
-# =========================================================
+    def update(self, instance, validated_data):
+        # Check if the 'responsible' field is being changed
+        new_responsible = validated_data.get('responsible', instance.responsible)
+        
+        if new_responsible != instance.responsible:
+            # Automatically update reassigned_at when the responsible user changes
+            from django.utils import timezone
+            instance.reassigned_at = timezone.now()
+            
+        return super().update(instance, validated_data)
+#######################  End CRM   ##########################
+
+# ===========================================================
 # Bank List Serializer (Minimal for list view)
 # =========================================================
 
@@ -1984,7 +2105,6 @@ class RentalListSerializer(serializers.ModelSerializer):
 #         return value
 
 
-
 class RentSerializer(serializers.ModelSerializer):
     # Read-only convenience fields
     tenant_name = serializers.SerializerMethodField()
@@ -2535,104 +2655,130 @@ class SendEmailSerializer(serializers.Serializer):
 #===============================
 # Offersale
 #===============================
-class OffersaleSerializer(serializers.ModelSerializer):
-    """
-    Full serializer — used for create, list, update.
-    The 'image' field is returned as a full URL if present.
-    """
+from rest_framework import serializers
+from django.db import transaction
+
+from .models import Offersale, OfferInstallment, OfferFee, PaymentPlan
+
+
+# ===========================================================================
+# CHILD SERIALIZERS
+# ===========================================================================
+class OfferInstallmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OfferInstallment
+        fields = [
+            "id", "order", "inst_no", "milestone",
+            "percentage", "date", "amount", "notes",
+        ]
+        read_only_fields = ["id"]
+
+
+class OfferFeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OfferFee
+        fields = [
+            "id", "order", "name", "fee_type",
+            "percentage", "amount", "is_vat",
+        ]
+        read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        fee_type = attrs.get("fee_type", "percentage")
+        if fee_type == "percentage" and attrs.get("percentage") is None:
+            raise serializers.ValidationError(
+                {"percentage": "percentage is required when fee_type='percentage'."}
+            )
+        if fee_type == "fixed" and not attrs.get("amount"):
+            raise serializers.ValidationError(
+                {"amount": "amount is required when fee_type='fixed'."}
+            )
+        return attrs
+
+
+# ===========================================================================
+# OFFERSALE — LIST (slim)
+# ===========================================================================
+class OffersaleListSerializer(serializers.ModelSerializer):
+    image_display = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Offersale
+        fields = [
+            "id",
+            "reference_no",
+            "date",
+            "recipient_name",
+            "offer_type",
+            "project",
+            "unit_no",
+            "listing_title",
+            "bedrooms",
+            "base_price",
+            "selling_price",
+            "grand_total",
+            "currency",
+            "image_display",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_image_display(self, obj):
+        request = self.context.get("request")
+        if obj.image:
+            url = obj.image.url
+            return request.build_absolute_uri(url) if request else url
+        return obj.image_url or None
+
+
+# ===========================================================================
+# OFFERSALE — DETAIL (full, nested read)
+# ===========================================================================
+class OffersaleDetailSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, allow_null=True)
     image_display = serializers.SerializerMethodField(read_only=True)
+    installments = OfferInstallmentSerializer(many=True, read_only=True)
+    fees = OfferFeeSerializer(many=True, read_only=True)
+    effective_grand_total = serializers.ReadOnlyField()
+    has_unit_no = serializers.ReadOnlyField()
 
     class Meta:
         model = Offersale
         fields = [
             "id",
             # Header
-            "reference_no",
-            "date",
-            "recipient_name",
+            "reference_no", "date", "recipient_name",
+            "offer_type", "developer", "sales_agent",
             # Project & Unit
-            "project",
-            "unit_no",
-            "estimated_completion_date",
+            "project", "unit_no", "estimated_completion_date",
             # Listing headline
             "listing_title",
             # Unit details
-            "unit_type",
-            "unit_model",
-            "bedrooms",
-            "unit_position",
-            "unit_grade",
-            "unit_note",
+            "unit_type", "unit_model", "bedrooms",
+            "unit_position", "unit_grade", "unit_note",
             # Area
-            "plot_area",
-            "gross_saleable_area",
-            "total_area",
-            "internal_area",
-            "terrace_area",
-            # Property image
-            "image",
-            "image_url",
-            "image_display",
+            "plot_area", "gross_saleable_area", "total_area",
+            "internal_area", "terrace_area",
+            # Image
+            "image", "image_url", "image_display",
             # Currency
             "currency",
-            # Financial details
-            "base_price",
-            "selling_price",
-            "premium_amount",
-            "noc_fee",
-            "transfer_fee",
-            "agency_fee",
-            "owner_paid_total",
-            "buyer_total",
-            # Promotion & waivers
-            "promotion",
-            "waiver",
-            "waiver_second",
+            # Financial
+            "base_price", "selling_price", "premium_amount",
+            "noc_fee", "transfer_fee", "agency_fee",
+            "owner_paid_total", "buyer_total", "grand_total",
+            "effective_grand_total",
+            # Promo & waivers
+            "promotion", "waiver", "waiver_second",
+            # Children (read-only here)
+            "installments", "fees",
             # Meta
-            "created_at",
-            "updated_at",
+            "has_unit_no", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "image_display"]
-
-    def get_image_display(self, obj):
-        """
-        Returns either the uploaded image URL or the external image_url.
-        Prefers the uploaded file if present.
-        """
-        request = self.context.get("request")
-        if obj.image:
-            url = obj.image.url
-            if request:
-                return request.build_absolute_uri(url)
-            return url
-        if obj.image_url:
-            return obj.image_url
-        return None
-
-
-class OffersaleListSerializer(serializers.ModelSerializer):
-    """
-    Lighter serializer for list view — omits heavy fields if needed.
-    Use only if you want a slim list response.
-    """
-    image_display = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = Offersale
-        fields = [
-            "id",
-            "reference_no",
-            "date",
-            "recipient_name",
-            "project",
-            "unit_no",
-            "listing_title",
-            "bedrooms",
-            "selling_price",
-            "currency",
-            "image_display",
-            "created_at",
+        read_only_fields = [
+            "id", "created_at", "updated_at",
+            "image_display", "effective_grand_total", "has_unit_no",
+            "installments", "fees",
         ]
 
     def get_image_display(self, obj):
@@ -2643,68 +2789,173 @@ class OffersaleListSerializer(serializers.ModelSerializer):
         return obj.image_url or None
 
 
+# ===========================================================================
+# OFFERSALE — CREATE / UPDATE (writes nested children in one request)
+# ===========================================================================
+class OffersaleWriteSerializer(serializers.ModelSerializer):
+    """
+    Handles create & update in one serializer.
 
+    - On create: accepts nested `installments` and `fees` and creates them.
+    - On update: if `installments` / `fees` are provided, the existing
+      children are **replaced** (simple, predictable). Omit them to leave
+      existing children untouched.
+    """
+    image = serializers.ImageField(required=False, allow_null=True)
+    installments = OfferInstallmentSerializer(many=True, required=False)
+    fees = OfferFeeSerializer(many=True, required=False)
 
-#=========================
-# Payment Plan
-#========================
-from rest_framework import serializers
-from .models import PaymentPlan, Offersale
+    class Meta:
+        model = Offersale
+        fields = [
+            "id",
+            # Header
+            "reference_no", "date", "recipient_name",
+            "offer_type", "developer", "sales_agent",
+            # Project & Unit
+            "project", "unit_no", "estimated_completion_date",
+            # Listing headline
+            "listing_title",
+            # Unit details
+            "unit_type", "unit_model", "bedrooms",
+            "unit_position", "unit_grade", "unit_note",
+            # Area
+            "plot_area", "gross_saleable_area", "total_area",
+            "internal_area", "terrace_area",
+            # Image
+            "image", "image_url",
+            # Currency
+            "currency",
+            # Financial
+            "base_price", "selling_price", "premium_amount",
+            "noc_fee", "transfer_fee", "agency_fee",
+            "owner_paid_total", "buyer_total", "grand_total",
+            # Promo & waivers
+            "promotion", "waiver", "waiver_second",
+            # Children (write)
+            "installments", "fees",
+        ]
+        read_only_fields = ["id"]
 
+    # ---------- validation ----------
+    def validate_unit_no(self, value):
+        if value in (None, ""):
+            return value
+        qs = Offersale.objects.filter(unit_no=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("An offer with this unit_no already exists.")
+        return value
 
-class InstallmentItemSerializer(serializers.Serializer):
-    inst_no = serializers.IntegerField(min_value=1)
-    milestone = serializers.CharField(max_length=150)
-    percentage = serializers.DecimalField(
-        max_digits=6, decimal_places=2, min_value=0
-    )
-    date = serializers.DateField(required=False, allow_null=True)
-    amount = serializers.DecimalField(
-        max_digits=15, decimal_places=2, min_value=0,
-        required=False, allow_null=True
-    )
+    def validate(self, attrs):
+        # Optional sanity check: if grand_total omitted, derive it
+        if not attrs.get("grand_total") and self.instance is None:
+            fees = attrs.get("fees", []) or []
+            fees_total = sum((f.get("amount") or 0) for f in fees)
+            base = attrs.get("base_price") or 0
+            if base or fees_total:
+                attrs["grand_total"] = base + fees_total
+        return attrs
+
+    # ---------- nested helpers ----------
+    @staticmethod
+    def _replace_children(instance, installments_data, fees_data, replace_flags):
+        replace_inst, replace_fees = replace_flags
+        if replace_inst and installments_data is not None:
+            instance.installments.all().delete()
+            OfferInstallment.objects.bulk_create([
+                OfferInstallment(offer=instance, **item) for item in installments_data
+            ])
+        if replace_fees and fees_data is not None:
+            instance.fees.all().delete()
+            OfferFee.objects.bulk_create([
+                OfferFee(offer=instance, **item) for item in fees_data
+            ])
+
+    # ---------- create ----------
+    @transaction.atomic
+    def create(self, validated_data):
+        installments_data = validated_data.pop("installments", [])
+        fees_data = validated_data.pop("fees", [])
+
+        offer = Offersale.objects.create(**validated_data)
+
+        if installments_data:
+            OfferInstallment.objects.bulk_create([
+                OfferInstallment(offer=offer, **item) for item in installments_data
+            ])
+        if fees_data:
+            OfferFee.objects.bulk_create([
+                OfferFee(offer=offer, **item) for item in fees_data
+            ])
+        return offer
+
+    # ---------- update ----------
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        installments_data = validated_data.pop("installments", None)
+        fees_data = validated_data.pop("fees", None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        self._replace_children(
+            instance,
+            installments_data,
+            fees_data,
+            replace_flags=(installments_data is not None, fees_data is not None),
+        )
+        return instance
 
 
 class PaymentPlanSerializer(serializers.ModelSerializer):
-    installments = InstallmentItemSerializer(many=True, required=False)
-
-    # ✅ Accepts "unit_no": "Lagoons-Wilds-SL7-V-175" from the frontend
-    unit_no = serializers.SlugRelatedField(
-        slug_field="unit_no",           # match on Offersale.unit_no
-        queryset=Offersale.objects.all(),
-        required=False,
-        allow_null=True,
+    offer_reference = serializers.CharField(
+        source="offer.reference_no", read_only=True
+    )
+    offer_installments = OfferInstallmentSerializer(
+        source="offer.installments", many=True, read_only=True
     )
 
     class Meta:
         model = PaymentPlan
         fields = [
             "id",
-            "unit_no",                  # returns the string, not the pk
-            "installments",
+            "offer",
+            "offer_reference",
+            "raw_installments",
             "base_price",
             "final_price",
             "adm_fee",
             "adm_admin_fee",
+            "offer_installments",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = [
+            "id", "created_at", "updated_at",
+            "offer_reference", "offer_installments",
+        ]
 
-    def validate_installments(self, value):
+    def validate_raw_installments(self, value):
+        if value in (None, []):
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError("raw_installments must be a list.")
         seen = set()
         for item in value:
-            key = item.get("inst_no")
-            if key in seen:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError("Each installment must be an object.")
+            inst_no = item.get("inst_no")
+            if inst_no in seen:
                 raise serializers.ValidationError(
-                    f"Duplicate installment number: {key}"
+                    f"Duplicate installment number: {inst_no}"
                 )
-            seen.add(key)
+            seen.add(inst_no)
         return value
 
-
-
-
+        
 #==========================
 # Monitoring
 #==========================

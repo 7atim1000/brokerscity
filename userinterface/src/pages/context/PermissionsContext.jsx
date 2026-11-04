@@ -18,6 +18,18 @@ const DEFAULT_PERMISSIONS = {
     can_view_users: false,
     can_manage_users: false,
     can_manage_permissions: false,
+    
+    ads: false, 
+    leads: false, 
+
+    // ✅ ADDED: Default false for new CRM Lead fields
+    view_all_lead: false,
+    view_my_lead: false,
+    create_new_lead: false,
+    update_lead: false,
+    update_lead_stage: false,
+    update_lead_responsible: false,
+    delete_lead: false,
 };
 
 const PermissionsContext = createContext(null);
@@ -26,11 +38,8 @@ export function PermissionsProvider({ children }) {
     const [permissions, setPermissions] = useState(DEFAULT_PERMISSIONS);
     const [loading, setLoading] = useState(true);
 
-    // ✅ Track whether we've ever fetched, so refresh() can skip the
-    //    initial mount duplication.
     const fetchedOnceRef = useRef(false);
 
-    // ✅ useCallback prevents consumers re-rendering on every provider render
     const fetchPermissions = useCallback(async (opts = {}) => {
         const { showLoading = true } = opts;
 
@@ -40,7 +49,6 @@ export function PermissionsProvider({ children }) {
             const token = localStorage.getItem("access_token");
 
             if (!token) {
-                // No token → reset to defaults, stop loading
                 setPermissions(DEFAULT_PERMISSIONS);
                 return;
             }
@@ -53,7 +61,6 @@ export function PermissionsProvider({ children }) {
             });
 
             if (!res.ok) {
-                // 401 / 403 / 500 → keep defaults, don't crash the app
                 console.error(
                     "Permissions fetch failed with status",
                     res.status
@@ -63,7 +70,9 @@ export function PermissionsProvider({ children }) {
 
             const data = await res.json();
 
-            // ✅ Merge with defaults so any missing key stays `false`
+            // ✅ UPDATED: The spread operator (...data) will now automatically 
+            // pick up the new Lead fields from the backend response and merge 
+            // them over the defaults.
             setPermissions({ ...DEFAULT_PERMISSIONS, ...data });
         } catch (err) {
             console.error("Failed to load permissions:", err);
@@ -72,16 +81,12 @@ export function PermissionsProvider({ children }) {
         }
     }, []);
 
-    // Initial fetch on mount
     useEffect(() => {
         if (fetchedOnceRef.current) return;
         fetchedOnceRef.current = true;
         fetchPermissions();
     }, [fetchPermissions]);
 
-    // ✅ Stable refresh() — used by Login.jsx after a successful login.
-    //    Silent mode (no loading flip) because Sidebar is already mounted
-    //    and we don't want the skeleton flash.
     const refresh = useCallback(
         () => fetchPermissions({ showLoading: false }),
         [fetchPermissions]

@@ -1,11 +1,12 @@
 # crm/models.py
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
+from django.db.models import Q
 
 
 import uuid
@@ -37,50 +38,36 @@ from datetime import date
 #         return self.user.username
 
 
+
 class Permission(models.Model):
-    user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name="custom_permission",
-    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="custom_permission",)
 
     # ---------- Work & Monitoring ----------
-    ListWorkLog = models.BooleanField(
-        default=False,
-        help_text="Allow listing work logs",
-    )
-    monitoring = models.BooleanField(
-        default=False,
-        help_text="Allow listing monitoring logs",
-    )
-    add_monitor = models.BooleanField(
-        default=False,
-        help_text="Allow add monitoring",
-    )
+    ListWorkLog = models.BooleanField(default=False, help_text="Allow listing work logs",)
+    monitoring = models.BooleanField(default=False, help_text="Allow listing monitoring logs",)
+    add_monitor = models.BooleanField(default=False, help_text="Allow add monitoring",)
 
     # ---------- Business modules ----------
-    property_management = models.BooleanField(
-        default=False,
-        help_text="Allow manage rent",
-    )
-    financials = models.BooleanField(
-        default=False,
-        help_text="Allow manage financials",
-    )
+    property_management = models.BooleanField(default=False, help_text="Allow manage rent",)
+    financials = models.BooleanField(default=False, help_text="Allow manage financials",)
 
     # ✅ MOVED from Profile → Permission
-    can_view_users = models.BooleanField(
-        default=False,
-        help_text="Whether this user can view the full user list.",
-    )
-    can_manage_users = models.BooleanField(
-        default=False,
-        help_text="Whether this user can edit other users' profiles/roles.",
-    )
-    can_manage_permissions = models.BooleanField(
-        default=False,
-        help_text="Whether this user can change permissions.",
-    )
+    can_view_users = models.BooleanField(default=False, help_text="Whether هل يمكن this user can view the full user list.",)
+    can_manage_users = models.BooleanField(default=False, help_text="Whether هل يمكن لهذا this user can edit other users' profiles/roles.",)
+    can_manage_permissions = models.BooleanField(default=False, help_text="Whether this user can change permissions.",)
+
+    # Ad Lead
+    ads = models.BooleanField(default=False, help_text="Whether this user can manage ads.")
+    leads = models.BooleanField(default=False, help_text="Whether this user can manage leads pages.",)
+    
+    # ✅ CRM LEAD
+    view_all_lead = models.BooleanField(default=False, help_text="Whether this user can see all leads.",)
+    view_my_lead = models.BooleanField(default=False, help_text="Whether this user see his leads")
+    create_new_lead = models.BooleanField(default=False, help_text="Whether this user can create a new lead")
+    update_lead = models.BooleanField(default=False, help_text="Whether this user can edit all lead information")
+    update_lead_stage = models.BooleanField(default=False, help_text="Whether this user can edit lead stages")
+    update_lead_responsible = models.BooleanField(default=False, help_text="Whether this user can edit lead responsible")
+    delete_lead = models.BooleanField(default=False, help_text="Whether this user can delete lead")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -99,40 +86,43 @@ class Permission(models.Model):
 
 
 
+
 class Profile(models.Model):
     # ---------- Role ----------
     USER = 'user'
-
     LISTING = 'listing'
     AGENT = 'agent'
     MANAGER = 'manager'
 
     ROLE_CHOICES = [
-        (USER, 'User'),
-        (LISTING, 'Listing'),
-        (AGENT, 'Agent'),
-        (MANAGER, 'Manager'),
+        ('test_account_sales', 'Test Account Sales'),
+        ('test_account_leasing', 'Test Account Leasing'),
+        ('test_account_listing', 'Test Account Listing'),
+        ('user', 'User'),
+        ('listing', 'Listing'),
+        ('sales_agent', 'Sales Agent'),
+        ('leasing_agent', 'Leasing Agent'),
+        ('manager', 'Manager'),
+        ('admin', 'Admin'),
     ]
 
     # ---------- Activity Status ----------
-    LOGGED_IN = 'logged_in'
+    # ✅ Removed LOGGED_IN and LOGGED_OUT. 
+    # Users are either ONLINE when logged in, PAUSE on break, or OFFLINE when out.
     ONLINE = 'online'
     PAUSE = 'pause'
     OFFLINE = 'offline'
-    LOGGED_OUT = 'logged_out'
 
     STATUS_CHOICES = [
-        (LOGGED_IN, 'Logged In'),
         (ONLINE, 'Online'),
         (PAUSE, 'Pause'),
         (OFFLINE, 'Offline'),
-        (LOGGED_OUT, 'Logged Out'),
     ]
 
     # ---------- Fields ----------
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     image = models.ImageField(upload_to='profiles/', null=True, blank=True)
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default=USER)
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default=USER)
 
     status = models.CharField(
         max_length=15, choices=STATUS_CHOICES, default=OFFLINE,
@@ -153,12 +143,7 @@ class Profile(models.Model):
     total_online_seconds = models.BigIntegerField(default=0)
     total_pause_seconds = models.BigIntegerField(default=0)
     total_offline_seconds = models.BigIntegerField(default=0)
-    total_logged_out_seconds = models.BigIntegerField(default=0)
-
-    # ❌ REMOVED — the three permission fields below now live in the Permission model
-    # can_view_users = models.BooleanField(...)
-    # can_manage_users = models.BooleanField(...)
-    # can_manage_permissions = models.BooleanField(...)
+    # total_logged_out_seconds = models.BigIntegerField(default=0) # Optional: keep if you still track it, otherwise remove.
 
     class Meta:
         verbose_name = "Profile"
@@ -184,50 +169,52 @@ class Profile(models.Model):
     def total_offline_days(self):
         return round(self.total_offline_seconds / 86400, 2)
 
-    @property
-    def total_logged_out_days(self):
-        return round(self.total_logged_out_seconds / 86400, 2)
-
     # ---------- Status helpers ----------
-    def mark_logged_in(self, session_key=None):
-        from django.utils import timezone
-        self.status = self.LOGGED_IN
-        self.last_login_at = timezone.now()
-        self.last_seen_at = timezone.now()
-        if session_key:
-            self.current_session_key = session_key
-        self.save(update_fields=[
-            "status", "last_login_at", "last_seen_at", "current_session_key",
-        ])
-
-    def mark_online(self):
-        from django.utils import timezone
+    def mark_online(self, session_key=None):
+        """ 
+        ✅ Used when user logs in OR resumes from pause.
+        Directly sets status to ONLINE.
+        """
         self.status = self.ONLINE
+        # If this is a fresh login (no last_login_at yet for this session)
+        if session_key:
+            self.last_login_at = timezone.now()
+            self.current_session_key = session_key
+            
         self.last_seen_at = timezone.now()
-        self.save(update_fields=["status", "last_seen_at"])
+        
+        # Build update fields dynamically
+        update_fields = ["status", "last_seen_at"]
+        if session_key:
+            update_fields.extend(["last_login_at", "current_session_key"])
+            
+        self.save(update_fields=update_fields)
 
     def mark_pause(self):
-        from django.utils import timezone
+        """ Used when user goes on a break. """
         self.status = self.PAUSE
         self.last_pause_at = timezone.now()
         self.save(update_fields=["status", "last_pause_at"])
 
     def mark_offline(self):
+        """ 
+        ✅ Used when user logs out OR disconnects.
+        Directly sets status to OFFLINE.
+        """
         self.status = self.OFFLINE
-        self.save(update_fields=["status"])
-
-    def mark_logged_out(self):
-        
-        from django.utils import timezone
-        self.status = self.LOGGED_OUT
         self.last_logout_at = timezone.now()
         self.current_session_key = None
         self.save(update_fields=[
             "status", "last_logout_at", "current_session_key",
         ])
+
+
 ##############################################################
 # DailyWorkLog
 ##############################################################
+from django.db import models
+from django.contrib.auth.models import User
+
 class DailyWorkLog(models.Model):
     """
     One record per user per day. Tracks that day's work session.
@@ -267,10 +254,19 @@ class DailyWorkLog(models.Model):
     def __str__(self):
         return f"{self.user.username} — {self.date}"
 
+    # ---------- Duration helpers ----------
     @property
     def total_work_hours(self):
+        """ Returns the total work time formatted as Hours and Minutes (e.g., '8h 30m') """
         h = self.total_work_seconds // 3600
         m = (self.total_work_seconds % 3600) // 60
+        return f"{h}h {m}m"
+
+    @property
+    def break_hours(self):
+        """ Returns the total break time formatted as Hours and Minutes """
+        h = self.break_seconds // 3600
+        m = (self.break_seconds % 3600) // 60
         return f"{h}h {m}m"
 
 
@@ -292,24 +288,250 @@ class WorkLogComment(models.Model):
         return f"{self.author.username}: {self.text[:40]}"
 
 
-####
+#####Py Helper (Utility) Function#############
 def get_or_create_today_log(user):
     today = timezone.localdate()
+    now = timezone.now()
+    
+    # 1. Get or create the log for today
     log, created = DailyWorkLog.objects.get_or_create(
-        user=user, date=today, defaults={"clock_in": timezone.now()}
+        user=user, 
+        date=today, 
+        defaults={"clock_in": now}
     )
+    
+    # 2. If they are logging back in on the same day (already created)
+    if not created:
+        # ✅ Clear the clock_out so they show as actively working again
+        if log.clock_out is not None:
+            log.clock_out = None
+        
+        # If for some reason clock_in was never set, set it now
+        if log.clock_in is None:
+            log.clock_in = now
+            
+        log.reason_for_change = DailyWorkLog.REASON_AUTO
+        log.save(update_fields=["clock_out", "clock_in", "reason_for_change"])
+
     return log
 
 
+###############################################################
+# Ad lead | end-to-end solution. 
+###############################################################
+# ✅ 1. Model to store the page design (Image, Title, Address)
+class LandingPageConfig(models.Model):
+    title = models.CharField(max_length=200, default="ALAIN العين")
+    # hero_image_url = models.URLField(max_length=500, help_text="URL to the main background image")
+    # ✅ CHANGED: Use ImageField instead of URLField
+    hero_image = models.ImageField(upload_to='landing_pages/', blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True, default="Learn more by providing your info below.")
+    show_budget_field = models.BooleanField(default=True)
+    show_bedrooms_field = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return self.title
 
+# ✅ 2. Your existing AdLead Model
+class AdLead(models.Model):
+    
+     # ✅ ADD THESE FIELDS
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('contacted', 'Contacted'),
+        ('qualified', 'Qualified'),
+        ('closed', 'Closed'),
+    ]
+    
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField(blank=True, null=True)
+    phone_number = models.CharField(max_length=20)
+    
+    estimated_budget = models.CharField(max_length=100, blank=True, null=True)
+    bedrooms_interested = models.CharField(max_length=50, blank=True, null=True)
+    purchase_timeframe = models.CharField(max_length=100, blank=True, null=True)
+    contact_preference = models.CharField(max_length=100, blank=True, null=True)
+    
+    campaign_name = models.CharField(max_length=100, default="Four Seasons Saadiyat")
+    source = models.CharField(max_length=50, default="Facebook Ads")
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
+    last_contacted = models.DateTimeField(blank=True, null=True)
+
+    fb_lead_id = models.CharField(max_length=100, unique=True, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} - {self.phone_number}"
 ###############################################################
 # Bank Model
 ###############################################################
 
 
+
 ###############################################################
-# Bank Model
+# CRM / SOURCE
 ###############################################################
+class Source(models.Model):
+    name = models.CharField(max_length=100, unique=True, help_text="name of the source")
+    description = models.CharField(max_length=255, blank=True, help_text="description of the source")
+
+    def __str__(self):
+        return self.name
+
+############################################################
+# CRM / LEAD
+############################################################
+
+class Lead(models.Model):
+    # 1. Foreign key to Profile (Responsible Person)
+    stage = models.CharField(
+        max_length=50,
+        default='fresh_lead',
+        db_index=True, # Good for filtering in the Kanban board
+        help_text="Current stage of the lead"
+    )
+    # source = models.ForeignKey('Source', on_delete=models.SET_NULL, null=True, blank=True, related_name='source_leads')  # unchanged, stays empty for now
+    source = models.CharField(max_length=200, blank=True, null=True, help_text="leads_source")
+    source_name = models.CharField(max_length=200, blank=True, null=True, help_text="Temporary: source as text")  # ✅ NEW
+    responsible = models.ForeignKey('Profile', on_delete=models.SET_NULL, null=True, blank=True, related_name='responsible_leads', help_text="The person responsible for this lead")
+    observe = models.ForeignKey('Profile', on_delete=models.SET_NULL, null=True, blank=True, related_name='observe_leads', help_text="The person observe for this lead")
+    
+    # 2. LEAD DETAILS (Now with unique constraints)
+    name = models.CharField(max_length=200, unique=True, blank = True, null = True, help_text="Name / الاسم")
+    
+    phone = models.CharField(max_length=200, unique=True, blank=True, null=True, help_text="Phone / هاتف")
+    phone1 = models.CharField(max_length=200, unique=True, blank=True, null=True, help_text="Phone 1 / هاتف")
+    phone2 = models.CharField(max_length=200, unique=True, blank=True, null=True, help_text="Phone 2 / هاتف")
+    
+    whatsapp_tracking_link = models.CharField(max_length=200, blank=True, null=True, help_text="What's up traking link")
+    email = models.CharField(max_length=200, unique=True, blank=True, null=True, help_text="E-mail / بريد إلكتروني")
+    
+    last_communication_date = models.DateField(blank=True, null=True, help_text="Last Communication Date")
+    nationality = models.CharField(max_length=200, blank=True, null=True, help_text="Nationality / الجنسية")
+    language = models.CharField(max_length=200, blank=True, null=True, help_text="Language / اللغة")
+    lead_type = models.CharField(max_length=200, blank=True, null=True, help_text="Service / طبيعة الخدمة")
+    
+    # 3. SELECTIONS FIELDS / Service Type and Other Details
+    type = models.CharField(max_length=200, blank=True, null=True, help_text="Type / طبيعة الخدمة / سكني - تجاري")
+    service_type = models.CharField(max_length=200, blank=True, null=True, help_text="Service / طبيعة الخدمة / Leasing, sales")
+    off_plan_or_resale = models.CharField(max_length=200, blank=True, null=True, help_text="Service / طبيعة الخدمة / resale, resell off plan")
+    
+    # 4. SELECTIONS FIELDS / Property fields
+    property_type = models.CharField(max_length=200, blank=True, null=True, help_text="Property Type / نوع العقار / apartment, vila , farm")
+    furnishing_type = models.CharField(max_length=200, blank=True, null=True, help_text="Furnished, Unfurnished")
+    
+    no_of_bedrooms = models.CharField(max_length=200, blank=True, null=True, help_text="No of Bedrooms / كم عدد الغرف")
+    no_of_bathrooms = models.CharField(max_length=200, blank=True, null=True, help_text="No of Bathrooms / عدد الحمامات")
+    amenities = models.CharField(max_length=200, blank=True, null=True, help_text="Amenities / المرافق")
+    
+    # 5. Comments and Locations
+    location = models.CharField(max_length=200, blank=True, null=True, help_text="Location / الموقع")    
+    comment = models.CharField(max_length=200, blank=True, null=True, help_text="Comment / تعليق")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    reassigned_at = models.DateTimeField(auto_now_add=True)
+
+    #You should select Option 1 (Provide a one-off default now).
+
+    # Here is exactly what you should do:
+    # Type 1 and press Enter.
+    # Django will then ask you: Please enter the default value as valid Python.
+    # Type timezone.now() and press Enter.
+
+    class Meta:
+        verbose_name = "Lead"
+        verbose_name_plural = "Leads"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+    # Optional: A helper method to easily display the source description in your templates/admin
+    @property
+    def source_description(self):
+        if self.source:
+            return self.source.description
+        return "No description available"
+
+
+
+class Comment(models.Model):
+    # ONLY Foreign Key to Lead
+    lead = models.ForeignKey(
+        'Lead', 
+        on_delete=models.CASCADE, 
+        related_name='comments', 
+        help_text="The lead this comment belongs to"
+    )
+    
+    # Comment Data
+    text = models.TextField(help_text="The comment content")
+    is_pinned = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment on {self.lead.name}"
+
+
+
+
+class Activity(models.Model):
+    # 1. Foreign Keys
+    lead = models.ForeignKey(
+        'Lead', 
+        on_delete=models.CASCADE, 
+        related_name='activities', 
+        help_text="The lead this activity belongs to"
+    )
+    
+    # 2. Activity Details
+    title = models.CharField(
+        max_length=200, 
+        help_text="Type of activity (e.g., Contact customer, Meeting)"
+    )
+    description = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Things to do / Details"
+    )
+    
+    # 3. Time & Deadlines
+    deadline = models.DateTimeField(
+        help_text="The date and time the activity is due"
+    )
+    
+    # 4. Status
+    is_completed = models.BooleanField(
+        default=False, 
+        help_text="Check if the activity is completed"
+    )
+    
+    # 5. System Fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Activity"
+        verbose_name_plural = "Activities"
+        ordering = ['deadline'] # Orders by the nearest deadline
+
+    def __str__(self):
+        return f"{self.title} for {self.lead.name}"
+
+        #######################################################
+        #######################################################
+        #######################################################
+        #######################################################
+        #######################################################
+
 class Bank(models.Model):
     name = models.CharField(
         max_length=100,
@@ -1401,168 +1623,259 @@ class Developer(models.Model):
         return self.name or f"Developer #{self.pk}"
 
 
-
+# ===========================================================================
+# MAIN OFFER SALE
+# ===========================================================================
 class Offersale(models.Model):
+    OFFER_TYPE_CHOICES = [
+        ("primary", "Primary / Developer"),
+        ("resale", "Resale"),
+    ]
+
     # ---------- Header ------------------
-    reference_no = models.CharField(max_length=100, help_text="Reference No", null=True, blank=True)
+    reference_no = models.CharField(max_length=100, null=True, blank=True, help_text="Reference No")
     date = models.DateField(null=True, blank=True, help_text="Offer date")
-    recipient_name = models.CharField(max_length=200, null=True, blank=True,help_text="Recipient / customer name (Dear X)")
-    
-    # ---------- Project & Unit ----------
-    project = models.CharField(max_length=100, help_text="Project name", null=True, blank=True)
-    unit_no = models.CharField(
-        max_length=100,
-        unique=True,          # ← required for FK to_field
-        null=True,
-        blank=True,
-        help_text="Unit Number",
+    recipient_name = models.CharField(
+        max_length=200, null=True, blank=True,
+        help_text="Recipient / customer name (Dear X)",
     )
-    estimated_completion_date = models.CharField(max_length=100, help_text="Estimated Date", null=True, blank=True)
+    offer_type = models.CharField(
+        max_length=20, choices=OFFER_TYPE_CHOICES, default="primary",
+        help_text="Primary/developer offer or resale offer",
+    )
+    developer = models.CharField(max_length=150, null=True, blank=True, help_text="Developer name")
+    sales_agent = models.CharField(max_length=150, null=True, blank=True, help_text="Broker / sales agent")
+
+    # ---------- Project & Unit ----------
+    project = models.CharField(max_length=100, null=True, blank=True, help_text="Project name")
+    unit_no = models.CharField(max_length=100, null=True, blank=True, help_text="Unit Number")
+    estimated_completion_date = models.CharField(
+        max_length=100, null=True, blank=True,
+        help_text="Estimated completion / handover (free text e.g. '1/1/2027' or 'Q4 2027')",
+    )
 
     # ---------- Listing headline ----------
-    listing_title = models.CharField(max_length=200, null=True, blank=True, help_text="e.g. 6BR Villa for Sale in Saadiyat Lagoons")
-    
+    listing_title = models.CharField(
+        max_length=200, null=True, blank=True,
+        help_text="e.g. 6BR Villa for Sale in Saadiyat Lagoons",
+    )
+
     # ---------- Unit details ----------
-    unit_type = models.CharField(max_length=100, help_text="Unit type", null=True, blank=True)
-    unit_model = models.CharField(max_length=100, help_text="Unit type", null=True, blank=True)
-    bedrooms = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. 6BR Villa")
+    unit_type = models.CharField(max_length=100, null=True, blank=True, help_text="Unit type")
+    unit_model = models.CharField(max_length=100, null=True, blank=True, help_text="Unit model")
+    bedrooms = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. 3 Bedrooms / 6BR Villa")
     unit_position = models.CharField(max_length=100, null=True, blank=True, help_text="e.g. Single row-Corner")
     unit_grade = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Premium")
     unit_note = models.CharField(max_length=100, null=True, blank=True, help_text="Extra note e.g. Cool")
-    
-    # ---------- Area
-    plot_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
-    gross_saleable_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
-    total_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
-    internal_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
-    terrace_area = models.CharField(max_length=100, help_text="Total Area", null=True, blank=True)
+
+    # ---------- Area ----------
+    plot_area = models.CharField(max_length=100, null=True, blank=True, help_text="Plot area")
+    gross_saleable_area = models.CharField(max_length=100, null=True, blank=True, help_text="Gross saleable area")
+    total_area = models.CharField(max_length=100, null=True, blank=True, help_text="Total area")
+    internal_area = models.CharField(max_length=100, null=True, blank=True, help_text="Internal area")
+    terrace_area = models.CharField(max_length=100, null=True, blank=True, help_text="Terrace area")
 
     # ---------- Property image ----------
-    image = models.ImageField(
-        upload_to="offersale/images/",
-        null=True, blank=True,
-        help_text="Property image"
-    )
-    image_url = models.URLField(
-        null=True, blank=True,
-        help_text="Optional external image URL (alternative to upload)"
-    )
+    image = models.ImageField(upload_to="offersale/images/", null=True, blank=True, help_text="Property image")
+    image_url = models.URLField(null=True, blank=True, help_text="Optional external image URL")
+
     # ---------- Currency ----------
-    currency = models.CharField(max_length=10, default="AED", help_text="Currency code",)
-    
+    currency = models.CharField(max_length=10, default="AED", help_text="Currency code")
+
     # ---------- Financial details ----------
     base_price = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], blank=True, null=True,
-        help_text="Original / Base Price"
+        help_text="Original / Base Price",
     )
     selling_price = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], blank=True, null=True,
-        help_text="Selling price"
+        help_text="Selling price",
     )
     premium_amount = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], blank=True, null=True,
-        help_text="Premium amount"
+        help_text="Premium amount (resale)",
     )
     noc_fee = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], blank=True, null=True,
-        help_text="NOC fee paid by buyer"
+        help_text="NOC fee paid by buyer",
     )
     transfer_fee = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], blank=True, null=True,
-        help_text="Transfer fee (usually 2%)"
+        help_text="Transfer fee (usually 2%)",
     )
     agency_fee = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], blank=True, null=True,
-        help_text="Agency fee (2% + VAT)"
+        help_text="Agency fee (2% + VAT)",
     )
     owner_paid_total = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], blank=True, null=True,
-        help_text="Total paid by owner to developer"
+        help_text="Total paid by owner to developer",
     )
     buyer_total = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], blank=True, null=True,
-        help_text="Total fees and payments to be paid by buyer"
+        help_text="Total fees and payments to be paid by buyer",
+    )
+    grand_total = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0.00,
+        validators=[MinValueValidator(0)], blank=True, null=True,
+        help_text="Grand total (base/selling + fees). If 0, computed from fees.",
     )
 
     # ---------- Promotion & Waivers ----------
-    promotion = models.CharField(
-        max_length=200, help_text="Promotion title", null=True, blank=True
-    )
-    waiver = models.CharField(
-        max_length=100, help_text="Waiver (AMC)", null=True, blank=True,  
-    )
-    waiver_second = models.CharField(
-        max_length=100, help_text="Waiver (DLP)", null=True, blank=True
-    )
+    promotion = models.CharField(max_length=200, null=True, blank=True, help_text="Promotion title")
+    waiver = models.CharField(max_length=100, null=True, blank=True, help_text="Waiver (AMC)")
+    waiver_second = models.CharField(max_length=100, null=True, blank=True, help_text="Waiver (DLP)")
 
-
-
+    # ---------- Timestamps ----------
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # unit_no uniqueness only when actually filled (Postgres / SQLite 3.9+)
+            models.UniqueConstraint(
+                fields=["unit_no"],
+                condition=Q(unit_no__isnull=False) & ~Q(unit_no=""),
+                name="unique_unit_no_when_set",
+            ),
+        ]
 
     def __str__(self):
         return self.reference_no or f"Offersale #{self.pk}"
 
+    # ---------- Convenience ----------
+    @property
+    def has_unit_no(self):
+        return bool(self.unit_no and self.unit_no.strip())
 
-#=======Payment Plan
+    @property
+    def computed_fees_total(self):
+        # adjust if you keep OfferFee below; otherwise base your logic on fields
+        return sum((f.amount or 0) for f in self.fees.all())
 
+    @property
+    def effective_grand_total(self):
+        if self.grand_total:
+            return self.grand_total
+        return (self.base_price or 0) + self.computed_fees_total
+
+
+# ===========================================================================
+# CHILD: structured installments (replaces JSON-only approach)
+# ===========================================================================
+class OfferInstallment(models.Model):
+    offer = models.ForeignKey(
+        Offersale, related_name="installments", on_delete=models.CASCADE
+    )
+    order = models.PositiveIntegerField(default=0, help_text="Display order")
+    inst_no = models.PositiveIntegerField(default=1, help_text="Installment number shown on PDF")
+    milestone = models.CharField(max_length=150, help_text="e.g. Down Payment, Handover")
+    percentage = models.DecimalField(
+        max_digits=6, decimal_places=2, default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Percentage of base price (0-100)",
+    )
+    date = models.DateField(null=True, blank=True, help_text="Due date, if any")
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Amount in offer currency",
+    )
+    notes = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        ordering = ["order", "inst_no", "id"]
+
+    def __str__(self):
+        return f"#{self.inst_no} {self.milestone} ({self.percentage}%)"
+
+
+# ===========================================================================
+# CHILD: additional fees (percentage OR fixed)
+# ===========================================================================
+class OfferFee(models.Model):
+    FEE_TYPE_CHOICES = [("percentage", "Percentage"), ("fixed", "Fixed")]
+
+    offer = models.ForeignKey(Offersale, related_name="fees", on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(default=0)
+    name = models.CharField(max_length=150, help_text="e.g. Municipality Fee, VAT, NOC")
+    fee_type = models.CharField(max_length=20, choices=FEE_TYPE_CHOICES, default="percentage")
+    percentage = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Only when fee_type = percentage",
+    )
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Computed or fixed amount",
+    )
+    is_vat = models.BooleanField(default=False, help_text="Flag if this line is VAT")
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.name} ({self.amount})"
+
+
+# ===========================================================================
+# PAYMENT PLAN — now links by PK, with optional JSON mirror + structured installments
+# ===========================================================================
 class PaymentPlan(models.Model):
     """
-    Payment plan linked to an Offersale via unit_no.
-    Installments are stored as a JSON list of objects:
-    [
-      {"inst_no": 1, "milestone": "Payment 1", "percentage": "5.00",
-       "date": "2024-09-11", "amount": "443777.00"},
-      ...
-    ]
+    Payment plan for an Offersale.
+
+    - Uses a normal FK to Offersale (by PK) — safe even when unit_no is missing.
+    - `raw_installments` stores the exact source JSON (audit trail), optional.
+    - Structured installments live in OfferInstallment (linked to Offersale),
+      so both this plan and the offer share the same rows.
+
+    If you prefer installments ONLY on the plan (not the offer), see the
+    commented variant at the bottom.
     """
-    # ---------- ForeignKey to Offersale using unit_no ----------
-    unit_no = models.ForeignKey(
-        "Offersale",
-        to_field="unit_no",           # ← match by unit_no string
-        db_column="unit_no",
+    offer = models.ForeignKey(
+        Offersale,
         on_delete=models.CASCADE,
         related_name="payment_plans",
-        null=True,
-        blank=True,
+        null=True, blank=True,
     )
 
-    # ---------- Installments (JSON list of objects) ----------
-    installments = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of installment objects "
-                  "(inst_no, milestone, percentage, date, amount)"
+    # Optional: keep the raw JSON from the source PDF for traceability
+    raw_installments = models.JSONField(
+        default=list, blank=True,
+        help_text="Raw source JSON: [{inst_no, milestone, percentage, date, amount}, ...]",
     )
 
     # ---------- Summary block ----------
     base_price = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], null=True, blank=True,
-        help_text="Base Price"
+        help_text="Base Price",
     )
     final_price = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], null=True, blank=True,
-        help_text="Final Price"
+        help_text="Final Price",
     )
     adm_fee = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], null=True, blank=True,
-        help_text="ADM Fee"
+        help_text="ADM Fee",
     )
     adm_admin_fee = models.DecimalField(
         max_digits=15, decimal_places=2, default=0.00,
         validators=[MinValueValidator(0)], null=True, blank=True,
-        help_text="ADM Admin Fee"
+        help_text="ADM Admin Fee",
     )
 
     # ---------- Meta ----------
@@ -1575,7 +1888,16 @@ class PaymentPlan(models.Model):
         ordering = ["-id"]
 
     def __str__(self):
-        return f"Plan for {self.unit_no_id or 'N/A'}"
+        ref = self.offer.reference_no if self.offer_id else "N/A"
+        return f"Plan for {ref}"
+
+    # ---------- Helper ----------
+    @property
+    def installments_total(self):
+        """Sum of amounts from the linked offer's structured installments."""
+        if not self.offer_id:
+            return 0
+        return sum((i.amount or 0) for i in self.offer.installments.all())
 
 
 

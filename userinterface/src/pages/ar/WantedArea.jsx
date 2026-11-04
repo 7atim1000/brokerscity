@@ -323,6 +323,9 @@ const WantedArea = () => {
         fetchWantedAreas();
     }, []);
 
+    // Solve preview just 10 record - pagination issue 
+
+
     /* ---------- Delete ---------- */
     const handleConfirmDelete = async () => {
         if (!confirmDelete) return;

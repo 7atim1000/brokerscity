@@ -1,17 +1,17 @@
-from django.shortcuts import render
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
-from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, Monitor, Rent, MonthlyPayment, get_or_create_today_log, Property, Permission, PropertyColdCalls, PropertyWantedArea
+from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, PaymentPlan, Monitor, Rent, MonthlyPayment, get_or_create_today_log, Property, Permission, PropertyColdCalls, PropertyWantedArea, AdLead, LandingPageConfig, Lead
 from rest_framework.response import Response
 from rest_framework import status, generics, filters
 from django.shortcuts import render, get_object_or_404
+
 # image upload: 
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 ###############
-# pip install django-filter
-from django_filters.rest_framework import DjangoFilterBackend
+import inspect
+
 # Dashboard
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
@@ -52,7 +52,12 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from django.core.mail import send_mail  
 
-
+###############
+# Filter
+###############
+# pip install django-filter
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 
 from .serializers import (
@@ -103,7 +108,11 @@ from .serializers import (
     DeveloperSerializer, DeveloperDetailSerializer, SendEmailSerializer, 
 
     # OfferSale
-    OffersaleSerializer, OffersaleListSerializer, PaymentPlanSerializer,
+    OffersaleListSerializer,
+    OffersaleDetailSerializer,
+    OffersaleWriteSerializer,
+    PaymentPlanSerializer,
+    PaymentPlanSerializer,
 
     # Monitoring
     MonitorSerializer,
@@ -112,11 +121,15 @@ from .serializers import (
     PermissionSerializer,
 
     PropertyColdCallsSerializer,
-    PropertyWantedAreaSerializer
+    PropertyWantedAreaSerializer,
+    AdLeadSerializer, LandingPageConfigSerializer, 
 
+    # CRM
+    LeadSerializer, 
     )
 
 # Dashboard
+
 logger = logging.getLogger(__name__)
 
 
@@ -244,11 +257,11 @@ def database_backup_view(request):
             status=500
         )
 
-#===========================================================
+#==============================================================================
 # CRM
-#===========================================================
+#==============================================================================
 # Start Permissions
-#=========================
+#==============================================================================
 # views.py
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -261,6 +274,7 @@ def my_permissions(request):
     try:
         perm = Permission.objects.get(user=request.user)
     except Permission.DoesNotExist:
+        # If no permissions row exists, return all False
         return Response({
             "ListWorkLog": False,
             "monitoring": False,
@@ -270,21 +284,41 @@ def my_permissions(request):
             "can_view_users": False,
             "can_manage_users": False,
             "can_manage_permissions": False,
+            "ads": False,
+            "leads": False,
+
+            # CRM Lead 
+            "view_all_lead": False,
+            "view_my_lead": False,
+            "create_new_lead": False,
+            "update_lead": False,
+            "update_lead_stage": False,
+            "update_lead_responsible": False,
+            "delete_lead": False,
         })
 
+    # ✅ FIXED: Added all fields to the success response
     return Response({
         "ListWorkLog": perm.ListWorkLog,
         "monitoring": perm.monitoring,
         "add_monitor": perm.add_monitor,
         "property_management": perm.property_management,
         "financials": perm.financials,
-       
-       # ✅ FIXED — read from `perm` directly, not from `perm.user.profile`
         "can_view_users": perm.can_view_users,
         "can_manage_users": perm.can_manage_users,
         "can_manage_permissions": perm.can_manage_permissions,
-    }) 
+        "ads": perm.ads,
+        "leads": perm.leads,
 
+        # CRM Lead 
+        "view_all_lead": perm.view_all_lead,
+        "view_my_lead": perm.view_my_lead,
+        "create_new_lead": perm.create_new_lead,
+        "update_lead": perm.update_lead,
+        "update_lead_stage": perm.update_lead_stage,
+        "update_lead_responsible": perm.update_lead_responsible,
+        "delete_lead": perm.delete_lead,
+    })
 
 # ---------- CREATE ----------
 @api_view(["POST"])
@@ -446,13 +480,12 @@ def users_list_view(request):
     serializer = UserListSerializer(qs, many=True)
 
     # ---------- Summary counts ----------
+    # ✅ UPDATED: Removed logged_in and logged_out, kept only online, pause, offline
     summary = {
         "total": qs.count(),
         "online": qs.filter(profile__status=Profile.ONLINE).count(),
-        "logged_in": qs.filter(profile__status=Profile.LOGGED_IN).count(),
         "pause": qs.filter(profile__status=Profile.PAUSE).count(),
         "offline": qs.filter(profile__status=Profile.OFFLINE).count(),
-        "logged_out": qs.filter(profile__status=Profile.LOGGED_OUT).count(),
         "active": qs.filter(is_active=True).count(),
         "inactive": qs.filter(is_active=False).count(),
     }
@@ -466,6 +499,7 @@ def users_list_view(request):
         status=drf_status.HTTP_200_OK,
     )
 
+
 # =========================================================
 # USERS — DETAIL
 # GET /api/users/<id>/
@@ -475,13 +509,14 @@ def users_list_view(request):
 def user_detail_view(request, pk):
     """
     Retrieve a single user with profile info.
-    Requires: can_view_users OR staff.
+    Requires: can_view_users (on Permission) OR staff.
     """
-    me_profile = getattr(request.user, "profile", None)
-    has_permission = (
-        request.user.is_staff
-        or (me_profile and me_profile.can_view_users)
-    )
+    # ✅ FIXED: Read from Permission model instead of Profile
+    permission = getattr(request.user, "custom_permission", None)
+    can_view_users = bool(getattr(permission, "can_view_users", False))
+
+    has_permission = request.user.is_staff or can_view_users
+    
     if not has_permission:
         return Response(
             {"message": "ليس لديك صلاحية لعرض المستخدمين."},
@@ -489,19 +524,21 @@ def user_detail_view(request, pk):
         )
 
     try:
-        user = User.objects.select_related("profile").get(pk=pk)
+        # ✅ Removed select_related to prevent FieldError crashes
+        user = User.objects.get(pk=pk)
     except User.DoesNotExist:
         return Response(
             {"message": "المستخدم غير موجود."},
             status=drf_status.HTTP_404_NOT_FOUND,
         )
 
+    # Assuming UserSerializer is the one we updated earlier
     serializer = UserSerializer(user)
+    
     return Response(
         {"user": serializer.data},
         status=drf_status.HTTP_200_OK,
     )
-
 
 # =========================================================
 # USERS — REMOVE
@@ -512,13 +549,14 @@ def user_detail_view(request, pk):
 def user_delete_view(request, pk):
     """
     Delete a user (profile cascades).
-    Requires: can_manage_users OR staff.
+    Requires: can_manage_users (on Permission) OR staff.
     """
-    me_profile = getattr(request.user, "profile", None)
-    has_permission = (
-        request.user.is_staff
-        or (me_profile and me_profile.can_manage_users)
-    )
+    # ✅ FIXED: Read from Permission model instead of Profile
+    permission = getattr(request.user, "custom_permission", None)
+    can_manage_users = bool(getattr(permission, "can_manage_users", False))
+
+    has_permission = request.user.is_staff or can_manage_users
+    
     if not has_permission:
         return Response(
             {"message": "ليس لديك صلاحية لحذف المستخدمين."},
@@ -550,9 +588,8 @@ def user_delete_view(request, pk):
 
 
 
-
 # =========================================================
-# PROFILE — STATUS ENDPOINTS
+# PROFILE — STATUS ENDPOINTS | Helper / Utility Function
 # =========================================================
 
 def _profile_response(user, message):
@@ -570,7 +607,7 @@ def _profile_response(user, message):
 
 
 # ---------------------------------------------------------
-# HEARTBEAT → ONLINE
+# HEARTBEAT → ONLINE  | Refresh from Db
 # ---------------------------------------------------------
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -589,33 +626,42 @@ def profile_heartbeat_view(request):
             status=drf_status.HTTP_404_NOT_FOUND,
         )
 
-    # Don't override a manual pause
-    # 🔥 ADD: update today's daily log
     log = get_or_create_today_log(user)
+    now = timezone.now()
 
+    # ✅ 1. Handle PAUSE state safely
     if profile.status == profile.PAUSE:
-        profile.last_seen_at = timezone.now()
-        profile.save(update_fields=["last_seen_at"])
-        # accumulate break time
-        # (track last_pause_at → now)
+        profile.last_seen_at = now
+        
         if profile.last_pause_at:
-            delta = (timezone.now() - profile.last_pause_at).total_seconds()
+            delta = (now - profile.last_pause_at).total_seconds()
             log.break_seconds += int(delta)
-        log.save(update_fields=["break_seconds"])
+            log.save(update_fields=["break_seconds"])
+            
+            # 🔥 CRITICAL FIX: Reset last_pause_at so it doesn't double-count next heartbeat
+            profile.last_pause_at = now
+            
+        profile.save(update_fields=["last_seen_at", "last_pause_at"])
+        
+        profile.refresh_from_db()
         return _profile_response(user, "لا يزال في حالة الإيقاف المؤقت.")
 
+    # ✅ 2. Handle ONLINE state
     profile.mark_online()
 
-    # update work duration
     if log.clock_in:
-        delta = (timezone.now() - log.clock_in).total_seconds() - log.break_seconds
-        log.total_work_seconds = max(0, int(delta))
+        elapsed = (now - log.clock_in).total_seconds()
+        log.total_work_seconds = max(0, int(elapsed - log.break_seconds))
         log.save(update_fields=["total_work_seconds"])
+
+    # ✅ 3. Force refresh so the response returns the exact new status
+    profile.refresh_from_db()
 
     return _profile_response(user, "تم تحديث الحالة إلى متصل.")
 
+
 # ---------------------------------------------------------
-# PAUSE
+# PAUSE | refresh_from_db
 # ---------------------------------------------------------
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -631,12 +677,26 @@ def profile_pause_view(request):
             status=drf_status.HTTP_404_NOT_FOUND,
         )
 
+    # ✅ 1. Mark the profile as paused
     profile.mark_pause()
+
+    # ✅ 2. Get today's log and update the work timer up to this exact moment
+    log = get_or_create_today_log(user)
+    
+    if log.clock_in:
+        # Calculate how much work they did BEFORE they hit pause
+        elapsed = (timezone.now() - log.clock_in).total_seconds()
+        log.total_work_seconds = max(0, int(elapsed - log.break_seconds))
+        log.save(update_fields=["total_work_seconds"])
+
+    # ✅ 3. FORCE REFRESH so the response returns the new "pause" status
+    profile.refresh_from_db()
+
     return _profile_response(user, "تم إيقاف النشاط مؤقتاً.")
 
 
 # ---------------------------------------------------------
-# RESUME (from pause → online)
+# RESUME (from pause → online) | refresh_from_db 
 # ---------------------------------------------------------
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -652,7 +712,28 @@ def profile_resume_view(request):
             status=drf_status.HTTP_404_NOT_FOUND,
         )
 
+    # ✅ 1. Before marking online, capture the break time if they were paused
+    if profile.status == profile.PAUSE and profile.last_pause_at:
+        log = get_or_create_today_log(user)
+        now = timezone.now()
+        
+        # Calculate how long they were on pause
+        delta = (now - profile.last_pause_at).total_seconds()
+        
+        # Add it to the daily log's break time
+        log.break_seconds += int(delta)
+        log.save(update_fields=["break_seconds"])
+        
+        # Clear last_pause_at so it doesn't double-count
+        profile.last_pause_at = None
+        profile.save(update_fields=["last_pause_at"])
+
+    # ✅ 2. Mark the profile as online
     profile.mark_online()
+
+    # ✅ 3. FORCE REFRESH so the response returns the new "online" status
+    profile.refresh_from_db()
+
     return _profile_response(user, "تم استئناف النشاط.")
 
 
@@ -663,7 +744,7 @@ def profile_resume_view(request):
 @permission_classes([IsAuthenticated])
 def profile_offline_view(request):
     """
-    Manually set to offline (usually triggered by inactivity).
+    Manually set to offline (usually triggered by inactivity or logout).
     """
     user = request.user
     profile = getattr(user, "profile", None)
@@ -673,59 +754,76 @@ def profile_offline_view(request):
             status=drf_status.HTTP_404_NOT_FOUND,
         )
 
+    # ✅ 1. Get today's log
+    log = get_or_create_today_log(user)
+    now = timezone.now()
+
+    # ✅ 2. If they were on a pause, capture that final break time
+    if profile.status == profile.PAUSE and profile.last_pause_at:
+        delta = (now - profile.last_pause_at).total_seconds()
+        log.break_seconds += int(delta)
+        profile.last_pause_at = None
+        profile.save(update_fields=["last_pause_at"])
+
+    # ✅ 3. Calculate the final total work seconds
+    if log.clock_in:
+        elapsed = (now - log.clock_in).total_seconds()
+        log.total_work_seconds = max(0, int(elapsed - log.break_seconds))
+
+    # ✅ 4. Set the clock_out time
+    log.clock_out = now
+    log.save(update_fields=["break_seconds", "total_work_seconds", "clock_out"])
+
+    # ✅ 5. Mark the profile offline
     profile.mark_offline()
+
+    # ✅ 6. FORCE REFRESH so the response returns the new "offline" status
+    profile.refresh_from_db()
+
     return _profile_response(user, "تم تعيين الحالة إلى غير متصل.")
 
 
 # ---------------------------------------------------------
 # LOGGED IN (optional — usually set by login_view)
 # ---------------------------------------------------------
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def profile_logged_in_view(request):
-    """
-    Explicitly mark as logged_in.
-    Normally handled by /api/login/ automatically.
-    """
-    user = request.user
-    profile = getattr(user, "profile", None)
-    if not profile:
-        return Response(
-            {"message": "لا يوجد ملف شخصي لهذا المستخدم."},
-            status=drf_status.HTTP_404_NOT_FOUND,
-        )
 
-    session_key = (
-        request.session.session_key
-        if hasattr(request, "session") and request.session.session_key
-        else None
-    )
-    profile.mark_logged_in(session_key=session_key)
-    return _profile_response(user, "تم تسجيل الدخول.")
+# @api_view(["POST"])
+# @permission_classes([IsAuthenticated])
+# def profile_logged_in_view(request):
+#     """
+#     Explicitly mark as ONLINE.
+#     Normally handled by /api/login/ automatically.
+#     """
+#     user = request.user
+#     profile = getattr(user, "profile", None)
+#     if not profile:
+#         return Response(
+#             {"message": "لا يوجد ملف شخصي لهذا المستخدم."},
+#             status=drf_status.HTTP_404_NOT_FOUND,
+#         )
+
+#     session_key = (
+#         request.session.session_key
+#         if hasattr(request, "session") and request.session.session_key
+#         else None
+#     )
+    
+#     # 1. Mark Online
+#     profile.mark_online(session_key=session_key)
+    
+#     # 2. Ensure today's work log is ready
+#     get_or_create_today_log(user)
+    
+#     # ✅ 3. Force a database refresh so `_profile_response` returns the exact new status
+#     profile.refresh_from_db()
+    
+#     return _profile_response(user, "تم تسجيل الدخول.")
 
 
-# ---------------------------------------------------------
-# LOGGED OUT
-# ---------------------------------------------------------
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def logout_view(request):
-    """
-    Marks the profile as LOGGED_OUT and clears session key.
-    """
-    user = request.user
-    profile = getattr(user, "profile", None)
-    if profile:
-        profile.mark_logged_out()
-
-    return Response(
-        {"message": "تم تسجيل الخروج."},
-        status=drf_status.HTTP_200_OK,
-    )
 
 
 # ---------------------------------------------------------
-# LOGOUT via GET (optional convenience)
+# User Status 
 # ---------------------------------------------------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -752,10 +850,11 @@ def profile_status_view(request):
             "total_online_days": profile.total_online_days,
             "total_pause_days": profile.total_pause_days,
             "total_offline_days": profile.total_offline_days,
-            "total_logged_out_days": profile.total_logged_out_days,
+            # ✅ REMOVED: total_logged_out_days (because the status was removed)
         },
         status=drf_status.HTTP_200_OK,
     )
+
 
 # =========================================================
 # REGISTER
@@ -810,8 +909,6 @@ def me_view(request):
 #         serializer.data,
 #         status=status.HTTP_200_OK)
 
-
-import inspect
 
 @api_view(["PATCH", "PUT"])
 @permission_classes([IsAuthenticated])
@@ -879,14 +976,14 @@ def user_self_update_view(request):
 @permission_classes([IsAuthenticated])
 def user_update_by_manager_view(request, pk):
     """
-    Manager updates another user's role, is_active, and permissions.
-    Requires: can_manage_users OR is_staff.
+    Manager updates another user's role and is_active.
+    Requires: can_manage_users (on Permission) OR is_staff.
     """
-    me_profile = getattr(request.user, "profile", None)
-    has_permission = (
-        request.user.is_staff
-        or (me_profile and me_profile.can_manage_users)
-    )
+    # ✅ FIXED: Read from Permission model, NOT Profile
+    permission = getattr(request.user, "custom_permission", None)
+    can_manage_users = bool(getattr(permission, "can_manage_users", False))
+
+    has_permission = request.user.is_staff or can_manage_users
     if not has_permission:
         return Response(
             {"message": "ليس لديك صلاحية لتعديل المستخدمين."},
@@ -894,22 +991,19 @@ def user_update_by_manager_view(request, pk):
         )
 
     try:
-        user = User.objects.select_related("profile").get(pk=pk)
+        user = User.objects.get(pk=pk)
     except User.DoesNotExist:
         return Response(
             {"message": "المستخدم غير موجود."},
             status=drf_status.HTTP_404_NOT_FOUND,
         )
 
-    # Prevent self-demotion edge case (optional)
-    if request.user.id == pk:
-        # Allow but warn: they can still change their own flags, but
-        # typically you may want to block role change on self.
-        pass
-
     partial = request.method == "PATCH"
     serializer = ManagerUserUpdateSerializer(
-        user, data=request.data, partial=partial
+        user,
+        data=request.data,
+        partial=partial,
+        context={"request": request},
     )
 
     if not serializer.is_valid():
@@ -931,9 +1025,6 @@ def user_update_by_manager_view(request, pk):
 
 
 
-
-
-
 ###Add temporary debug to login_view
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -949,12 +1040,18 @@ def login_view(request):
 
     user = serializer.validated_data["user"]
 
+    # ✅ FIXED: Update profile status to ONLINE and start the work log
     if hasattr(user, "profile"):
-        user.profile.mark_logged_in(
-            session_key=request.session.session_key
-            if hasattr(request, "session")
+        session_key = (
+            request.session.session_key
+            if hasattr(request, "session") and request.session.session_key
             else None
         )
+        # 1. Mark status as ONLINE
+        user.profile.mark_online(session_key=session_key)
+        
+        # 2. Ensure today's work log is created
+        get_or_create_today_log(user)
 
     refresh = RefreshToken.for_user(user)
     return Response({
@@ -963,15 +1060,39 @@ def login_view(request):
         "user": UserSerializer(user).data,
     })
 
-
     
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
     user = request.user
-    if hasattr(user, "profile"):
-        user.profile.mark_logged_out()
+    profile = getattr(user, "profile", None)
+    
+    if profile:
+        # ✅ 1. Get today's log and capture the current time
+        log = get_or_create_today_log(user)
+        now = timezone.now()
+        
+        # ✅ 2. Capture final break time if they were on pause
+        if profile.status == profile.PAUSE and profile.last_pause_at:
+            delta = (now - profile.last_pause_at).total_seconds()
+            log.break_seconds += int(delta)
+            profile.last_pause_at = None
+            profile.save(update_fields=["last_pause_at"])
+
+        # ✅ 3. Calculate final work time
+        if log.clock_in:
+            elapsed = (now - log.clock_in).total_seconds()
+            log.total_work_seconds = max(0, int(elapsed - log.break_seconds))
+
+        # ✅ 4. Set clock_out and save the log
+        log.clock_out = now
+        log.save(update_fields=["break_seconds", "total_work_seconds", "clock_out"])
+
+        # ✅ 5. Mark the profile as OFFLINE (this replaces mark_logged_out)
+        profile.mark_offline()
+
     return Response({"message": "تم تسجيل الخروج."}, status=200)
+
 
 #####################
 # End Authentication
@@ -1151,9 +1272,375 @@ def worklog_add_comment_view(request, log_id):
     )
 
 
-#####################
+######################
 # End WorkLog
 #####################
+######################
+# Start Ad Lead
+#######################
+# ✅ 1. Endpoint for your React Frontend (Custom Landing Page)
+
+# ==========================================
+# 1. LANDING PAGE CONFIG (For Admin & Public)
+# ==========================================
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_landing_config(request, pk):
+    try:
+        config = LandingPageConfig.objects.get(pk=pk)
+        serializer = LandingPageConfigSerializer(config)
+        return Response(serializer.data)
+    except LandingPageConfig.DoesNotExist:
+        return Response({"error": "Config not found"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated]) # Admin only
+
+# ✅ ADDED: Parsers to handle file uploads
+@parser_classes([MultiPartParser, FormParser]) 
+def create_landing_config(request):
+    serializer = LandingPageConfigSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# ==========================================
+# 2. Ad_LEADS (For Frontend & Facebook)
+# ==========================================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def create_ad_lead(request):
+    serializer = AdLeadSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"message": "Lead saved successfully!"}, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def facebook_webhook(request):
+    try:
+        data = request.data
+        lead = AdLead.objects.create(
+            first_name=data.get('first_name', 'Unknown'),
+            last_name=data.get('last_name', ''),
+            email=data.get('email', ''),
+            phone_number=data.get('phone_number', ''),
+            fb_lead_id=data.get('id', None)
+        )
+        return Response({"status": "success"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ✅ 1. List all Ad_leads (for the dashboard)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_leads(request):
+    leads = AdLead.objects.all().order_by('-created_at')
+    serializer = AdLeadSerializer(leads, many=True)
+    return Response({"count": leads.count(), "leads": serializer.data})
+
+# ✅ 2. Update a lead's status (e.g., from "New" to "Contacted")
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_lead_status(request, pk):
+    try:
+        lead = AdLead.objects.get(pk=pk)
+    except AdLead.DoesNotExist:
+        return Response({"error": "Lead not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if 'status' in request.data:
+        lead.status = request.data['status']
+        lead.save()
+        return Response({"message": "Status updated successfully"})
+    
+    return Response({"error": "No status provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+################################
+# LEAD / CRM
+################################
+# class LeadViewSet(viewsets.ModelViewSet):
+#     """
+#     A ViewSet that provides CRUD operations for Leads.
+#     """
+#     queryset = Lead.objects.all().order_by('-created_at')
+#     serializer_class = LeadSerializer
+#     permission_classes = [IsAuthenticated] # Requires user to be logged in
+
+#     # Enables searching by name, phone, or email
+#     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+#     search_fields = ['name', 'phone', 'phone1', 'phone2', 'email']
+    
+#     # Enables filtering by stage, responsible, or source (e.g., /api/leads/?stage=fresh_lead)
+#     filterset_fields = ['stage', 'responsible', 'source', 'type']
+    
+#     # Enables ordering (e.g., /api/leads/?ordering=name)
+#     ordering_fields = ['created_at', 'last_communication_date', 'name']
+
+#     def perform_create(self, serializer):
+#         # Optional: Automatically assign the logged-in user as the 'responsible' 
+#         # person if not provided in the request.
+#         if 'responsible' not in self.request.data:
+#             serializer.save(responsible=self.request.user.profile)
+#         else:
+#             serializer.save()
+
+#     def perform_destroy(self, instance):
+#         # Optional: Instead of deleting the lead, you could just mark it as "Closed" or "Deleted"
+#         # For now, it will permanently delete the lead.
+#         instance.delete()
+
+
+# Permissions in React are only for the UI (User Interface). A hacker can use Postman or CURL to call your Django API directly. Your backend must also check permissions.
+
+# 1. INSERT (Create)
+# ==========================================
+# 5. Create Lead (Secured)
+# ==========================================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_lead(request):
+    # ✅ BACKEND SECURITY CHECK: Does user have create_new_lead?
+    try:
+        perm = Permission.objects.get(user=request.user)
+        if not perm.create_new_lead:
+            return Response(
+                {"error": "ليس لديك صلاحية لإنشاء ليد جديد."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Permission.DoesNotExist:
+        return Response({"error": "ليس لديك صلاحيات."}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = LeadSerializer(data=request.data)
+    if serializer.is_valid():
+        if 'responsible' not in request.data:
+            serializer.save(responsible=request.user.profile)
+        else:
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+# 2. FETCH ALL (List)
+
+# ==========================================
+# 1. Fetch All Leads (Secured)
+# ==========================================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def lead_list(request):
+    # ✅ BACKEND SECURITY CHECK: Does user have view_all_lead?
+    try:
+        perm = Permission.objects.get(user=request.user)
+        if not perm.view_all_lead:
+            return Response(
+                {"error": "ليس لديك صلاحية لعرض جميع الليدز (View All Leads permission required)."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Permission.DoesNotExist:
+        return Response(
+            {"error": "ليس لديك أي صلاحيات مخصصة في النظام."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # If they pass the check, proceed
+    leads = Lead.objects.all().order_by('-created_at')
+    
+    # Optional: Filtering by stage
+    stage = request.query_params.get('stage', None)
+    if stage is not None:
+        leads = leads.filter(stage=stage)
+        
+    serializer = LeadSerializer(leads, many=True)
+    return Response(serializer.data)
+
+
+# ==========================================
+# 2. Fetch My Leads (Secured)
+# ==========================================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_leads(request):
+    # ✅ BACKEND SECURITY CHECK: Does user have view_my_lead?
+    try:
+        perm = Permission.objects.get(user=request.user)
+        if not perm.view_my_lead and not perm.view_all_lead:
+            return Response(
+                {"error": "ليس لديك صلاحية لعرض الليدز الخاصة بك (View My Leads permission required)."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Permission.DoesNotExist:
+        return Response(
+            {"error": "ليس لديك أي صلاحيات مخصصة في النظام."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # Get the profile of the currently logged-in user
+    user_profile = request.user.profile 
+    
+    # Filter leads where responsible = logged-in user
+    leads = Lead.objects.filter(responsible=user_profile).order_by('-created_at')
+    
+    # Keep the stage filter for Kanban drag-and-drop functionality
+    stage = request.query_params.get('stage', None)
+    if stage is not None:
+        leads = leads.filter(stage=stage)
+        
+    serializer = LeadSerializer(leads, many=True)
+    return Response(serializer.data)
+
+##########
+# Update :
+##########
+# ==========================================
+# 6. Full Edit Lead (Secured)
+# ==========================================
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_lead(request, pk):
+    # ✅ BACKEND SECURITY CHECK: Does user have update_lead?
+    try:
+        perm = Permission.objects.get(user=request.user)
+        if not perm.update_lead:
+            return Response(
+                {"error": "ليس لديك صلاحية لتعديل بيانات الليد."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Permission.DoesNotExist:
+        return Response({"error": "ليس لديك صلاحيات."}, status=status.HTTP_403_FORBIDDEN)
+
+    lead = get_object_or_404(Lead, pk=pk)
+    
+    partial = request.method == 'PATCH'
+    serializer = LeadSerializer(lead, data=request.data, partial=partial)
+    
+    if serializer.is_valid():
+        new_responsible = request.data.get('responsible')
+        if new_responsible and int(new_responsible) != lead.responsible_id:
+            lead.reassigned_at = timezone.now()
+            
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# ==========================================
+# 3. Change Lead Stage (Secured)
+# ==========================================
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def change_lead_stage(request, pk):
+    # ✅ BACKEND SECURITY CHECK: Does user have update_lead_stage?
+    try:
+        perm = Permission.objects.get(user=request.user)
+        if not perm.update_lead_stage:
+            return Response(
+                {"error": "ليس لديك صلاحية لتعديل مرحلة الليد."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Permission.DoesNotExist:
+        return Response({"error": "ليس لديك صلاحيات."}, status=status.HTTP_403_FORBIDDEN)
+
+    lead = get_object_or_404(Lead, pk=pk)
+    new_stage = request.data.get('stage')
+    
+    if not new_stage:
+        return Response({"error": "Stage field is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    lead.stage = new_stage
+    lead.save()
+    
+    return Response({
+        "message": "Stage updated successfully", 
+        "stage": lead.stage
+    }, status=status.HTTP_200_OK)
+
+
+# ==========================================
+# 4. Change Lead Responsible (Secured)
+# ==========================================
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def change_lead_responsible(request, pk):
+    # ✅ BACKEND SECURITY CHECK: Does user have update_lead_responsible?
+    try:
+        perm = Permission.objects.get(user=request.user)
+        if not perm.update_lead_responsible:
+            return Response(
+                {"error": "ليس لديك صلاحية لتعديل المسؤول عن الليد."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Permission.DoesNotExist:
+        return Response({"error": "ليس لديك صلاحيات."}, status=status.HTTP_403_FORBIDDEN)
+
+    lead = get_object_or_404(Lead, pk=pk)
+    new_responsible_id = request.data.get('responsible')
+    
+    if not new_responsible_id:
+        return Response({"error": "Responsible field is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    from .models import Profile # Assuming Profile is in models
+    try:
+        new_profile = Profile.objects.get(id=new_responsible_id)
+    except Profile.DoesNotExist:
+        return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+    lead.responsible = new_profile
+    lead.reassigned_at = timezone.now() 
+    lead.save()
+    
+    return Response({
+        "message": "Responsible person updated successfully", 
+        "responsible_id": lead.responsible.id,
+        "responsible_name": lead.responsible.name, 
+        "reassigned_at": lead.reassigned_at
+    }, status=status.HTTP_200_OK)
+
+
+# ==========================================
+# 7. Delete Lead (Secured)
+# ==========================================
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_lead(request, pk):
+    # ✅ BACKEND SECURITY CHECK: Does user have delete_lead?
+    try:
+        perm = Permission.objects.get(user=request.user)
+        if not perm.delete_lead:
+            return Response(
+                {"error": "ليس لديك صلاحية لحذف الليد."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Permission.DoesNotExist:
+        return Response({"error": "ليس لديك صلاحيات."}, status=status.HTTP_403_FORBIDDEN)
+
+    lead = get_object_or_404(Lead, pk=pk)
+    lead.delete()
+    return Response({"message": "Lead deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+
+
+# 3. FETCH DETAIL (Retrieve)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def lead_detail(request, pk):
+    lead = get_object_or_404(Lead, pk=pk)
+    serializer = LeadSerializer(lead)
+    return Response(serializer.data)
+
+# If managers need to see all leads via /lead/list/, but regular users need a separate page for their leads, you can create a dedicated URL
+
+
+
+
 
 #==========================================================
 # CashBox View
@@ -3767,67 +4254,86 @@ def test_email_view(request):
 # =========================================================
 # LIST  +  CREATE
 # =========================================================
+
+# =========================================================
+# OFFERSALE — LIST + CREATE
+# =========================================================
 class OffersaleListCreateView(APIView):
     """
-    GET  /api/offersales/         → list all offers
-    POST /api/offersales/         → create a new offer
+    GET  /api/offersales/   → list all offers (slim)
+    POST /api/offersales/   → create offer (nested installments + fees)
     """
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
-        queryset = Offersale.objects.all().order_by("-id")
+        queryset = (
+            Offersale.objects
+            .prefetch_related("installments", "fees")
+            .all()
+            .order_by("-id")
+        )
         serializer = OffersaleListSerializer(
             queryset, many=True, context={"request": request}
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        serializer = OffersaleSerializer(
+        write = OffersaleWriteSerializer(
             data=request.data, context={"request": request}
         )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        write.is_valid(raise_exception=True)
+        offer = write.save()
 
+        # Return the full detail payload on create
+        detail = OffersaleDetailSerializer(
+            offer, context={"request": request}
+        )
+        return Response(detail.data, status=status.HTTP_201_CREATED)
 
 
 # =========================================================
-# FETCH DETAIL
+# OFFERSALE — DETAIL (retrieve)
 # =========================================================
 class OffersaleDetailView(APIView):
     """
-    GET /api/offersales/<pk>/     → retrieve one offer
+    GET /api/offersales/<pk>/   → retrieve one offer (full)
     """
     def get(self, request, pk):
         try:
-            obj = Offersale.objects.get(pk=pk)
+            obj = (
+                Offersale.objects
+                .prefetch_related("installments", "fees")
+                .get(pk=pk)
+            )
         except Offersale.DoesNotExist:
             return Response(
                 {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = OffersaleSerializer(
+        serializer = OffersaleDetailSerializer(
             obj, context={"request": request}
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-
 # =========================================================
-# UPDATE  +  DELETE
+# OFFERSALE — UPDATE + DELETE
 # =========================================================
 class OffersaleUpdateDeleteView(APIView):
     """
     PUT    /api/offersales/<pk>/   → full update
     PATCH  /api/offersales/<pk>/   → partial update
-    DELETE /api/offersales/<pk>/   → delete
+    DELETE /api/offersales/<pk>/   → delete (cascades to children)
     """
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self, pk):
         try:
-            return Offersale.objects.get(pk=pk)
+            return (
+                Offersale.objects
+                .prefetch_related("installments", "fees")
+                .get(pk=pk)
+            )
         except Offersale.DoesNotExist:
             return None
 
@@ -3837,13 +4343,15 @@ class OffersaleUpdateDeleteView(APIView):
             return Response(
                 {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
             )
-        serializer = OffersaleSerializer(
+        write = OffersaleWriteSerializer(
             obj, data=request.data, context={"request": request}
         )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        write.is_valid(raise_exception=True)
+        offer = write.save()
+        detail = OffersaleDetailSerializer(
+            offer, context={"request": request}
+        )
+        return Response(detail.data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
         obj = self.get_object(pk)
@@ -3851,14 +4359,16 @@ class OffersaleUpdateDeleteView(APIView):
             return Response(
                 {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
             )
-        serializer = OffersaleSerializer(
+        write = OffersaleWriteSerializer(
             obj, data=request.data, partial=True,
-            context={"request": request}
+            context={"request": request},
         )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        write.is_valid(raise_exception=True)
+        offer = write.save()
+        detail = OffersaleDetailSerializer(
+            offer, context={"request": request}
+        )
+        return Response(detail.data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         obj = self.get_object(pk)
@@ -3866,11 +4376,8 @@ class OffersaleUpdateDeleteView(APIView):
             return Response(
                 {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
             )
-        obj.delete()
-        return Response(
-            {"detail": "Deleted successfully."},
-            status=status.HTTP_204_NO_CONTENT,
-        )
+        obj.delete()  # cascades to OfferInstallment + OfferFee
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 ######################################
@@ -3878,35 +4385,64 @@ class OffersaleUpdateDeleteView(APIView):
 ######################################
 
 # =========================================================
-# LIST  +  CREATE
+# PAYMENT PLAN — LIST + CREATE
 # =========================================================
 class PaymentPlanListCreateView(APIView):
     """
-    GET  /api/payment-plans/         → list all payment plans
-    POST /api/payment-plans/         → create a new payment plan
+    GET  /api/payment-plans/   → list all payment plans
+    POST /api/payment-plans/   → create a new payment plan
     """
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         queryset = (
             PaymentPlan.objects
-            .select_related("unit_no")
+            .select_related("offer")
+            .prefetch_related("offer__installments")
             .all()
             .order_by("-id")
         )
-        serializer = PaymentPlanSerializer(queryset, many=True)
+        serializer = PaymentPlanSerializer(
+            queryset, many=True, context={"request": request}
+        )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        serializer = PaymentPlanSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = PaymentPlanSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 # =========================================================
-# UPDATE  +  DELETE
+# PAYMENT PLAN — DETAIL (retrieve)
+# =========================================================
+class PaymentPlanDetailView(APIView):
+    """
+    GET /api/payment-plans/<pk>/   → retrieve one payment plan
+    """
+    def get(self, request, pk):
+        try:
+            obj = (
+                PaymentPlan.objects
+                .select_related("offer")
+                .prefetch_related("offer__installments")
+                .get(pk=pk)
+            )
+        except PaymentPlan.DoesNotExist:
+            return Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = PaymentPlanSerializer(
+            obj, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# =========================================================
+# PAYMENT PLAN — UPDATE + DELETE
 # =========================================================
 class PaymentPlanUpdateDeleteView(APIView):
     """
@@ -3918,7 +4454,7 @@ class PaymentPlanUpdateDeleteView(APIView):
 
     def get_object(self, pk):
         try:
-            return PaymentPlan.objects.get(pk=pk)
+            return PaymentPlan.objects.select_related("offer").get(pk=pk)
         except PaymentPlan.DoesNotExist:
             return None
 
@@ -3928,11 +4464,12 @@ class PaymentPlanUpdateDeleteView(APIView):
             return Response(
                 {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
             )
-        serializer = PaymentPlanSerializer(obj, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = PaymentPlanSerializer(
+            obj, data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
         obj = self.get_object(pk)
@@ -3941,12 +4478,12 @@ class PaymentPlanUpdateDeleteView(APIView):
                 {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
             )
         serializer = PaymentPlanSerializer(
-            obj, data=request.data, partial=True
+            obj, data=request.data, partial=True,
+            context={"request": request},
         )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         obj = self.get_object(pk)
@@ -3955,11 +4492,7 @@ class PaymentPlanUpdateDeleteView(APIView):
                 {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
             )
         obj.delete()
-        return Response(
-            {"detail": "Deleted successfully."},
-            status=status.HTTP_204_NO_CONTENT,
-        )
-
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 ################################
 # Monitoring
@@ -4054,32 +4587,68 @@ class PropertyColdCallsListCreateView(APIView):
 # ========================================================
 # Property Wanted Locations and Area
 # ========================================================
+# class PropertyWantedAreaListCreateView(APIView):
+#     """
+#     GET: List all wanted areas
+#     POST: Create a new wanted area record
+#     """
+#     # ✅ Requires the user to be logged in
+#     permission_classes = [IsAuthenticated] 
+
+#     def get(self, request):
+#         # Fetch all records ordered by newest first
+#         queryset = PropertyWantedArea.objects.all().order_by('-created_at')
+
+#         # Optional: Filter by location if provided in URL (e.g., ?location=Marina)
+#         location = request.query_params.get('location')
+#         if location:
+#             queryset = queryset.filter(location__icontains=location)
+
+#         # Pagination (10 records per page)
+#         paginator = PageNumberPagination()
+#         paginator.page_size = 10
+#         paginated_queryset = paginator.paginate_queryset(queryset, request)
+        
+#         serializer = PropertyWantedAreaSerializer(paginated_queryset, many=True)
+        
+#         # Return paginated response
+#         return paginator.get_paginated_response(serializer.data)
+
+#     def post(self, request):
+#         serializer = PropertyWantedAreaSerializer(data=request.data)
+        
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(
+#                 {"message": "Wanted area record created successfully!", "data": serializer.data},
+#                 status=status.HTTP_201_CREATED
+#             )
+        
+#         # Return validation errors (e.g., if both sale and rent are false)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class PropertyWantedAreaListCreateView(APIView):
     """
     GET: List all wanted areas
     POST: Create a new wanted area record
     """
-    # ✅ Requires the user to be logged in
     permission_classes = [IsAuthenticated] 
 
     def get(self, request):
         # Fetch all records ordered by newest first
         queryset = PropertyWantedArea.objects.all().order_by('-created_at')
 
-        # Optional: Filter by location if provided in URL (e.g., ?location=Marina)
+        # Optional: Filter by location if provided in URL
         location = request.query_params.get('location')
         if location:
             queryset = queryset.filter(location__icontains=location)
 
-        # Pagination (10 records per page)
-        paginator = PageNumberPagination()
-        paginator.page_size = 10
-        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        # ✅ REMOVED: Pagination logic. 
+        # We now pass the full queryset directly to the serializer.
+        serializer = PropertyWantedAreaSerializer(queryset, many=True)
         
-        serializer = PropertyWantedAreaSerializer(paginated_queryset, many=True)
-        
-        # Return paginated response
-        return paginator.get_paginated_response(serializer.data)
+        # Return the standard list (Array) directly
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = PropertyWantedAreaSerializer(data=request.data)
@@ -4094,6 +4663,7 @@ class PropertyWantedAreaListCreateView(APIView):
         # Return validation errors (e.g., if both sale and rent are false)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        
 
 class PropertyWantedAreaDeleteView(APIView):
     permission_classes = [IsAuthenticated]
