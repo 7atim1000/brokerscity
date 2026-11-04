@@ -126,22 +126,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 
-# DATABASES = {
-#     "default": dj_database_url.config(
-#         default=os.getenv("DATABASE_URL")
-#     )
-# }
+DATABASES = {
+    "default": dj_database_url.config(
+        default=os.getenv("DATABASE_URL")
+    )
+}
 
 
 # ✅ UPDATED: PostgreSQL configuration
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        conn_max_age=600,                 # Keeps connections open for 10 minutes (good for performance)
-        conn_health_checks=True,          # Verifies connection before using it
-        ssl_require=True                  # ✅ REQUIRED for Render PostgreSQL
-    )
-}
+
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=os.getenv('DATABASE_URL'),
+#         conn_max_age=600,                 # Keeps connections open for 10 minutes (good for performance)
+#         conn_health_checks=True,          # Verifies connection before using it
+#         ssl_require=True                  # ✅ REQUIRED for Render PostgreSQL
+#     )
+# }
 
 
 # conn_max_age ########################################
