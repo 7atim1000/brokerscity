@@ -1742,6 +1742,7 @@ class BuildingSerializer(serializers.ModelSerializer):
 #             )
 #         return value
 
+
 class UnitSerializer(serializers.ModelSerializer):
     category_details = serializers.SerializerMethodField()
     owner_details = serializers.SerializerMethodField()

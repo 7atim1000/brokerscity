@@ -1547,6 +1547,9 @@ const EditUnit = ({
                                             <option value="apartment">
                                                 شقة
                                             </option>
+                                            <option value="studio">
+                                                ستديو
+                                            </option>
 
                                             <option value="vila">
                                                 فيلا

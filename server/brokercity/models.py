@@ -7,6 +7,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
 from django.db.models import Q
+from django.utils.translation import gettext_lazy as _
+
 
 
 import uuid
@@ -528,9 +530,90 @@ class Activity(models.Model):
 
         #######################################################
         #######################################################
-        #######################################################
-        #######################################################
-        #######################################################
+
+
+# class CrmOwner(models.Model):
+#     class OwnerType(models.TextChoices):
+#         INDIVIDUAL = "individual", _("Individual")
+#         COMPANY = "company", _("Company")
+
+#     # --- Type / Identity ---
+#     owner_type = models.CharField(_("owner type"), max_length=20, choices=OwnerType.choices, default=OwnerType.INDIVIDUAL, db_index=True,)
+#     name = models.CharField(_("owner name"),max_length=200, unique=True, null=True, blank=True, help_text=_("Owner full name or company name"),)
+#     company = models.CharField(_("company"), max_length=200, blank=True, null=True)
+#     nationality = models.CharField(_("nationality"), max_length=200, blank=True, null=True)
+#     birth_date = models.DateField(_("birth date"), null=True, blank=True)
+
+#     # --- Contact ---
+#     phone = models.CharField(_("phone"), max_length=32, unique=True, help_text=_("Primary phone / هاتف"), )
+#     phone1 = models.CharField(_("phone 1"), max_length=32, unique=True, null=True, blank=True, help_text=_("Phone 1 / هاتف"), )
+#     phone2 = models.CharField(_("phone 2"), max_length=32, unique=True, null=True, blank=True, help_text=_("Phone 2 / هاتف"), )
+#     email = models.EmailField(_("email"), max_length=254, unique=True,null=True, blank=True, help_text=_("E-mail / بريد إلكتروني"), )
+
+#     # --- Address ---
+#     country = models.CharField(_("country"), max_length=200, blank=True, null=True)
+#     address = models.CharField(_("address"), max_length=255, blank=True, null=True)
+
+#     # --- Audit ---
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+#     created_by = models.ForeignKey('Profile', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_by', help_text="The person who enter the owner")
+    
+#     class Meta:
+#         verbose_name = _("CRM owner")
+#         verbose_name_plural = _("CRM owners")
+#         ordering = ("-created_at",)
+#         indexes = [
+#             models.Index(fields=["owner_type"]),
+#             models.Index(fields=["name"]),
+#             models.Index(fields=["country"]),
+#         ]
+#         constraints = [
+#             # Prevent blank-string collisions on unique nullable fields
+#             models.CheckConstraint(
+#                 check=~models.Q(phone1=""),
+#                 name="crmowner_phone1_not_blank",
+#             ),
+#             models.CheckConstraint(
+#                 check=~models.Q(phone2=""),
+#                 name="crmowner_phone2_not_blank",
+#             ),
+#             models.CheckConstraint(
+#                 check=~models.Q(email=""),
+#                 name="crmowner_email_not_blank",
+#             ),
+#         ]
+
+#     def __str__(self):
+#         return self.name or self.phone or f"CrmOwner#{self.pk}"
+
+#     def clean(self):
+#         """Cross-field validation."""
+#         if self.owner_type == self.OwnerType.COMPANY and not self.company:
+#             raise ValidationError({"company": _("Company name is required for company owners.")})
+
+#         if self.owner_type == self.OwnerType.INDIVIDUAL and not self.phone:
+#             errors["phone"] = _("Phone is required for individual owners.")
+
+
+#     def save(self, *args, **kwargs):
+#         # Normalize blank strings to None so unique constraints work correctly
+#         for field in ("phone1", "phone2", "email", "name"):
+#             if getattr(self, field) == "":
+#                 setattr(self, field, None)
+#         self.full_clean()  # enforces clean() on every save
+#         super().save(*args, **kwargs)
+
+
+
+#=====================================
+# CRM LISTING
+
+    
+
+#######################################################
+#######################################################
+#######################################################
 
 class Bank(models.Model):
     name = models.CharField(
@@ -1235,6 +1318,7 @@ class Unit(models.Model):
         ("apartment", "Apartment"),
         ("vila", "Vila"),
         ("room", "Room"),
+        ("studio", "Studio"),
     ]
 
     STATUS_CHOICES = [
@@ -1271,7 +1355,7 @@ class Unit(models.Model):
 
     name = models.CharField(
         max_length=100,
-        unique=True,
+        # unique=True,
         blank=True,
         null=True,     # allow multiple unnamed units
         help_text="Name of unit",

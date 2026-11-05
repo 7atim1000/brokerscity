@@ -298,6 +298,19 @@ function Login() {
             subtitle: 'Marketing Strategy',
             email: 'muhammed@brokercity.com'
         },
+        pro: {
+            title: 'PRO',
+            icon: IoMegaphoneOutline,
+            color: 'from-white/20 to-white/5',
+            bgColor: 'bg-white/10',
+            borderColor: 'border-[#8a6a44]',
+            badgeColor: 'bg-white/15 text-white',
+            glowColor: 'shadow-white/20',
+            gradient: 'from-white/15 via-white/5 to-transparent',
+            emoji: '📢',
+            subtitle: 'Public Relations Officer',
+            email: 'brokercity71@gmail.com'
+        },
         abubakr: {
             title: 'Legal Advisor',
             icon: FaBalanceScale,
@@ -311,19 +324,7 @@ function Login() {
             subtitle: 'Legal Affairs',
             email: 'abubakr@brokercity.com'
         },
-        pro: {
-            title: 'PRO',
-            icon: IoMegaphoneOutline,
-            color: 'from-white/20 to-white/5',
-            bgColor: 'bg-white/10',
-            borderColor: 'border-[#8a6a44]',
-            badgeColor: 'bg-white/15 text-white',
-            glowColor: 'shadow-white/20',
-            gradient: 'from-white/15 via-white/5 to-transparent',
-            emoji: '📢',
-            subtitle: 'Public Relations Officer',
-            email: 'brokercity71@gmail.com'
-        }
+        
     };
 
     const particles = Array.from({ length: 20 }, (_, i) => ({
