@@ -25,6 +25,7 @@ import dj_database_url
 # pip install dj-database-url psycopg2-binary
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Find complete media setting in line 220
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -216,8 +217,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
 
 # python images manages
+# URL to access media files from the frontend
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# The actual physical folder where files will be saved on your computer/server
+# Django will auto-create 'listings/gallery/' and 'listings/videos/' inside this folder
+
+# ✅ Because BASE_DIR is a Path object, you should use the '/' operator instead of os.path.join
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# 💡 Why change os.path.join to /?
+# Because BASE_DIR is a Path object, Django (and Python) allows you to use the forward slash / to combine paths, which is much cleaner. BASE_DIR / 'media' is exactly the same as os.path.join(BASE_DIR, 'media').
+
+# If you keep os.path.join(BASE_DIR, 'media'), it will actually still work because os.path.join automatically converts the Path object to a string. But using BASE_DIR / 'media' is the modern, recommended way when using pathlib.
 
 
 # Authentication JWT

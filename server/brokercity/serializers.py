@@ -15,8 +15,8 @@ from .models import (
     Monitor, Property, WorkLogComment, DailyWorkLog, Permission, PropertyColdCalls,
     PropertyWantedArea, AdLead, LandingPageConfig, 
 
-    # CRM
-    Lead, Comment, Activity # Assuming you have Comment and Activity models
+    # CRM | # Assuming you have Comment and Activity models
+    Lead, Comment, Activity, CrmOwner, CrmListing, ListingImage
 
 )
 
@@ -698,8 +698,88 @@ class LeadSerializer(serializers.ModelSerializer):
             instance.reassigned_at = timezone.now()
             
         return super().update(instance, validated_data)
+
 #######################  End CRM   ##########################
 
+
+#######################################################
+# Start Crm Listing
+#######################################################
+
+class CrmOwnerSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = CrmOwner
+        fields = '__all__'
+        
+        # ✅ FIXED: Added 'created_by' so the API doesn't expect it from the frontend
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+
+    def validate(self, attrs):
+        """
+        Custom validation to provide clean error messages to the frontend.
+        """
+        # Use the new value if provided, otherwise fall back to the existing instance value
+        owner_type = attrs.get('owner_type', getattr(self.instance, 'owner_type', 'individual'))
+        company = attrs.get('company', getattr(self.instance, 'company', None))
+        phone = attrs.get('phone', getattr(self.instance, 'phone', None))
+
+        if owner_type == 'company' and not company:
+            raise serializers.ValidationError({"company": "Company name is required for company owners."})
+        
+        if owner_type == 'individual' and not phone:
+            raise serializers.ValidationError({"phone": "Phone is required for individual owners."})
+
+        return attrs
+
+#########################
+# CRM Listing Parent and Image Child
+#########################
+
+# ==========================================
+# 1. CHILD SERIALIZER (Gallery Images)
+# ==========================================
+class ListingImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ListingImage
+        fields = ['id', 'image', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+# ==========================================
+# 2. PARENT SERIALIZER (CRM Listing)
+# ==========================================
+class CrmListingSerializer(serializers.ModelSerializer):
+    # ✅ Nest the child images so they return in the GET response
+    gallery_images = ListingImageSerializer(many=True, read_only=True)
+    
+    # Optional: Show human-readable names for ForeignKeys instead of just IDs
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    listing_owner_name = serializers.CharField(source='listing_owner.name', read_only=True)
+
+    class Meta:
+        model = CrmListing
+        fields = '__all__'
+        
+        # ✅ Prevent the frontend from overriding auto-generated/audit fields
+        read_only_fields = [
+            'id', 'reference', 'created_at', 'updated_at', 
+            'created_by', 'updated_by', 'gallery_images'
+        ]
+
+    def validate(self, attrs):
+        """Cross-field validation for Sale vs Rent pricing."""
+        offer_type = attrs.get('offer_type', getattr(self.instance, 'offer_type', None))
+        
+        # Example: If it's for rent, ensure rent_price is provided
+        if offer_type == 'rent' and not attrs.get('rent_price'):
+            raise serializers.ValidationError({"rent_price": "Rent price is required for rental listings."})
+            
+        return attrs
+
+############################################################
+# End Crm Listing
+############################################################
 # ===========================================================
 # Bank List Serializer (Minimal for list view)
 # =========================================================

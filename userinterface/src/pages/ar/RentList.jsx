@@ -35,88 +35,133 @@ const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
 const PRINT_FONT = '"Cairo", "Tajawal", "Segoe UI", "Tahoma", "Arial", sans-serif';
 
 /* =============================================================
-   HIDDEN PDF RENDER TARGET FOR RENTS LIST
+   HIDDEN PDF RENDER TARGET FOR RENTS LIST (ADCP Style)
 ============================================================= */
 const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
     const formatDate = (d) => d ? d : "—";
     const formatAmount = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    const totalUnitPrice = rents.reduce((sum, r) => sum + Number(r.unit_price || 0), 0);
+    
+    const uniqueCategories = [...new Set(rents.map(r => r.unit_category).filter(Boolean))].join(", ");
+
     return (
         <div
             ref={ref}
-            dir="rtl"
-            lang="ar"
+            dir="ltr" 
+            lang="en"
             data-pdf-root="true"
             style={{
                 width: "1123px", // A4 Landscape
-                padding: "25px 30px",
+                padding: "15px 50px 40px 50px", 
                 background: "#ffffff",
                 boxSizing: "border-box",
-                fontFamily: PRINT_FONT,
-                color: "#1f2937",
+                fontFamily: "Arial, sans-serif",
+                color: "#000000",
                 position: "fixed",
                 left: "-10000px",
                 top: 0,
                 zIndex: -1,
             }}
         >
-            {/* HEADER */}
-            <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #a47d52", paddingBottom: "10px", marginBottom: "15px" }}>
-                <div style={{ textAlign: "right" }}>
-                    <h1 style={{ color: "#a47d52", fontSize: "22px", fontWeight: 900, margin: 0 }}>تقرير عقود الإيجار</h1>
-                    <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "#6b7280" }}>Rent Contracts Report</p>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                    <img src={logo} alt="Logo" crossOrigin="anonymous" style={{ height: "70px", objectFit: "contain" }} />
-                </div>
-                <div style={{ textAlign: "left", fontSize: "12px", color: "#6b7280" }}>
-                    <p style={{ margin: 0 }}>تاريخ الطباعة: {generatedAt}</p>
-                    <p style={{ margin: "4px 0 0 0" }}>إجمالي العقود: {rents.length}</p>
-                </div>
-            </header>
+            {/* ✅ TOP LOGO & TITLE (Reduced space between them) */}
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: "5px" }}>
+                {/* ✅ Increased image scale */}
+                <img src={logo} alt="Logo" crossOrigin="anonymous" style={{ height: "160px", objectFit: "contain" }} />
+            </div>
 
-            {/* TABLE */}
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontFamily: PRINT_FONT, direction: "rtl" }}>
+            {/* ✅ TITLE */}
+            <div style={{ textAlign: "center", marginBottom: "20px", marginTop: "-85px" }}>
+                <h1 style={{ fontSize: "26px", fontWeight: "bold", margin: 0, color: "#000" }}>
+                    Property List Report (LandLord)
+                </h1>
+            </div>
+
+            {/* ✅ PROPERTY SUMMARY DETAILS */}
+            <div style={{ marginBottom: "25px", fontSize: "14px", lineHeight: "1.8" }}>
+                <div style={{ display: "flex" }}>
+                    <span style={{ fontWeight: "bold", width: "150px" }}>Category</span>
+                    <span>{uniqueCategories || "—"}</span>
+                </div>
+                <div style={{ display: "flex" }}>
+                    <span style={{ fontWeight: "bold", width: "150px" }}>Generated On</span>
+                    <span>{generatedAt}</span>
+                </div>
+                <div style={{ display: "flex" }}>
+                    <span style={{ fontWeight: "bold", width: "150px" }}>Total Contracts</span>
+                    <span>{rents.length}</span>
+                </div>
+                
+                {/* ✅ Total Projected Rent (AED not underlined, Amount underlined) */}
+                <div style={{ display: "flex", marginTop: "8px", alignItems: "center" }}>
+                    <span style={{ fontWeight: "bold", width: "150px" }}>Total Projected Rent</span>
+                    <span style={{ fontWeight: "bold", fontSize: "15px" }}>
+                        AED <span style={{ textDecoration: "underline" }}>{formatAmount(totalUnitPrice)}</span>
+                    </span>
+                </div>
+            </div>
+
+            {/* ✅ TABLE DESIGN */}
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontFamily: "Arial, sans-serif", direction: "ltr" }}>
                 <thead>
                     <tr>
-                        <th style={thPdf}>#</th>
-                        <th style={thPdf}>المستأجر</th>
-                        <th style={thPdf}>الوحدة</th>
-                        <th style={thPdf}>التصنيف</th>
-                        <th style={thPdf}>المالك</th>
-                        <th style={thPdf}>تاريخ البدء</th>
-                        <th style={thPdf}>تاريخ الانتهاء</th>
-                        <th style={thPdf}>سعر الوحدة</th>
-                        <th style={thPdf}>قيمة القسط</th>
+                        <th style={thPdf}>Unit #</th>
+                        <th style={thPdf}>Tenant Name</th>
+                        <th style={thPdf}>Unit Type</th>
+                        <th style={thPdf}>Start Date</th>
+                        <th style={thPdf}>End Date</th>
+                        <th style={thPdf}>Projected Rent</th>
+                        <th style={thPdf}>Installment Amt</th>
                     </tr>
                 </thead>
                 <tbody>
                     {rents.map((r, index) => (
-                        <tr key={r.id} style={{ background: index % 2 === 0 ? "#FFFFFF" : "#FAF7F0" }}>
-                            <td style={tdPdf}>{index + 1}</td>
-                            <td style={tdPdf}>{r.tenant_name || "—"}</td>
+                        <tr key={r.id} style={{ background: index % 2 === 0 ? "#FFFFFF" : "#F9FAFB" }}>
                             <td style={tdPdf}>{r.unit_display || "—"}</td>
-                            <td style={tdPdf}>{r.unit_category || "—"}</td>
-                            <td style={tdPdf}>{r.unit_owner || "—"}</td>
+                            <td style={tdPdf}>{r.tenant_name || "—"}</td>
+                            <td style={tdPdf}>{r.unit_type || r.property_type || r.unit_category || "—"}</td>
                             <td style={tdPdf}>{formatDate(r.start_date)}</td>
                             <td style={tdPdf}>{formatDate(r.end_date)}</td>
-                            <td style={tdPdf} dir="ltr">{formatAmount(r.unit_price)}</td>
-                            <td style={tdPdf} dir="ltr">{formatAmount(r.installment_amount)}</td>
+                            <td style={tdPdf}>{formatAmount(r.unit_price)}</td>
+                            <td style={tdPdf}>{formatAmount(r.installment_amount)}</td>
                         </tr>
                     ))}
                 </tbody>
             </table>
 
-            <div style={{ marginTop: "20px", textAlign: "center", fontSize: "10px", color: "#9ca3af" }}>
-                BROKER CITY PROPERTIES
+            {/* ✅ FOOTER */}
+            <div style={{ marginTop: "30px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", color: "#4b5563", borderTop: "1px solid #e5e7eb", paddingTop: "10px" }}>
+                <div>
+                    Generated On: {generatedAt}
+                </div>
+                <div style={{ textAlign: "right", fontWeight: "bold" }}>
+                    TOTAL: AED {formatAmount(totalUnitPrice)}
+                </div>
             </div>
         </div>
     );
 });
 PdfRenderTarget.displayName = "PdfRenderTarget";
 
-const thPdf = { border: "1px solid #ccc", padding: "10px 5px", fontSize: 12, fontWeight: 800, color: "#000", textAlign: "center", background: "#e6d5c0" };
-const tdPdf = { border: "1px solid #ccc", padding: "8px 5px", fontSize: 12, color: "#000", textAlign: "center", wordBreak: "break-word" };
+// ✅ ADCP Style Table Borders
+const thPdf = { 
+    border: "1px solid #000", 
+    padding: "8px 4px", 
+    fontSize: 11, 
+    fontWeight: "bold", 
+    color: "#000", 
+    textAlign: "center", 
+    background: "#ffffff" 
+};
+const tdPdf = { 
+    border: "1px solid #000", 
+    padding: "6px 4px", 
+    fontSize: 11, 
+    color: "#000", 
+    textAlign: "center", 
+    wordBreak: "break-word" 
+};
+
 
 /* =============================================================
    MAIN COMPONENT
@@ -140,7 +185,6 @@ const RentList = () => {
     const renderRef = useRef(null);
     const isGeneratingRef = useRef(false);
 
-    // ✅ Scroll Ref for Horizontal Arrows
     const scrollContainerRef = useRef(null);
 
     /* =========================================================
@@ -332,7 +376,7 @@ const RentList = () => {
     });
 
     /* =========================================================
-       PDF DOWNLOAD
+       PDF DOWNLOAD (✅ FIXED MULTI-PAGE LOGIC)
     ========================================================= */
     const handleDownloadPDF = async () => {
         if (!filteredRents || filteredRents.length === 0) return toast.warning("لا توجد بيانات لتصديرها");
@@ -364,10 +408,26 @@ const RentList = () => {
             const pageW = doc.internal.pageSize.getWidth();
             const pageH = doc.internal.pageSize.getHeight();
             const imgData = canvas.toDataURL("image/jpeg", 0.95);
-            const imgHmm = (canvas.height * pageW) / canvas.width;
-
-            doc.addImage(imgData, "JPEG", 0, 0, pageW, imgHmm, undefined, "FAST");
             
+            // ✅ MULTI-PAGE FIX: Calculate the height the image will take up in mm
+            const imgHeightInMm = (canvas.height * pageW) / canvas.width;
+
+            let heightLeft = imgHeightInMm;
+            let position = 0;
+
+            // Add first page
+            doc.addImage(imgData, "JPEG", 0, position, pageW, imgHeightInMm, undefined, "FAST");
+            heightLeft -= pageH;
+
+            // If there is still more height (meaning content spilled over), add new pages
+            while (heightLeft > 0) {
+                position = heightLeft - imgHeightInMm; 
+                doc.addPage();
+                doc.addImage(imgData, "JPEG", 0, position, pageW, imgHeightInMm, undefined, "FAST");
+                heightLeft -= pageH;
+            }
+
+            // Add footer text to the last page
             doc.setFont("helvetica", "bold");
             doc.setFontSize(7.5);
             doc.setTextColor(164, 125, 82);
@@ -691,7 +751,7 @@ const RentList = () => {
                 <PdfRenderTarget
                     ref={renderRef}
                     rents={filteredRents}
-                    generatedAt={new Date().toLocaleString("ar-EG")}
+                    generatedAt={new Date().toLocaleString("en-GB")}
                 />
             )}
 
@@ -734,11 +794,11 @@ export default RentList;
 //     FiClock,
 //     FiXCircle,
 // } from "react-icons/fi";
-// import { FaBuilding } from "react-icons/fa";
+// import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 // import html2canvas from "html2canvas";
 // import jsPDF from "jspdf";
-// import logo from "../../assets/images/logogo-removebg-old.png"; // ✅ Ensure path to logo is correct
+// import logo from "../../assets/images/logogo-removebg-old.png";
 
 // import AddMonthlyPayment from "../../components/ar/rent/AddMonthlyPayment";
 // import DetailRent from "../../components/ar/rent/DetailRent";
@@ -750,9 +810,94 @@ export default RentList;
 // /* =============================================================
 //    HIDDEN PDF RENDER TARGET FOR RENTS LIST
 // ============================================================= */
+// // Start
+// // const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
+// //     const formatDate = (d) => d ? d : "—";
+// //     const formatAmount = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// //     return (
+// //         <div
+// //             ref={ref}
+// //             dir="rtl"
+// //             lang="ar"
+// //             data-pdf-root="true"
+// //             style={{
+// //                 width: "1123px", // A4 Landscape
+// //                 padding: "25px 30px",
+// //                 background: "#ffffff",
+// //                 boxSizing: "border-box",
+// //                 fontFamily: PRINT_FONT,
+// //                 color: "#1f2937",
+// //                 position: "fixed",
+// //                 left: "-10000px",
+// //                 top: 0,
+// //                 zIndex: -1,
+// //             }}
+// //         >
+// //             {/* HEADER */}
+// //             <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #a47d52", paddingBottom: "10px", marginBottom: "15px" }}>
+// //                 <div style={{ textAlign: "right" }}>
+// //                     <h1 style={{ color: "#a47d52", fontSize: "22px", fontWeight: 900, margin: 0 }}>تقرير عقود الإيجار</h1>
+// //                     <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "#6b7280" }}>Rent Contracts Report</p>
+// //                 </div>
+// //                 <div style={{ textAlign: "center" }}>
+// //                     <img src={logo} alt="Logo" crossOrigin="anonymous" style={{ height: "70px", objectFit: "contain" }} />
+// //                 </div>
+// //                 <div style={{ textAlign: "left", fontSize: "12px", color: "#6b7280" }}>
+// //                     <p style={{ margin: 0 }}>تاريخ الطباعة: {generatedAt}</p>
+// //                     <p style={{ margin: "4px 0 0 0" }}>إجمالي العقود: {rents.length}</p>
+// //                 </div>
+// //             </header>
+
+// //             {/* TABLE */}
+// //             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontFamily: PRINT_FONT, direction: "rtl" }}>
+// //                 <thead>
+// //                     <tr>
+// //                         <th style={thPdf}>#</th>
+// //                         <th style={thPdf}>المستأجر</th>
+// //                         <th style={thPdf}>الوحدة</th>
+// //                         <th style={thPdf}>التصنيف</th>
+// //                         <th style={thPdf}>المالك</th>
+// //                         <th style={thPdf}>تاريخ البدء</th>
+// //                         <th style={thPdf}>تاريخ الانتهاء</th>
+// //                         <th style={thPdf}>سعر الوحدة</th>
+// //                         <th style={thPdf}>قيمة القسط</th>
+// //                     </tr>
+// //                 </thead>
+// //                 <tbody>
+// //                     {rents.map((r, index) => (
+// //                         <tr key={r.id} style={{ background: index % 2 === 0 ? "#FFFFFF" : "#FAF7F0" }}>
+// //                             <td style={tdPdf}>{index + 1}</td>
+// //                             <td style={tdPdf}>{r.tenant_name || "—"}</td>
+// //                             <td style={tdPdf}>{r.unit_display || "—"}</td>
+// //                             <td style={tdPdf}>{r.unit_category || "—"}</td>
+// //                             <td style={tdPdf}>{r.unit_owner || "—"}</td>
+// //                             <td style={tdPdf}>{formatDate(r.start_date)}</td>
+// //                             <td style={tdPdf}>{formatDate(r.end_date)}</td>
+// //                             <td style={tdPdf} dir="ltr">{formatAmount(r.unit_price)}</td>
+// //                             <td style={tdPdf} dir="ltr">{formatAmount(r.installment_amount)}</td>
+// //                         </tr>
+// //                     ))}
+// //                 </tbody>
+// //             </table>
+
+// //             <div style={{ marginTop: "20px", textAlign: "center", fontSize: "10px", color: "#9ca3af" }}>
+// //                 BROKER CITY PROPERTIES
+// //             </div>
+// //         </div>
+// //     );
+// // });
+// // PdfRenderTarget.displayName = "PdfRenderTarget";
+// /* =============================================================
+//    HIDDEN PDF RENDER TARGET FOR RENTS LIST
+// ============================================================= */
 // const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
 //     const formatDate = (d) => d ? d : "—";
 //     const formatAmount = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+//     // Calculate totals for the footer
+//     const totalUnitPrice = rents.reduce((sum, r) => sum + Number(r.unit_price || 0), 0);
+//     const totalInstallment = rents.reduce((sum, r) => sum + Number(r.installment_amount || 0), 0);
 
 //     return (
 //         <div
@@ -761,8 +906,8 @@ export default RentList;
 //             lang="ar"
 //             data-pdf-root="true"
 //             style={{
-//                 width: "1123px", // A4 Landscape
-//                 padding: "25px 30px",
+//                 width: "794px", // ✅ A4 Portrait Width
+//                 padding: "30px 40px",
 //                 background: "#ffffff",
 //                 boxSizing: "border-box",
 //                 fontFamily: PRINT_FONT,
@@ -773,22 +918,31 @@ export default RentList;
 //                 zIndex: -1,
 //             }}
 //         >
-//             {/* HEADER */}
-//             <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #a47d52", paddingBottom: "10px", marginBottom: "15px" }}>
-//                 <div style={{ textAlign: "right" }}>
-//                     <h1 style={{ color: "#a47d52", fontSize: "22px", fontWeight: 900, margin: 0 }}>تقرير عقود الإيجار</h1>
-//                     <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "#6b7280" }}>Rent Contracts Report</p>
+//             {/* ✅ HEADER DESIGN (Matches ADCP Style) */}
+//             <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid #e5e7eb", paddingBottom: "15px", marginBottom: "20px" }}>
+//                 {/* Left Side: Logo (Placeholder for your logo) */}
+//                 <div style={{ width: "100px" }}>
+//                     <img src={logo} alt="Logo" crossOrigin="anonymous" style={{ height: "60px", objectFit: "contain" }} />
 //                 </div>
-//                 <div style={{ textAlign: "center" }}>
-//                     <img src={logo} alt="Logo" crossOrigin="anonymous" style={{ height: "70px", objectFit: "contain" }} />
+
+//                 {/* Center: Title and Details */}
+//                 <div style={{ textAlign: "center", flex: 1, padding: "0 20px" }}>
+//                     <h1 style={{ color: "#111827", fontSize: "20px", fontWeight: 800, margin: "0 0 5px 0" }}>
+//                         Property List Report (Rent)
+//                     </h1>
+//                     <p style={{ fontSize: "12px", margin: "2px 0", color: "#6b7280" }}>
+//                         Property List Report - إدارة عقود الإيجار
+//                     </p>
+//                     <p style={{ fontSize: "12px", margin: "2px 0", color: "#6b7280", fontWeight: "bold" }}>
+//                         تاريخ الطباعة: {generatedAt} | إجمالي العقود: {rents.length}
+//                     </p>
 //                 </div>
-//                 <div style={{ textAlign: "left", fontSize: "12px", color: "#6b7280" }}>
-//                     <p style={{ margin: 0 }}>تاريخ الطباعة: {generatedAt}</p>
-//                     <p style={{ margin: "4px 0 0 0" }}>إجمالي العقود: {rents.length}</p>
-//                 </div>
+
+//                 {/* Right Side: Empty for balance (or you can put dates here) */}
+//                 <div style={{ width: "100px" }}></div>
 //             </header>
 
-//             {/* TABLE */}
+//             {/* ✅ TABLE DESIGN */}
 //             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontFamily: PRINT_FONT, direction: "rtl" }}>
 //                 <thead>
 //                     <tr>
@@ -805,14 +959,14 @@ export default RentList;
 //                 </thead>
 //                 <tbody>
 //                     {rents.map((r, index) => (
-//                         <tr key={r.id} style={{ background: index % 2 === 0 ? "#FFFFFF" : "#FAF7F0" }}>
+//                         <tr key={r.id} style={{ background: index % 2 === 0 ? "#FFFFFF" : "#F9FAFB" }}>
 //                             <td style={tdPdf}>{index + 1}</td>
 //                             <td style={tdPdf}>{r.tenant_name || "—"}</td>
 //                             <td style={tdPdf}>{r.unit_display || "—"}</td>
 //                             <td style={tdPdf}>{r.unit_category || "—"}</td>
 //                             <td style={tdPdf}>{r.unit_owner || "—"}</td>
-//                             <td style={tdPdf}>{formatDate(r.start_date)}</td>
-//                             <td style={tdPdf}>{formatDate(r.end_date)}</td>
+//                             <td style={tdPdf} dir="ltr">{formatDate(r.start_date)}</td>
+//                             <td style={tdPdf} dir="ltr">{formatDate(r.end_date)}</td>
 //                             <td style={tdPdf} dir="ltr">{formatAmount(r.unit_price)}</td>
 //                             <td style={tdPdf} dir="ltr">{formatAmount(r.installment_amount)}</td>
 //                         </tr>
@@ -820,17 +974,46 @@ export default RentList;
 //                 </tbody>
 //             </table>
 
-//             {/* FOOTER */}
-//             <div style={{ marginTop: "20px", textAlign: "center", fontSize: "10px", color: "#9ca3af" }}>
-//                 BROKER CITY PROPERTIES
+//             {/* ✅ FOOTER (Matches ADCP Style) */}
+//             <div style={{ marginTop: "30px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "#4b5563", borderTop: "1px solid #e5e7eb", paddingTop: "10px" }}>
+//                 <div>
+//                     Generated On: {generatedAt}
+//                 </div>
+//                 <div style={{ fontWeight: "bold", color: "#a47d52" }}>
+//                     BROKER CITY PROPERTIES
+//                 </div>
+//                 <div style={{ textAlign: "left" }}>
+//                     TOTAL: {formatAmount(totalUnitPrice)}
+//                 </div>
 //             </div>
 //         </div>
 //     );
 // });
 // PdfRenderTarget.displayName = "PdfRenderTarget";
+// // End
 
-// const thPdf = { border: "1px solid #ccc", padding: "10px 5px", fontSize: 12, fontWeight: 800, color: "#000", textAlign: "center", background: "#e6d5c0" };
-// const tdPdf = { border: "1px solid #ccc", padding: "8px 5px", fontSize: 12, color: "#000", textAlign: "center", wordBreak: "break-word" };
+// // const thPdf = { border: "1px solid #ccc", padding: "10px 5px", fontSize: 12, fontWeight: 800, color: "#000", textAlign: "center", background: "#e6d5c0" };
+// // const tdPdf = { border: "1px solid #ccc", padding: "8px 5px", fontSize: 12, color: "#000", textAlign: "center", wordBreak: "break-word" };
+
+
+// // ✅ Updated Styles for the Table (Thin borders, small font, centered)
+// const thPdf = { 
+//     border: "1px solid #d1d5db", 
+//     padding: "8px 4px", 
+//     fontSize: 11, 
+//     fontWeight: 800, 
+//     color: "#111827", 
+//     textAlign: "center", 
+//     background: "#f3f4f6" 
+// };
+// const tdPdf = { 
+//     border: "1px solid #d1d5db", 
+//     padding: "6px 4px", 
+//     fontSize: 11, 
+//     color: "#374151", 
+//     textAlign: "center", 
+//     wordBreak: "break-word" 
+// };
 
 // /* =============================================================
 //    MAIN COMPONENT
@@ -853,6 +1036,9 @@ export default RentList;
 //     const [pdfReady, setPdfReady] = useState(false);
 //     const renderRef = useRef(null);
 //     const isGeneratingRef = useRef(false);
+
+//     // ✅ Scroll Ref for Horizontal Arrows
+//     const scrollContainerRef = useRef(null);
 
 //     /* =========================================================
 //        FETCH RENTS
@@ -886,7 +1072,6 @@ export default RentList;
 //     useEffect(() => {
 //         fetchRents();
         
-//         // Ensure fonts for PDF
 //         const ensureFonts = async () => {
 //             if (document.fonts?.ready) {
 //                 try {
@@ -972,7 +1157,7 @@ export default RentList;
 //         if (label === "لم يبدأ") className = "bg-yellow-100 text-yellow-700";
 //         else if (label === "منتهي") className = "bg-red-100 text-red-700";
 //         else if (label === "نشط") className = "bg-green-100 text-green-700";
-//         else if (label === "قارب على الانتهاء") className = "bg-orange-100 text-orange-700";
+//         else if (label === "قارب على الانتهاء") className = "bg-yellow-100 text-yellow-700"; 
 //         return <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${className}`}>{label}</span>;
 //     };
 
@@ -981,7 +1166,7 @@ export default RentList;
 //         const end = rent.end_date ? new Date(rent.end_date) : null;
 //         if (!end) return "bg-white";
 //         if (today > end) return "bg-red-100 hover:bg-red-200";
-//         if (getDaysRemaining(rent.end_date) <= 90) return "bg-orange-100 hover:bg-orange-200";
+//         if (getDaysRemaining(rent.end_date) <= 90) return "bg-yellow-50 hover:bg-yellow-100";
 //         return "bg-white hover:bg-gray-50";
 //     };
 
@@ -990,12 +1175,27 @@ export default RentList;
 //         const end = rent.end_date ? new Date(rent.end_date) : null;
 //         if (!end) return "bg-white border-[#e9e6e1]";
 //         if (today > end) return "bg-red-50 border-red-200";
-//         if (getDaysRemaining(rent.end_date) <= 90) return "bg-orange-50 border-orange-200";
+//         if (getDaysRemaining(rent.end_date) <= 90) return "bg-yellow-50 border-yellow-200";
 //         return "bg-white border-[#e9e6e1]";
 //     };
 
 //     /* =========================================================
-//        FILTER (✅ Updated to include Status Search)
+//        SCROLL HANDLERS
+//     ========================================================= */
+//     const scrollLeft = () => {
+//         if (scrollContainerRef.current) {
+//             scrollContainerRef.current.scrollBy({ left: -400, behavior: "smooth" });
+//         }
+//     };
+
+//     const scrollRight = () => {
+//         if (scrollContainerRef.current) {
+//             scrollContainerRef.current.scrollBy({ left: 400, behavior: "smooth" });
+//         }
+//     };
+
+//     /* =========================================================
+//        FILTER
 //     ========================================================= */
 //     const filteredRents = rents.filter((rent) => {
 //         const search = searchTerm.trim().toLowerCase();
@@ -1012,7 +1212,7 @@ export default RentList;
 //             tenant.includes(search) || unit.includes(search) ||
 //             category.includes(search) || owner.includes(search) ||
 //             start.includes(search) || end.includes(search) ||
-//             status.includes(search) // ✅ Status search enabled
+//             status.includes(search)
 //         );
 //     });
 
@@ -1029,7 +1229,7 @@ export default RentList;
 //     });
 
 //     /* =========================================================
-//        PDF DOWNLOAD (✅ Added to RentList)
+//        PDF DOWNLOAD
 //     ========================================================= */
 //     const handleDownloadPDF = async () => {
 //         if (!filteredRents || filteredRents.length === 0) return toast.warning("لا توجد بيانات لتصديرها");
@@ -1040,7 +1240,7 @@ export default RentList;
 
 //         try {
 //             const node = renderRef.current;
-//             const scale = 3.0; // Increased zoom display for PDF
+//             const scale = 3.0; 
             
 //             const canvas = await html2canvas(node, {
 //                 scale,
@@ -1235,7 +1435,7 @@ export default RentList;
 //     );
 
 //     return (
-//         <div className="min-h-screen bg-[#f8f7f5] py-6 px-2 md:py-8 md:px-3 lg:py-5 lg:px-2 rtl" dir="rtl">
+//         <div className="min-h-screen bg-[#f8f7f5] py-6 px-2 md:py-8 md:px-3 lg:py-5 lg:px-2 rtl relative" dir="rtl">
 //             <Toaster position="top-center" reverseOrder={false} />
 
 //             {/* HEADER */}
@@ -1253,7 +1453,6 @@ export default RentList;
 //                 </div>
 
 //                 <div className="flex flex-col sm:flex-row gap-3">
-//                     {/* ✅ Added PDF Download Button */}
 //                     <button onClick={handleDownloadPDF} disabled={isGeneratingPdf || filteredRents.length === 0 || !pdfReady} className="flex items-center justify-center gap-2 bg-white border-2 border-[#a47d52] text-[#a47d52] px-5 md:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base transition-all duration-300 hover:bg-[#a47d52] hover:text-white hover:scale-105 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
 //                         <MdPictureAsPdf size={20} />
 //                         {isGeneratingPdf ? "جاري التحميل..." : "تحميل PDF"}
@@ -1292,7 +1491,7 @@ export default RentList;
 //                 </div>
 //             </div>
 
-//             {/* ✅ DASHBOARD SUMMARY CARDS */}
+//             {/* DASHBOARD SUMMARY CARDS */}
 //             {!loading && rents.length > 0 && (
 //                 <div className="max-w-full mx-auto px-2 md:px-2 mb-6">
 //                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
@@ -1310,12 +1509,12 @@ export default RentList;
 //                             </div>
 //                             <p className="text-2xl font-black text-green-600">{activeCount}</p>
 //                         </div>
-//                         <div className="bg-white border border-gray-200 rounded-sm p-4 shadow-sm flex flex-col justify-between border-r-4 border-r-orange-500">
+//                         <div className="bg-white border border-gray-200 rounded-sm p-4 shadow-sm flex flex-col justify-between border-r-4 border-r-yellow-500">
 //                             <div className="flex justify-between items-start mb-2">
 //                                 <p className="text-xs text-gray-500 font-bold">قارب على الانتهاء</p>
-//                                 <FiClock className="text-orange-500" size={18} />
+//                                 <FiClock className="text-yellow-500" size={18} />
 //                             </div>
-//                             <p className="text-2xl font-black text-orange-600">{expiringCount}</p>
+//                             <p className="text-2xl font-black text-yellow-600">{expiringCount}</p>
 //                         </div>
 //                         <div className="bg-white border border-gray-200 rounded-sm p-4 shadow-sm flex flex-col justify-between border-r-4 border-r-red-500">
 //                             <div className="flex justify-between items-start mb-2">
@@ -1337,20 +1536,47 @@ export default RentList;
 //                 </div>
 //             )}
 
-//             {/* CONTENT */}
-//             {loading ? (
-//                 <div className="flex justify-center items-center py-20">
-//                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#a47d52]" />
+//             {/* ✅ ADDED: HORIZONTAL SCROLL ARROWS & CONTENT */}
+//             <div className="relative group/scroll">
+//                 {/* Left Arrow */}
+//                 <button
+//                     onClick={scrollLeft}
+//                     className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-[#f8f7f5] shadow-md border border-gray-200 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover/scroll:opacity-100 transition-all duration-300 hover:scale-110"
+//                     title="Scroll Left"
+//                 >
+//                     <FaChevronLeft className="text-gray-600 text-lg" />
+//                 </button>
+
+//                 {/* Right Arrow */}
+//                 <button
+//                     onClick={scrollRight}
+//                     className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-[#f8f7f5] shadow-md border border-gray-200 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover/scroll:opacity-100 transition-all duration-300 hover:scale-110"
+//                     title="Scroll Right"
+//                 >
+//                     <FaChevronRight className="text-gray-600 text-lg" />
+//                 </button>
+
+//                 {/* SCROLLABLE CONTENT */}
+//                 <div ref={scrollContainerRef} className="overflow-x-auto pb-4 no-scrollbar">
+//                     {loading ? (
+//                         <div className="flex justify-center items-center py-20">
+//                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#a47d52]" />
+//                         </div>
+//                     ) : filteredRents.length === 0 ? (
+//                         <div className="max-w-full mx-auto px-2 md:px-2">
+//                             <div className="bg-white rounded-xl shadow-lg text-center py-20">
+//                                 <FiHome className="mx-auto text-gray-300 mb-4" size={50} />
+//                                 <p className="text-gray-500 text-lg">لا توجد عقود</p>
+//                                 <button onClick={handleAdd} className="mt-5 bg-[#a47d52] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#8a6a44] transition">+ إضافة عقد</button>
+//                             </div>
+//                         </div>
+//                     ) : viewMode === "cards" ? (
+//                         renderCardsView()
+//                     ) : (
+//                         renderTableView()
+//                     )}
 //                 </div>
-//             ) : filteredRents.length === 0 ? (
-//                 <div className="max-w-full mx-auto px-2 md:px-2">
-//                     <div className="bg-white rounded-xl shadow-lg text-center py-20">
-//                         <FiHome className="mx-auto text-gray-300 mb-4" size={50} />
-//                         <p className="text-gray-500 text-lg">لا توجد عقود</p>
-//                         <button onClick={handleAdd} className="mt-5 bg-[#a47d52] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#8a6a44] transition">+ إضافة عقد</button>
-//                     </div>
-//                 </div>
-//             ) : viewMode === "cards" ? renderCardsView() : renderTableView()}
+//             </div>
 
 //             {/* MODALS */}
 //             {showAddModal && <RentAddEdit rent={selectedRent} onClose={handleModalClose} onSuccess={handleSuccess} />}
@@ -1365,9 +1591,19 @@ export default RentList;
 //                     generatedAt={new Date().toLocaleString("ar-EG")}
 //                 />
 //             )}
+
+//             <style>{`
+//                 /* ✅ Hide scrollbar for the horizontal scroll area */
+//                 .no-scrollbar::-webkit-scrollbar {
+//                     display: none;
+//                 }
+//                 .no-scrollbar {
+//                     -ms-overflow-style: none;
+//                     scrollbar-width: none;
+//                 }
+//             `}</style>
 //         </div>
 //     );
 // };
 
 // export default RentList;
-

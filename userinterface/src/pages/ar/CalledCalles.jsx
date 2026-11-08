@@ -120,7 +120,7 @@ const PdfRenderTarget = forwardRef(
                             fontFamily: PRINT_FONT,
                         }}
                     >
-                        From 01/10/2026 TO 24/10/2026
+                        From 24/10/2026 TO 31/10/2026
                     </h2>
                     <p
                         style={{
@@ -190,7 +190,7 @@ const PdfRenderTarget = forwardRef(
                                 <td
                                     style={{
                                         ...tdFooterPdf,
-                                        color: "#a47d52",
+                                        color: "#ffff",
                                         fontSize: 16,
                                     }}
                                 >

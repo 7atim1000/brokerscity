@@ -2,10 +2,11 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
-from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, PaymentPlan, Monitor, Rent, MonthlyPayment, get_or_create_today_log, Property, Permission, PropertyColdCalls, PropertyWantedArea, AdLead, LandingPageConfig, Lead
+from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, PaymentPlan, Monitor, Rent, MonthlyPayment, get_or_create_today_log, Property, Permission, PropertyColdCalls, PropertyWantedArea, AdLead, LandingPageConfig, Lead,  CrmOwner, CrmListing, ListingImage
 from rest_framework.response import Response
 from rest_framework import status, generics, filters
 from django.shortcuts import render, get_object_or_404
+
 
 # image upload: 
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -126,6 +127,10 @@ from .serializers import (
 
     # CRM
     LeadSerializer, 
+
+    # CRM Listing
+    CrmOwnerSerializer,
+    
     )
 
 # Dashboard
@@ -4856,3 +4861,355 @@ def monitor_detail(request, pk):
         )
     serializer = MonitorSerializer(obj)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+######################################
+# CRM LISTING
+######################################
+
+# ==========================================
+# HELPER FUNCTIONS
+# ==========================================
+
+def _clean_payload(data):
+    """Normalize empty strings to None to prevent unique constraint collisions."""
+    cleaned = data.copy()
+    for key, value in cleaned.items():
+        if value == "":
+            cleaned[key] = None
+    return cleaned
+
+def _apply_owner_filters(queryset, request):
+    """Apply search and filtering to the owner queryset."""
+    search = request.query_params.get('search')
+    owner_type = request.query_params.get('owner_type')
+    country = request.query_params.get('country')
+
+    if search:
+        queryset = queryset.filter(
+            Q(name__icontains=search) |
+            Q(company__icontains=search) |
+            Q(phone__icontains=search) |
+            Q(email__icontains=search)
+        )
+    if owner_type:
+        queryset = queryset.filter(owner_type=owner_type)
+    if country:
+        queryset = queryset.filter(country__icontains=country)
+
+    return queryset
+
+
+# ==========================================
+# CRUD VIEWS
+# ==========================================
+
+# ---------- CREATE ----------
+
+
+
+
+# ==========================================
+# HELPER FUNCTIONS
+# ==========================================
+
+def _clean_payload(data):
+    """Normalize empty strings to None to prevent unique constraint collisions."""
+    cleaned = data.copy()
+    for key, value in cleaned.items():
+        if value == "":
+            cleaned[key] = None
+    return cleaned
+
+def _apply_owner_filters(queryset, request):
+    """Apply search and filtering to the owner queryset."""
+    search = request.query_params.get('search')
+    owner_type = request.query_params.get('owner_type')
+    country = request.query_params.get('country')
+
+    if search:
+        queryset = queryset.filter(
+            Q(name__icontains=search) |
+            Q(company__icontains=search) |
+            Q(phone__icontains=search) |
+            Q(email__icontains=search)
+        )
+    if owner_type:
+        queryset = queryset.filter(owner_type=owner_type)
+    if country:
+        queryset = queryset.filter(country__icontains=country)
+
+    return queryset
+
+
+# ==========================================
+# CRUD VIEWS
+# ==========================================
+
+# ---------- CREATE ----------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def owner_create(request):
+    # Normalize empty strings to None first
+    payload = _clean_payload(request.data)
+
+    serializer = CrmOwnerSerializer(data=payload)
+    if serializer.is_valid():
+        # Auto-assign the creator if the profile exists
+        profile = getattr(request.user, 'profile', None)
+        serializer.save(created_by=profile)
+        
+        return Response(
+            {
+                "message": "Owner created successfully.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    print("Owner create validation errors:", serializer.errors)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------- LIST ----------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def owner_list(request):
+    queryset = CrmOwner.objects.all().order_by('-created_at')
+    
+    # Apply search/filters
+    queryset = _apply_owner_filters(queryset, request)
+    
+    serializer = CrmOwnerSerializer(queryset, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ---------- DETAIL ----------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def owner_detail(request, pk):
+    try:
+        obj = CrmOwner.objects.get(pk=pk)
+    except CrmOwner.DoesNotExist:
+        return Response(
+            {"error": "Owner not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    serializer = CrmOwnerSerializer(obj)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ---------- UPDATE ----------
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def owner_update(request, pk):
+    try:
+        obj = CrmOwner.objects.get(pk=pk)
+    except CrmOwner.DoesNotExist:
+        return Response(
+            {"error": "Owner not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Normalize empty strings to None
+    payload = _clean_payload(request.data)
+
+    # partial=True means PATCH allows updating just one field, PUT requires all fields
+    partial = request.method == 'PATCH'
+    
+    serializer = CrmOwnerSerializer(obj, data=payload, partial=partial)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {
+                "message": "Owner updated successfully.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    print("Owner update validation errors:", serializer.errors)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------- DELETE ----------
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def owner_delete(request, pk):
+    try:
+        obj = CrmOwner.objects.get(pk=pk)
+    except CrmOwner.DoesNotExist:
+        return Response(
+            {"error": "Owner not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    obj.delete()
+    return Response(
+        {"message": "Owner deleted successfully."},
+        status=status.HTTP_200_OK,
+    )
+
+##################
+# CRM Listing Parent and Child images
+##################
+
+# ==========================================
+# HELPER FUNCTIONS
+# ==========================================
+def _clean_payload(data):
+    """Normalize empty strings to None to prevent unique constraint collisions."""
+    cleaned = data.copy()
+    for key, value in cleaned.items():
+        if value == "":
+            cleaned[key] = None
+    return cleaned
+
+def _apply_listing_filters(queryset, request):
+    """Apply search and filtering to the listing queryset."""
+    search = request.query_params.get('search')
+    offer_type = request.query_params.get('offer_type')
+    property_type = request.query_params.get('property_type')
+
+    if search:
+        queryset = queryset.filter(
+            Q(title__icontains=search) |
+            Q(reference__icontains=search) |
+            Q(unit_no__icontains=search) |
+            Q(location_text__icontains=search)
+        )
+    if offer_type:
+        queryset = queryset.filter(offer_type=offer_type)
+    if property_type:
+        queryset = queryset.filter(property_type__icontains=property_type)
+
+    return queryset
+
+
+# ==========================================
+# CRM LISTING VIEWS
+# ==========================================
+
+# ---------- CREATE ----------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser]) # ✅ Required for images/videos
+def listing_create(request):
+    payload = _clean_payload(request.data)
+    
+    serializer = CrmListingSerializer(data=payload)
+    if serializer.is_valid():
+        # Auto-assign the creator
+        profile = getattr(request.user, 'profile', None)
+        listing = serializer.save(created_by=profile)
+
+        # ✅ Handle multiple gallery images
+        images = request.FILES.getlist('gallery_images')
+        for image in images:
+            ListingImage.objects.create(listing=listing, image=image)
+
+        return Response(
+            {
+                "message": "Listing created successfully.",
+                "data": CrmListingSerializer(listing).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    print("Listing create validation errors:", serializer.errors)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------- LIST ----------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listing_list(request):
+    queryset = CrmListing.objects.all().order_by('-created_at')
+    queryset = _apply_listing_filters(queryset, request)
+    
+    serializer = CrmListingSerializer(queryset, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ---------- DETAIL ----------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listing_detail(request, pk):
+    try:
+        obj = CrmListing.objects.get(pk=pk)
+    except CrmListing.DoesNotExist:
+        return Response({"error": "Listing not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+    serializer = CrmListingSerializer(obj)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ---------- UPDATE ----------
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def listing_update(request, pk):
+    try:
+        listing = CrmListing.objects.get(pk=pk)
+    except CrmListing.DoesNotExist:
+        return Response({"error": "Listing not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    payload = _clean_payload(request.data)
+    partial = request.method == 'PATCH'
+    
+    serializer = CrmListingSerializer(listing, data=payload, partial=partial)
+    if serializer.is_valid():
+        profile = getattr(request.user, 'profile', None)
+        serializer.save(updated_by=profile)
+
+        # ✅ Handle adding NEW images if they were uploaded
+        images = request.FILES.getlist('gallery_images')
+        for image in images:
+            ListingImage.objects.create(listing=listing, image=image)
+
+        return Response(
+            {
+                "message": "Listing updated successfully.",
+                "data": CrmListingSerializer(listing).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    print("Listing update validation errors:", serializer.errors)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------- DELETE ----------
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def listing_delete(request, pk):
+    try:
+        obj = CrmListing.objects.get(pk=pk)
+    except CrmListing.DoesNotExist:
+        return Response({"error": "Listing not found."}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Note: Because ListingImage has on_delete=models.CASCADE, 
+    # deleting the listing will automatically delete its images from the DB.
+    obj.delete()
+    return Response({"message": "Listing deleted successfully."}, status=status.HTTP_200_OK)
+
+
+# ==========================================
+# LISTING IMAGE VIEWS
+# ==========================================
+
+# ---------- DELETE SINGLE IMAGE ----------
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def listing_image_delete(request, pk):
+    try:
+        image = ListingImage.objects.get(pk=pk)
+    except ListingImage.DoesNotExist:
+        return Response({"error": "Image not found."}, status=status.HTTP_404_NOT_FOUND)
+    
+    # ✅ Delete the physical file from the server storage, then delete the DB row
+    image.image.delete(save=False) 
+    image.delete()
+    
+    return Response({"message": "Image deleted successfully."}, status=status.HTTP_200_OK)

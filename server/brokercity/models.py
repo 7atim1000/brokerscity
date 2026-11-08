@@ -388,6 +388,7 @@ class Source(models.Model):
 ############################################################
 
 class Lead(models.Model):
+    
     # 1. Foreign key to Profile (Responsible Person)
     stage = models.CharField(
         max_length=50,
@@ -528,88 +529,301 @@ class Activity(models.Model):
     def __str__(self):
         return f"{self.title} for {self.lead.name}"
 
-        #######################################################
-        #######################################################
-
-
-# class CrmOwner(models.Model):
-#     class OwnerType(models.TextChoices):
-#         INDIVIDUAL = "individual", _("Individual")
-#         COMPANY = "company", _("Company")
-
-#     # --- Type / Identity ---
-#     owner_type = models.CharField(_("owner type"), max_length=20, choices=OwnerType.choices, default=OwnerType.INDIVIDUAL, db_index=True,)
-#     name = models.CharField(_("owner name"),max_length=200, unique=True, null=True, blank=True, help_text=_("Owner full name or company name"),)
-#     company = models.CharField(_("company"), max_length=200, blank=True, null=True)
-#     nationality = models.CharField(_("nationality"), max_length=200, blank=True, null=True)
-#     birth_date = models.DateField(_("birth date"), null=True, blank=True)
-
-#     # --- Contact ---
-#     phone = models.CharField(_("phone"), max_length=32, unique=True, help_text=_("Primary phone / هاتف"), )
-#     phone1 = models.CharField(_("phone 1"), max_length=32, unique=True, null=True, blank=True, help_text=_("Phone 1 / هاتف"), )
-#     phone2 = models.CharField(_("phone 2"), max_length=32, unique=True, null=True, blank=True, help_text=_("Phone 2 / هاتف"), )
-#     email = models.EmailField(_("email"), max_length=254, unique=True,null=True, blank=True, help_text=_("E-mail / بريد إلكتروني"), )
-
-#     # --- Address ---
-#     country = models.CharField(_("country"), max_length=200, blank=True, null=True)
-#     address = models.CharField(_("address"), max_length=255, blank=True, null=True)
-
-#     # --- Audit ---
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-#     created_by = models.ForeignKey('Profile', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_by', help_text="The person who enter the owner")
-    
-#     class Meta:
-#         verbose_name = _("CRM owner")
-#         verbose_name_plural = _("CRM owners")
-#         ordering = ("-created_at",)
-#         indexes = [
-#             models.Index(fields=["owner_type"]),
-#             models.Index(fields=["name"]),
-#             models.Index(fields=["country"]),
-#         ]
-#         constraints = [
-#             # Prevent blank-string collisions on unique nullable fields
-#             models.CheckConstraint(
-#                 check=~models.Q(phone1=""),
-#                 name="crmowner_phone1_not_blank",
-#             ),
-#             models.CheckConstraint(
-#                 check=~models.Q(phone2=""),
-#                 name="crmowner_phone2_not_blank",
-#             ),
-#             models.CheckConstraint(
-#                 check=~models.Q(email=""),
-#                 name="crmowner_email_not_blank",
-#             ),
-#         ]
-
-#     def __str__(self):
-#         return self.name or self.phone or f"CrmOwner#{self.pk}"
-
-#     def clean(self):
-#         """Cross-field validation."""
-#         if self.owner_type == self.OwnerType.COMPANY and not self.company:
-#             raise ValidationError({"company": _("Company name is required for company owners.")})
-
-#         if self.owner_type == self.OwnerType.INDIVIDUAL and not self.phone:
-#             errors["phone"] = _("Phone is required for individual owners.")
-
-
-#     def save(self, *args, **kwargs):
-#         # Normalize blank strings to None so unique constraints work correctly
-#         for field in ("phone1", "phone2", "email", "name"):
-#             if getattr(self, field) == "":
-#                 setattr(self, field, None)
-#         self.full_clean()  # enforces clean() on every save
-#         super().save(*args, **kwargs)
-
-
-
+ 
+#######################################################
 #=====================================
 # CRM LISTING
 
+#######################################################
+# Converted the OwnerType(models.TextChoices) enum into a plain list of tuples (INDIVIDUAL /
+
+class CrmOwner(models.Model):
+
+    # ✅ OWNER_TYPE choices (list-of-tuples style)
+    OWNER_TYPE = [
+        ('individual', 'Individual'),
+        ('company', 'Company'),
+    ]
+
+    # --- Type / Identity ---
+    owner_type = models.CharField(
+        _("owner type"),
+        max_length=20,
+        choices=OWNER_TYPE,
+        default='individual',
+        db_index=True,
+    )
+    name = models.CharField(
+        _("owner name"),
+        max_length=200,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text=_("Owner full name or company name"),
+    )
+    company = models.CharField(_("company"), max_length=200, blank=True, null=True)
+    nationality = models.CharField(_("nationality"), max_length=200, blank=True, null=True)
+    birth_date = models.DateField(_("birth date"), null=True, blank=True)
+
+    # --- Contact ---
+    phone = models.CharField(
+        _("phone"),
+        max_length=32,
+        unique=True,
+        help_text=_("Primary phone / هاتف"),
+    )
+    phone1 = models.CharField(
+        _("phone 1"),
+        max_length=32,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text=_("Phone 1 / هاتف"),
+    )
+    phone2 = models.CharField(
+        _("phone 2"),
+        max_length=32,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text=_("Phone 2 / هاتف"),
+    )
+    email = models.EmailField(
+        _("email"),
+        max_length=254,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text=_("E-mail / بريد إلكتروني"),
+    )
+
+    # --- Address ---
+    country = models.CharField(_("country"), max_length=200, blank=True, null=True)
+    address = models.CharField(_("address"), max_length=255, blank=True, null=True)
+
+    # --- Audit ---
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        'Profile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_by',
+        help_text="The person who enter the owner",
+    )
+
+    class Meta:
+        verbose_name = _("CRM owner")
+        verbose_name_plural = _("CRM owners")
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["owner_type"]),
+            models.Index(fields=["name"]),
+            models.Index(fields=["country"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=~models.Q(phone1=""),
+                name="crmowner_phone1_not_blank",
+            ),
+            models.CheckConstraint(
+                check=~models.Q(phone2=""),
+                name="crmowner_phone2_not_blank",
+            ),
+            models.CheckConstraint(
+                check=~models.Q(email=""),
+                name="crmowner_email_not_blank",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name or self.phone or f"CrmOwner#{self.pk}"
+
+
+
+# اجعلها في الاعتبار must add reference to your read_only_fields in your CrmListingSerializer (or CrmListingCreateSerializer):
+# class CrmListingSerializer(serializers.ModelSerializer):
+#     cover_image = serializers.ImageField(required=False)
+#     video_1 = serializers.FileField(required=False)
+
+#     class Meta:
+#         model = CrmListing
+#         fields = '__all__'
+#         read_only_fields = ['reference', 'created_at', 'updated_at', 'created_by']
+import uuid
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from decimal import Decimal
+
+class CrmListing(models.Model):
+
+    TYPE_CHOICES = [
+        ('pocket', 'Pocket'),
+        ('live', 'Live'),
+        ('Under Mou', 'Under Mou'),
+        ('Under Reservation', 'Under Reservation'),
+        ('Sold', 'Rented'),
+    ]
+    CATEGORY = [
+        ('residential', 'Residential'),
+        ('commercial', 'Commercial'),
+    ]
+    OFFER = [
+        ('sale', 'Sale'),
+        ('rent', 'Rent'),
+    ]
     
+    # --- People & Relationships ---
+    created_by = models.ForeignKey(
+        'Profile', 
+        on_delete=models.SET_NULL, 
+        null=True, blank=True, 
+        related_name='created_listings',
+        help_text="The person who created the listing"
+    )
+    listing_source = models.ForeignKey(
+        'Profile', 
+        on_delete=models.SET_NULL, 
+        null=True, blank=True, 
+        related_name='sourced_listings',
+        help_text="The listing source"
+    )
+    listing_owner = models.ForeignKey(
+        'CrmOwner', 
+        on_delete=models.SET_NULL, 
+        null=True, blank=True, 
+        related_name='listings',
+        help_text="The Owner of listing"
+    )
+    confirmed = models.BooleanField(default=False, help_text="Check if the Listing is confirmed")
+    
+    # --- Reference ---
+    reference = models.CharField(
+        max_length=50, 
+        unique=True, 
+        blank=True, 
+        help_text="Auto-generated reference"
+    )
+
+    # --- Property Details ---
+    title = models.CharField(max_length=200, null=True, blank=True, default=None)
+    property_type = models.CharField(max_length=250, help_text="Type of property")
+    unit_no = models.CharField(unique=True, max_length=250, help_text="Unit number or identifier")
+    tenure = models.CharField(max_length=250, blank=True, null=True, help_text="The tenure of listing")
+    bedrooms = models.PositiveIntegerField(blank=True, null=True)
+    bathrooms = models.PositiveIntegerField(blank=True, null=True)
+    parking = models.PositiveIntegerField(blank=True, null=True)
+    furnished = models.CharField(max_length=250, blank=True, null=True, help_text="Furniture status of listing")
+
+    # --- Spaces ----
+    size = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Size of listing")
+    built_up_area = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Built up area of listing")
+    plot_size = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Plot size of listing")
+    project_status = models.CharField(max_length=250, blank=True, null=True, help_text="Project status (e.g. Ready, Off-plan)")
+    
+    # ---- Pricing Sale -------
+    sale_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
+    sale_price_sqft = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
+    payment_method = models.CharField(max_length=250, blank=True, null=True, help_text="Payment method of listing")
+    service_charge = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
+
+    # ---- Pricing Rent -------
+    rent_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
+    rent_price_yearly = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
+    rent_type = models.CharField(max_length=250, blank=True, null=True, help_text="Type of rent (e.g., Monthly, Yearly)")
+    
+    # --- Location ------
+    city = models.CharField(max_length=255, blank=True, null=True, help_text="The Listing City")
+    location_text = models.CharField(max_length=255, blank=True, null=True, help_text="The human-readable location string")
+    
+    # --- Description ---
+    title_description = models.CharField(max_length=350, blank=True, null=True, help_text="Title of the description")
+    description = models.TextField(blank=True, null=True, help_text="Things to do / Details")
+    notes = models.CharField(max_length=350, blank=True, null=True, help_text="Notes of the description")
+
+    # --- Legal & Location Compliance & permit ---
+    emirate = models.CharField(max_length=200, blank=True, null=True, help_text="Emirate of listing")
+    permit_type = models.CharField(max_length=200, blank=True, null=True, help_text="Permit type")
+    adrec_permit_no = models.CharField(unique=True, max_length=200, blank=True, null=True, help_text="ADREC Permit No.")
+    issue_expiry = models.DateField(null=True, blank=True)
+    
+    # --- Amenities (Boolean Fields) ---
+    central_ac = models.BooleanField(default=False)
+    maids_room = models.BooleanField(default=False)
+    built_in_wardrobes = models.BooleanField(default=False)
+    walk_in_closet = models.BooleanField(default=False)
+    balcony_or_terrace = models.BooleanField(default=False)
+    built_in_kitchen_appliances = models.BooleanField(default=False)
+    laundry_room = models.BooleanField(default=False)
+    storage_areas = models.BooleanField(default=False)
+    study_room = models.BooleanField(default=False)
+    security = models.BooleanField(default=False)
+    lobby_in_building = models.BooleanField(default=False)
+    cleaning_services = models.BooleanField(default=False)
+    private_pool = models.BooleanField(default=False)
+    shared_pool = models.BooleanField(default=False)
+    private_gym = models.BooleanField(default=False)
+    shared_gym = models.BooleanField(default=False)
+    jacuzzi = models.BooleanField(default=False)
+    reception_waiting_room = models.BooleanField(default=False)
+    atm_facility = models.BooleanField(default=False)
+    cafeteria_or_canteen = models.BooleanField(default=False)
+    private_garden = models.BooleanField(default=False)
+    view_of_landmark = models.BooleanField(default=False)
+    childrens_play_area = models.BooleanField(default=False)
+    barbeque_area = models.BooleanField(default=False)
+    pets_allowed = models.BooleanField(default=False)
+    covered_parking = models.BooleanField(default=False)
+    view_of_water = models.BooleanField(default=False)
+
+    # ✅ --- Media & Images ---
+    cover_image = models.ImageField(upload_to='listings/covers/', null=True, blank=True, help_text="Main cover image for the listing")
+    video_1 = models.FileField(upload_to='listings/videos/', null=True, blank=True)
+    video_2 = models.FileField(upload_to='listings/videos/', null=True, blank=True)
+    
+    # --- Audit ---
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Date and time when the listing was created")
+    updated_at = models.DateTimeField(auto_now=True, help_text="Date and time when the listing was last updated")
+    updated_by = models.ForeignKey('Profile', on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_listings', help_text="The person who updated the listing")
+    
+    class Meta:
+        verbose_name = _("CRM Listing")
+        verbose_name_plural = _("CRM Listings")
+        ordering = ("-created_at",)
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            self.reference = f"BC-S-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        # ✅ Improved: Uses reference or unit_no to avoid "None - None"
+        return self.reference or self.unit_no or f"Listing {self.pk}"
+
+
+# ✅ CHILD MODEL FOR GALLERY IMAGES
+class ListingImage(models.Model):
+    listing = models.ForeignKey(
+        CrmListing, 
+        on_delete=models.CASCADE, 
+        related_name='gallery_images'
+    )
+    image = models.ImageField(upload_to='listings/gallery/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # ✅ Fixed: Ascending order so image_1 shows first, image_2 shows second, etc.
+        ordering = ['created_at'] 
+
+    def __str__(self):
+        return f"Image for {self.listing.reference} - {self.id}"
+
+# Solution	Free Tier / Quota	Credit Card Required?	Notes
+# OpenStreetMap + Leaflet	Completely Free (Nominatim geocoding has no hard monthly quota, but requires compliance with fair use policies)	❌ Not Required	No API Key needed, directly call public services 
+# Google Maps API	$200 monthly credit (approx. 10,000 free Autocomplete calls/month)	✅ Required (must bind card to enable billing)	Exceeding credit will incur charges 
+# Mapbox	50,000 map loads + 100,000 geocoding requests/month
+
 
 #######################################################
 #######################################################

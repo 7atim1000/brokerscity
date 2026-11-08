@@ -1,7 +1,9 @@
 from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
+# Agents : 100,150 called calls, 3-5 fresh, 3V, 3M, 6rent, 6sales
+# listing: 150-100 calls, -> 6 rent, 4sale , 6 madmon
+# Alrawi : 80% data esteshareen + developers (off plan) + 20 % leads
 urlpatterns = [
 
     # path('', views.home),
@@ -155,8 +157,54 @@ urlpatterns = [
   # Lead Details Page: GET /lead/59/
   # Move Stage (Drag & Drop): PATCH /lead/59/edit/ with body {"stage": "lead_accepted"}
   # Full Edit: PUT /lead/59/edit/
-  # Delete: DELETE /lead/59/delete/
+  # Delete: DELETE /lead/59/delete/  
+  # List all (no pagination)
 
+  ################## -->Listing
+    path('crmlistingowners/', views.owner_list, name='owner-list'),
+    
+    # Create
+    path('crmlistingowners/create/', views.owner_create, name='owner-create'),
+    
+    # Detail
+    path('crmlistingowners/<int:pk>/', views.owner_detail, name='owner-detail'),
+    
+    # Update
+    path('crmlistingowners/<int:pk>/update/', views.owner_update, name='owner-update'),
+    
+    # Delete
+    path('crmlistingowners/<int:pk>/delete/', views.owner_delete, name='owner-delete'),
+    
+  #### Listing Parent and Child Listing Image
+    # ==========================================
+    # CRM LISTING ENDPOINTS
+    # ==========================================
+    
+    # List all
+    path('crmlistings/', views.listing_list, name='listing-list'),
+    
+    # Create (Handles FormData / File Uploads)
+    path('crmlistings/create/', views.listing_create, name='listing-create'),
+    
+    # Detail
+    path('crmlistings/<int:pk>/', views.listing_detail, name='listing-detail'),
+    
+    # Update (Handles FormData / File Uploads)
+    path('crmlistings/<int:pk>/update/', views.listing_update, name='listing-update'),
+    
+    # Delete Listing (Auto-deletes child images)
+    path('crmlistings/<int:pk>/delete/', views.listing_delete, name='listing-delete'),
+
+    # ==========================================
+    # LISTING IMAGE ENDPOINTS
+    # ==========================================
+    
+    # Delete a single gallery image
+    path('crmlisting-images/<int:pk>/delete/', views.listing_image_delete, name='listing-image-delete'),
+
+  #########################
+  # End CRM & LISTINg
+  #########################  
     #=====================================
     # Banks
     #=====================================
