@@ -49,7 +49,7 @@ import LeadsStagesGuide from './pages/ar/LeadsStagesGuide';
 import AdLandingPage from './pages/ar/AdLandingPage';
 import AdCreatePage from './pages/ar/AdCreatePage';
 import LeadsDashboard from './pages/ar/LeadsDashboard';
-import OfferSales from './pages/ar/OfferSale/OfferSales';
+import OfferSales from './pages/ar/offersale/OfferSales';
 
 // CRM Leads
 import CrmLeads from './pages/ar/CrmLeads'; 
