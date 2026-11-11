@@ -161,19 +161,19 @@ urlpatterns = [
   # List all (no pagination)
 
   ################## -->Listing
-    path('crmlistingowners/', views.owner_list, name='owner-list'),
+  path('landlord/', views.landlord_list, name='owner-list'),
     
     # Create
-    path('crmlistingowners/create/', views.owner_create, name='owner-create'),
+  path('landlord/create/', views.landlord_create, name='owner-create'),
     
     # Detail
-    path('crmlistingowners/<int:pk>/', views.owner_detail, name='owner-detail'),
+  path('landlord/<int:pk>/', views.landlord_detail, name='owner-detail'),
     
     # Update
-    path('crmlistingowners/<int:pk>/update/', views.owner_update, name='owner-update'),
+  path('landlord/<int:pk>/update/', views.landlord_update, name='owner-update'),
     
     # Delete
-    path('crmlistingowners/<int:pk>/delete/', views.owner_delete, name='owner-delete'),
+  path('landlord/<int:pk>/delete/', views.landlord_delete, name='owner-delete'),
     
   #### Listing Parent and Child Listing Image
     # ==========================================
@@ -440,7 +440,8 @@ urlpatterns = [
     
     # Cold Calls 
     path('cold-calls/', views.PropertyColdCallsListCreateView.as_view(), name='cold-calls-list-create'),
-    
+    # `${BASE}/api/cold-calls/${confirmDelete.id}/delete/`,
+
     # Location and Area
     path('wanted-areas/', views.PropertyWantedAreaListCreateView.as_view(), name='wanted-areas-list-create'),
     path('wanted-areas/<int:pk>/delete/', views.PropertyWantedAreaDeleteView.as_view(), name='wanted-areas-delete'),

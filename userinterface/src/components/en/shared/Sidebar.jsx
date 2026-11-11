@@ -23,10 +23,24 @@ function Sidebar({ onHoverChange }) {
 
     const { permissions, loading: permissionsLoading } = usePermissions();
 
-    const hasPermission = (permissionKey) => {
+    // const hasPermission = (permissionKey) => {
+    //     if (!permissionKey) return true;
+    //     return permissions?.[permissionKey] === true;
+    // };
+
+    // Updated to be can read and handle arrays. on assets.js
+        const hasPermission = (permissionKey) => {
         if (!permissionKey) return true;
+
+        // ✅ NEW: Check if permissionKey is an array
+        if (Array.isArray(permissionKey)) {
+            // Returns true if the user has AT LEAST ONE of the permissions in the array
+            return permissionKey.some((key) => permissions?.[key] === true);
+        }
+
+        // Standard single string check
         return permissions?.[permissionKey] === true;
-    };
+    }; 
 
     const toggleSubMenu = (index) => {
         setExpandedItems((prev) => ({
@@ -81,6 +95,8 @@ function Sidebar({ onHoverChange }) {
             "إدارة تعريف الحسابات": "Account Definitions",
             "إدارة البنوك": "Bank Management",
             "الخزينه النقديه": "Cash",
+            "اداره الملاك": "Owners",
+            "اداره العقارات": "Listing",
         };
         return translations[name] || name;
     };

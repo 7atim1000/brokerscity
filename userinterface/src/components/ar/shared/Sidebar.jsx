@@ -21,10 +21,22 @@ function Sidebar({ onHoverChange }) {
     const { permissions, loading: permissionsLoading } = usePermissions();
 
     // ✅ Safe permission check.
+    // const hasPermission = (permissionKey) => {
+    //     if (!permissionKey) return true;
+    //     return permissions?.[permissionKey] === true;
+    // };
     const hasPermission = (permissionKey) => {
         if (!permissionKey) return true;
+
+        // ✅ NEW: Check if permissionKey is an array
+        if (Array.isArray(permissionKey)) {
+            // Returns true if the user has AT LEAST ONE of the permissions in the array
+            return permissionKey.some((key) => permissions?.[key] === true);
+        }
+
+        // Standard single string check
         return permissions?.[permissionKey] === true;
-    };
+    }; 
 
     const toggleSubMenu = (index) => {
         setExpandedItems((prev) => ({

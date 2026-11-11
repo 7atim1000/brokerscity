@@ -465,7 +465,7 @@ const Unit = () => {
                     <button type="button" onClick={handleAdd} className="flex items-center justify-center gap-2 bg-[#a47d52] cursor-pointer text-white px-6 md:px-8 py-3 rounded-sm font-extrabold text-sm md:text-base transition-all duration-300 hover:bg-[#8a6a44] hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap">
                         <FiPlus size={20} /> إضافة وحدة
                     </button>
-                    <button type="button" onClick={() => navigate("/ar-category")} className="flex items-center justify-center gap-2 bg-green-600 cursor-pointer text-white px-6 md:px-8 py-3 rounded-sm font-extrabold text-sm md:text-base transition-all duration-300 hover:bg-[#8a6a44] hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap">
+                    <button type="button" onClick={() => navigate("/ar/category")} className="flex items-center justify-center gap-2 bg-green-600 cursor-pointer text-white px-6 md:px-8 py-3 rounded-sm font-extrabold text-sm md:text-base transition-all duration-300 hover:bg-[#8a6a44] hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap">
                         <GiVillage size={20} /> البنايات والفلل
                     </button>
                     <button type="button" onClick={fetchUnits} disabled={loading} className="flex items-center justify-center gap-2 bg-[#6c7a89] cursor-pointer text-white px-5 py-3 rounded-full font-extrabold transition-all duration-300 hover:bg-[#5a6775] hover:scale-105 disabled:opacity-50">

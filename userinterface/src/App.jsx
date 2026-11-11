@@ -62,6 +62,8 @@ import Signup from './pages/en/Signup';
 
 // ✅ ADDED: Import the English Dashboard
 import EnDashboard from './pages/en/Dashboard'; 
+import EnLandLord from './pages/en/LandLord' ;
+import EnListing from './pages/en/Listing' ;
 
 
 function App() {
@@ -156,11 +158,16 @@ function App() {
           It passes lang="en" to MainLayout, so the Navbar and Sidebar 
           will render on the LEFT side (LTR) and display in English.
         */}
+        
+        
         <Route path="/en" element={<MainLayout lang="en" />}>
-          
-          {/* ✅ ADDED: English Dashboard Route */}
-          {/* URL will be: /en/dashboard */}
-          <Route path="dashboard" element={<EnDashboard />} />
+    
+        {/* ✅ ADDED: English Dashboard Route */}
+        {/* URL will be: /en/dashboard */}
+          <Route path="dashboard" element={<EnDashboard  />} />
+
+          <Route path="landlord" element={<EnLandLord />} />
+          <Route path="listing" element={<EnListing />} />
 
           {/* Uncomment these as you build the English pages */}
           {/* <Route path="leads" element={<EnLeads />} /> */}

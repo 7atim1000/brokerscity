@@ -1328,6 +1328,7 @@ const AddUnit = ({ onClose, onSuccess }) => {
                                             <option value="">اختر النوع...</option>
                                             <option value="1BHK">1BHK</option>
                                             <option value="2BHK">2BHK</option>
+                                            <option value="3B">3B</option>
                                             <option value="Shop">Shop</option>
                                         </select>
 

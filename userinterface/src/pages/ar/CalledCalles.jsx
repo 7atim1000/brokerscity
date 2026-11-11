@@ -120,7 +120,7 @@ const PdfRenderTarget = forwardRef(
                             fontFamily: PRINT_FONT,
                         }}
                     >
-                        From 24/10/2026 TO 31/10/2026
+                        From 02/11/2026 TO 07/11/2026
                     </h2>
                     <p
                         style={{

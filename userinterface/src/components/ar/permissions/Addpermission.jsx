@@ -11,13 +11,14 @@ import {
     FaUserShield,     
     FaBullhorn,       
     FaAddressCard,    
-    // ✅ ADDED: New Icons for Lead Permissions
     FaEye,
     FaUserTag,
     FaPlusCircle,
     FaEdit,
     FaExchangeAlt,
     FaTrashAlt,
+    FaFileAlt,       // ✅ Added for Listings
+    FaRegBuilding,   // ✅ Added for Owners
 } from 'react-icons/fa';
 
 const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
@@ -49,7 +50,7 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
         ads: false, 
         leads: false, 
 
-        // ✅ ADDED: CRM Lead Permissions
+        // CRM Lead Permissions
         view_all_lead: false,
         view_my_lead: false,
         create_new_lead: false,
@@ -57,6 +58,21 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
         update_lead_stage: false,
         update_lead_responsible: false,
         delete_lead: false,
+
+        // ✅ ADDED: CRM Listing Permissions
+        view_all_listing: false,
+        view_my_listing: false,
+        create_new_listing: false,
+        update_listing: false,
+        delete_listing: false,
+        confirm_listing: false,
+
+        // ✅ ADDED: CRM Listing Owner Permissions
+        view_all_listing_owners: false,
+        view_my_listing_owners: false,
+        create_new_listing_owners: false,
+        update_listing_owners: false,
+        delete_listing_owners: false,
     };
 
     const [formData, setFormData] = useState(defaultFormData);
@@ -154,7 +170,7 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 ads: permissionData.ads || false,
                 leads: permissionData.leads || false,
 
-                // ✅ ADDED: Populate new Lead fields
+                // CRM Lead
                 view_all_lead: permissionData.view_all_lead || false,
                 view_my_lead: permissionData.view_my_lead || false,
                 create_new_lead: permissionData.create_new_lead || false,
@@ -162,6 +178,21 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 update_lead_stage: permissionData.update_lead_stage || false,
                 update_lead_responsible: permissionData.update_lead_responsible || false,
                 delete_lead: permissionData.delete_lead || false,
+
+                // ✅ ADDED: CRM Listing
+                view_all_listing: permissionData.view_all_listing || false,
+                view_my_listing: permissionData.view_my_listing || false,
+                create_new_listing: permissionData.create_new_listing || false,
+                update_listing: permissionData.update_listing || false,
+                delete_listing: permissionData.delete_listing || false,
+                confirm_listing: permissionData.confirm_listing || false,
+
+                // ✅ ADDED: CRM Listing Owners
+                view_all_listing_owners: permissionData.view_all_listing_owners || false,
+                view_my_listing_owners: permissionData.view_my_listing_owners || false,
+                create_new_listing_owners: permissionData.create_new_listing_owners || false,
+                update_listing_owners: permissionData.update_listing_owners || false,
+                delete_listing_owners: permissionData.delete_listing_owners || false,
             });
         } else {
             setFormData(defaultFormData);
@@ -211,7 +242,7 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 return;
             }
 
-            // ✅ ADDED: Include all new Lead fields in the payload
+            // ✅ UPDATED: Include all Listing and Owner fields in payload
             const submitData = {
                 ListWorkLog: formData.ListWorkLog,
                 monitoring: formData.monitoring,
@@ -231,6 +262,21 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
                 update_lead_stage: formData.update_lead_stage,
                 update_lead_responsible: formData.update_lead_responsible,
                 delete_lead: formData.delete_lead,
+
+                // ✅ Added Listing
+                view_all_listing: formData.view_all_listing,
+                view_my_listing: formData.view_my_listing,
+                create_new_listing: formData.create_new_listing,
+                update_listing: formData.update_listing,
+                delete_listing: formData.delete_listing,
+                confirm_listing: formData.confirm_listing,
+
+                // ✅ Added Listing Owners
+                view_all_listing_owners: formData.view_all_listing_owners,
+                view_my_listing_owners: formData.view_my_listing_owners,
+                create_new_listing_owners: formData.create_new_listing_owners,
+                update_listing_owners: formData.update_listing_owners,
+                delete_listing_owners: formData.delete_listing_owners,
             };
 
             if (!isEditMode) {
@@ -371,7 +417,8 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
             description: 'السماح بالوصول إلى قسم الليدز بالكامل',
             Icon: FaAddressCard,
         },
-        // ✅ ADDED: New CRM Lead Fields
+
+        // ✅ ADDED: CRM Lead Fields
         {
             key: 'view_all_lead',
             label: 'عرض جميع الليدز',
@@ -412,6 +459,76 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
             key: 'delete_lead',
             label: 'حذف الليد',
             description: 'السماح بحذف الليد نهائياً',
+            Icon: FaTrashAlt,
+        },
+
+        // ✅ ADDED: CRM Listing Fields
+        {
+            key: 'view_all_listing',
+            label: 'عرض جميع العقارات',
+            description: 'السماح بعرض جميع العقارات في النظام',
+            Icon: FaFileAlt,
+        },
+        {
+            key: 'view_my_listing',
+            label: 'عرض عقاراتي فقط',
+            description: 'السماح بعرض العقارات المخصصة له فقط',
+            Icon: FaUserTag,
+        },
+        {
+            key: 'create_new_listing',
+            label: 'إضافة عقار جديد',
+            description: 'السماح بإنشاء عقار جديد',
+            Icon: FaPlusCircle,
+        },
+        {
+            key: 'update_listing',
+            label: 'تعديل العقار',
+            description: 'السماح بتعديل بيانات العقار',
+            Icon: FaEdit,
+        },
+        {
+            key: 'delete_listing',
+            label: 'حذف العقار',
+            description: 'السماح بحذف العقار نهائياً',
+            Icon: FaTrashAlt,
+        },
+        {
+            key: 'confirm_listing',
+            label: 'تأكيد العقار',
+            description: 'السماح بتأكيد حالة العقار',
+            Icon: FaCheck,
+        },
+
+        // ✅ ADDED: CRM Listing Owners Fields
+        {
+            key: 'view_all_listing_owners',
+            label: 'عرض جميع الملاك',
+            description: 'السماح بعرض جميع ملاك العقارات',
+            Icon: FaRegBuilding,
+        },
+        {
+            key: 'view_my_listing_owners',
+            label: 'عرض ملاكي فقط',
+            description: 'السماح بعرض الملاك المخصصين له فقط',
+            Icon: FaUserTag,
+        },
+        {
+            key: 'create_new_listing_owners',
+            label: 'إضافة مالك جديد',
+            description: 'السماح بإضافة مالك عقار جديد',
+            Icon: FaPlusCircle,
+        },
+        {
+            key: 'update_listing_owners',
+            label: 'تعديل بيانات المالك',
+            description: 'السماح بتعديل بيانات مالك العقار',
+            Icon: FaEdit,
+        },
+        {
+            key: 'delete_listing_owners',
+            label: 'حذف المالك',
+            description: 'السماح بحذف مالك العقار نهائياً',
             Icon: FaTrashAlt,
         },
     ];
@@ -654,7 +771,5 @@ const AddPermission = ({ onClose, permissionData, onSuccess }) => {
         </>
     );
 };
-
-
 
 export default AddPermission;

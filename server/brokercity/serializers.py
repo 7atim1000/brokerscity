@@ -77,6 +77,20 @@ class PermissionSerializer(serializers.ModelSerializer):
             "update_lead_stage",
             "update_lead_responsible",
             "delete_lead",
+            
+            # CRM Listing
+            "view_all_listing",
+            "view_my_listing",
+            "create_new_listing",
+            "update_listing",
+            "delete_listing",
+            "confirm_listing",
+            
+            "view_all_listing_owners",
+            "view_my_listing_owners",
+            "create_new_listing_owners",
+            "update_listing_owners",
+            "delete_listing_owners",
 
             "created_at",
             "updated_at",
@@ -705,21 +719,30 @@ class LeadSerializer(serializers.ModelSerializer):
 #######################################################
 # Start Crm Listing
 #######################################################
-
 class CrmOwnerSerializer(serializers.ModelSerializer):
+    # ✅ Dynamically fetch the count of listings owned by this owner
+    units_count = serializers.SerializerMethodField()
     
     class Meta:
         model = CrmOwner
         fields = '__all__'
         
-        # ✅ FIXED: Added 'created_by' so the API doesn't expect it from the frontend
-        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+        # created_by and updated_by are handled by the backend views
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by', 'updated_by', 'units_count']
+
+    def get_units_count(self, obj):
+        """
+        If the view annotated 'unit_count', use that (fastest DB query).
+        Otherwise, fallback to counting the related listings.
+        """
+        if hasattr(obj, 'unit_count'):
+            return obj.unit_count
+        return obj.listings.count()
 
     def validate(self, attrs):
         """
         Custom validation to provide clean error messages to the frontend.
         """
-        # Use the new value if provided, otherwise fall back to the existing instance value
         owner_type = attrs.get('owner_type', getattr(self.instance, 'owner_type', 'individual'))
         company = attrs.get('company', getattr(self.instance, 'company', None))
         phone = attrs.get('phone', getattr(self.instance, 'phone', None))
@@ -731,7 +754,6 @@ class CrmOwnerSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"phone": "Phone is required for individual owners."})
 
         return attrs
-
 #########################
 # CRM Listing Parent and Image Child
 #########################
@@ -2197,6 +2219,8 @@ class RentSerializer(serializers.ModelSerializer):
     # ✅ ADDED: Unit Category and Owner fields
     unit_category = serializers.SerializerMethodField()
     unit_owner = serializers.SerializerMethodField()
+    # Added new 
+    unit_type = serializers.SerializerMethodField()
 
     class Meta:
         model = Rent
@@ -2216,6 +2240,7 @@ class RentSerializer(serializers.ModelSerializer):
             "monthly_payments_count",
             "unit_category", # ✅ Added
             "unit_owner",    # ✅ Added
+            "unit_type",    # ✅ Added
             "created_at",
             "updated_at",
         ]
@@ -2229,6 +2254,7 @@ class RentSerializer(serializers.ModelSerializer):
             "monthly_payments_count",
             "unit_category", # ✅ Added
             "unit_owner",    # ✅ Added
+            "unit_type", # ✅ ADD THIS LINE
             "created_at",
             "updated_at",
         ]
@@ -2255,6 +2281,13 @@ class RentSerializer(serializers.ModelSerializer):
         if not obj.unit_name:
             return None
         return getattr(obj.unit_name, "price", None)
+
+    def get_unit_type(self, obj):
+        # ✅ This fetches the 'type' from the related Unit model
+        if obj.unit_name and obj.unit_name.type:
+            return obj.unit_name.type
+        return "—"
+
 
     def get_unit_security_deposit(self, obj):
         if not obj.unit_name:

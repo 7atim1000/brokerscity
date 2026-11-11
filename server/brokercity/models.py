@@ -8,7 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
-
+#from django.db.models import Count
 
 
 import uuid
@@ -65,12 +65,28 @@ class Permission(models.Model):
     # ✅ CRM LEAD
     view_all_lead = models.BooleanField(default=False, help_text="Whether this user can see all leads.",)
     view_my_lead = models.BooleanField(default=False, help_text="Whether this user see his leads")
+    
     create_new_lead = models.BooleanField(default=False, help_text="Whether this user can create a new lead")
     update_lead = models.BooleanField(default=False, help_text="Whether this user can edit all lead information")
+    
     update_lead_stage = models.BooleanField(default=False, help_text="Whether this user can edit lead stages")
     update_lead_responsible = models.BooleanField(default=False, help_text="Whether this user can edit lead responsible")
     delete_lead = models.BooleanField(default=False, help_text="Whether this user can delete lead")
-
+   
+   # CRM LISTING
+    view_all_listing = models.BooleanField(default=False, help_text="Whether this user can see all lesting.",)
+    view_my_listing = models.BooleanField(default=False, help_text="Whether this user see his listing")
+    create_new_listing = models.BooleanField(default=False, help_text="Whether this user can create a new listing")
+    update_listing = models.BooleanField(default=False, help_text="Whether this user can edit all listing")
+    delete_listing = models.BooleanField(default=False, help_text="Whether this user can delete listing")
+    confirm_listing = models.BooleanField(default=False, help_text="Whether this user can confirm listing")
+    
+    view_all_listing_owners = models.BooleanField(default=False, help_text="Whether this user can see all listing owners.",)
+    view_my_listing_owners = models.BooleanField(default=False, help_text="Whether this user can see his listing owners.",)
+    create_new_listing_owners = models.BooleanField(default=False, help_text="Whether this user can create a new listing owners")
+    update_listing_owners = models.BooleanField(default=False, help_text="Whether this user can edit all lead listing owners")
+    delete_listing_owners = models.BooleanField(default=False, help_text="Whether this user can delete all lead listing owners")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -214,8 +230,6 @@ class Profile(models.Model):
 ##############################################################
 # DailyWorkLog
 ##############################################################
-from django.db import models
-from django.contrib.auth.models import User
 
 class DailyWorkLog(models.Model):
     """
@@ -566,53 +580,24 @@ class CrmOwner(models.Model):
     birth_date = models.DateField(_("birth date"), null=True, blank=True)
 
     # --- Contact ---
-    phone = models.CharField(
-        _("phone"),
-        max_length=32,
-        unique=True,
-        help_text=_("Primary phone / هاتف"),
-    )
-    phone1 = models.CharField(
-        _("phone 1"),
-        max_length=32,
-        unique=True,
-        null=True,
-        blank=True,
-        help_text=_("Phone 1 / هاتف"),
-    )
-    phone2 = models.CharField(
-        _("phone 2"),
-        max_length=32,
-        unique=True,
-        null=True,
-        blank=True,
-        help_text=_("Phone 2 / هاتف"),
-    )
-    email = models.EmailField(
-        _("email"),
-        max_length=254,
-        unique=True,
-        null=True,
-        blank=True,
-        help_text=_("E-mail / بريد إلكتروني"),
-    )
+    phone = models.CharField(_("phone"), max_length=32, unique=True, help_text=_("Primary phone / هاتف"),)
+    phone1 = models.CharField(_("phone 1"), max_length=32, unique=True, null=True, blank=True, help_text=_("Phone 1 / هاتف"),)
+    phone2 = models.CharField(_("phone 2"), max_length=32, unique=True, null=True, blank=True, help_text=_("Phone 2 / هاتف"),)
+    email = models.EmailField(_("email"), max_length=254, unique=True, null=True, blank=True, help_text=_("E-mail / بريد إلكتروني"),)
 
     # --- Address ---
     country = models.CharField(_("country"), max_length=200, blank=True, null=True)
     address = models.CharField(_("address"), max_length=255, blank=True, null=True)
 
+    # --- No of Units regarding to CrmListing model
+   
     # --- Audit ---
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        'Profile',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='created_by',
-        help_text="The person who enter the owner",
-    )
-
+    
+    created_by = models.ForeignKey('Profile',on_delete=models.SET_NULL, null=True, blank=True, related_name='created_by', help_text="The person who enter the owner",)
+    updated_by = models.ForeignKey('Profile',on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_by', help_text="The person who update the owner",)
+    
     class Meta:
         verbose_name = _("CRM owner")
         verbose_name_plural = _("CRM owners")
@@ -651,15 +636,11 @@ class CrmOwner(models.Model):
 #         model = CrmListing
 #         fields = '__all__'
 #         read_only_fields = ['reference', 'created_at', 'updated_at', 'created_by']
-import uuid
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-from decimal import Decimal
 
 class CrmListing(models.Model):
 
     TYPE_CHOICES = [
-        ('pocket', 'Pocket'),
+        ('draft', 'Draft'),
         ('live', 'Live'),
         ('Under Mou', 'Under Mou'),
         ('Under Reservation', 'Under Reservation'),

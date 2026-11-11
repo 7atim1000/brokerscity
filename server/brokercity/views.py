@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status, generics, filters
 from django.shortcuts import render, get_object_or_404
 
+from django.db.models import Q, Count
 
 # image upload: 
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -300,6 +301,21 @@ def my_permissions(request):
             "update_lead_stage": False,
             "update_lead_responsible": False,
             "delete_lead": False,
+
+            # CRM Listing
+            "view_all_listing": False,
+            "view_my_listing": False,
+            "create_new_listing": False,
+            "update_listing": False,
+            "delete_listing": False,
+            "confirm_listing": False,
+
+            "view_all_listing_owners": False,
+            "view_my_listing_owners": False,
+            "create_new_listing_owners": False,
+            "update_listing_owners": False,
+            "delete_listing_owners": False,
+            
         })
 
     # ✅ FIXED: Added all fields to the success response
@@ -323,6 +339,21 @@ def my_permissions(request):
         "update_lead_stage": perm.update_lead_stage,
         "update_lead_responsible": perm.update_lead_responsible,
         "delete_lead": perm.delete_lead,
+
+        # CRM Listing
+        "view_all_listing": perm.view_all_listing,
+        "view_my_listing": perm.view_my_listing,
+        "create_new_listing": perm.create_new_listing,
+        "update_listing": perm.update_listing,
+        "delete_listing": perm.delete_listing,
+        "confirm_listing": perm.confirm_listing,
+
+        "view_all_listing_owners": perm.view_all_listing_owners,
+        "view_my_listing_owners": perm.view_my_listing_owners,
+        "create_new_listing_owners": perm.create_new_listing_owners,
+        "update_listing_owners": perm.update_listing_owners,
+        "delete_listing_owners": perm.delete_listing_owners,
+       
     })
 
 # ---------- CREATE ----------
@@ -4589,6 +4620,9 @@ class PropertyColdCallsListCreateView(APIView):
         
         # Return validation errors (e.g., if coldcalls is negative)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+        
 # ========================================================
 # Property Wanted Locations and Area
 # ========================================================
@@ -4720,7 +4754,6 @@ class MonitorPagination(PageNumberPagination):
     max_page_size = 200
 
 
-
 # ---------- Helpers ----------
 def _parse_date(value, field_name):
     try:
@@ -4790,8 +4823,7 @@ def _apply_monitor_filters(queryset, request):
 
     return queryset
 
-
-# ---------- CREATE ----------
+# -------- CREATE ----------
 @api_view(['POST'])
 def monitor_create(request):
     # Normalize empty strings to None first
@@ -4812,7 +4844,6 @@ def monitor_create(request):
     print("Monitor create validation errors:", serializer.errors)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 # ---------- DELETE ----------
 @api_view(['DELETE'])
@@ -4862,17 +4893,12 @@ def monitor_detail(request, pk):
     serializer = MonitorSerializer(obj)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
-
-
-
 ######################################
 # CRM LISTING
 ######################################
-
 # ==========================================
 # HELPER FUNCTIONS
 # ==========================================
-
 def _clean_payload(data):
     """Normalize empty strings to None to prevent unique constraint collisions."""
     cleaned = data.copy()
@@ -4882,82 +4908,72 @@ def _clean_payload(data):
     return cleaned
 
 def _apply_owner_filters(queryset, request):
-    """Apply search and filtering to the owner queryset."""
+    """Apply search filtering."""
     search = request.query_params.get('search')
-    owner_type = request.query_params.get('owner_type')
-    country = request.query_params.get('country')
-
     if search:
         queryset = queryset.filter(
-            Q(name__icontains=search) |
-            Q(company__icontains=search) |
+            Q(name__icontains=search) | 
+            Q(company__icontains=search) | 
             Q(phone__icontains=search) |
             Q(email__icontains=search)
         )
-    if owner_type:
-        queryset = queryset.filter(owner_type=owner_type)
-    if country:
-        queryset = queryset.filter(country__icontains=country)
-
     return queryset
 
+# ==========================================
+# LIST VIEW
+# ==========================================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def landlord_list(request):
+    # ✅ Annotate the queryset to count units efficiently in one DB query
+    queryset = CrmOwner.objects.annotate(unit_count=Count('listings')).order_by('-created_at')
+    
+    # Role-based filtering
+    user_profile = getattr(request.user, 'profile', None)
+    user_role = getattr(user_profile, 'role', 'user') if user_profile else 'user'
+    user_role = str(user_role).lower()
+
+    if user_role not in ['admin', 'manager']:
+        # Regular users only see what they created
+        queryset = queryset.filter(created_by=user_profile)
+        
+    # Apply search filters
+    queryset = _apply_owner_filters(queryset, request)
+    
+    serializer = CrmOwnerSerializer(queryset, many=True, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 # ==========================================
-# CRUD VIEWS
+# DETAIL VIEW
 # ==========================================
-
-# ---------- CREATE ----------
-
-
-
-
-# ==========================================
-# HELPER FUNCTIONS
-# ==========================================
-
-def _clean_payload(data):
-    """Normalize empty strings to None to prevent unique constraint collisions."""
-    cleaned = data.copy()
-    for key, value in cleaned.items():
-        if value == "":
-            cleaned[key] = None
-    return cleaned
-
-def _apply_owner_filters(queryset, request):
-    """Apply search and filtering to the owner queryset."""
-    search = request.query_params.get('search')
-    owner_type = request.query_params.get('owner_type')
-    country = request.query_params.get('country')
-
-    if search:
-        queryset = queryset.filter(
-            Q(name__icontains=search) |
-            Q(company__icontains=search) |
-            Q(phone__icontains=search) |
-            Q(email__icontains=search)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def landlord_detail(request, pk):
+    try:
+        # ✅ Annotate for the detail view so 'units_count' is accurate
+        obj = CrmOwner.objects.annotate(unit_count=Count('listings')).get(pk=pk)
+    except CrmOwner.DoesNotExist:
+        return Response(
+            {"error": "Owner not found."},
+            status=status.HTTP_404_NOT_FOUND,
         )
-    if owner_type:
-        queryset = queryset.filter(owner_type=owner_type)
-    if country:
-        queryset = queryset.filter(country__icontains=country)
-
-    return queryset
+        
+    serializer = CrmOwnerSerializer(obj, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # ==========================================
-# CRUD VIEWS
+# CREATE VIEW
 # ==========================================
-
-# ---------- CREATE ----------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def owner_create(request):
-    # Normalize empty strings to None first
+def landlord_create(request):
     payload = _clean_payload(request.data)
-
-    serializer = CrmOwnerSerializer(data=payload)
+    
+    serializer = CrmOwnerSerializer(data=payload, context={'request': request})
     if serializer.is_valid():
-        # Auto-assign the creator if the profile exists
+        # ✅ Auto-assign created_by
         profile = getattr(request.user, 'profile', None)
         serializer.save(created_by=profile)
         
@@ -4973,38 +4989,12 @@ def owner_create(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ---------- LIST ----------
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def owner_list(request):
-    queryset = CrmOwner.objects.all().order_by('-created_at')
-    
-    # Apply search/filters
-    queryset = _apply_owner_filters(queryset, request)
-    
-    serializer = CrmOwnerSerializer(queryset, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# ---------- DETAIL ----------
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def owner_detail(request, pk):
-    try:
-        obj = CrmOwner.objects.get(pk=pk)
-    except CrmOwner.DoesNotExist:
-        return Response(
-            {"error": "Owner not found."},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-    serializer = CrmOwnerSerializer(obj)
-    return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# ---------- UPDATE ----------
+# ==========================================
+# UPDATE VIEW
+# ==========================================
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
-def owner_update(request, pk):
+def landlord_update(request, pk):
     try:
         obj = CrmOwner.objects.get(pk=pk)
     except CrmOwner.DoesNotExist:
@@ -5015,13 +5005,14 @@ def owner_update(request, pk):
 
     # Normalize empty strings to None
     payload = _clean_payload(request.data)
-
-    # partial=True means PATCH allows updating just one field, PUT requires all fields
     partial = request.method == 'PATCH'
     
-    serializer = CrmOwnerSerializer(obj, data=payload, partial=partial)
+    serializer = CrmOwnerSerializer(obj, data=payload, partial=partial, context={'request': request})
     if serializer.is_valid():
-        serializer.save()
+        # ✅ Auto-assign updated_by
+        profile = getattr(request.user, 'profile', None)
+        serializer.save(updated_by=profile)
+        
         return Response(
             {
                 "message": "Owner updated successfully.",
@@ -5034,10 +5025,12 @@ def owner_update(request, pk):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ---------- DELETE ----------
+# ==========================================
+# DELETE VIEW
+# ==========================================
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
-def owner_delete(request, pk):
+def landlord_delete(request, pk):
     try:
         obj = CrmOwner.objects.get(pk=pk)
     except CrmOwner.DoesNotExist:
@@ -5050,6 +5043,11 @@ def owner_delete(request, pk):
         {"message": "Owner deleted successfully."},
         status=status.HTTP_200_OK,
     )
+
+
+# ==========================================
+# CRUD VIEWS
+# ==========================================
 
 ##################
 # CRM Listing Parent and Child images
@@ -5090,21 +5088,24 @@ def _apply_listing_filters(queryset, request):
 # ==========================================
 # CRM LISTING VIEWS
 # ==========================================
-
 # ---------- CREATE ----------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser]) # ✅ Required for images/videos
+@parser_classes([MultiPartParser, FormParser])
 def listing_create(request):
     payload = _clean_payload(request.data)
     
+    # ✅ Force default status to 'draft' if not provided
+    if 'status' not in payload or not payload['status']:
+        payload['status'] = 'draft'
+
     serializer = CrmListingSerializer(data=payload)
     if serializer.is_valid():
-        # Auto-assign the creator
+        # ✅ Auto-assign created_by so they can see it in "My Listings"
         profile = getattr(request.user, 'profile', None)
         listing = serializer.save(created_by=profile)
 
-        # ✅ Handle multiple gallery images
+        # Handle images
         images = request.FILES.getlist('gallery_images')
         for image in images:
             ListingImage.objects.create(listing=listing, image=image)
@@ -5117,18 +5118,42 @@ def listing_create(request):
             status=status.HTTP_201_CREATED,
         )
 
-    print("Listing create validation errors:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 # ---------- LIST ----------
+# @api_view(['GET'])
+# @permission_classes([IsAuthenticated])
+# def listing_list(request):
+#     queryset = CrmListing.objects.all().order_by('-created_at')
+#     queryset = _apply_listing_filters(queryset, request)
+    
+#     serializer = CrmListingSerializer(queryset, many=True)
+#     return Response(serializer.data, status=status.HTTP_200_OK)
+
+# It checks if the logged-in user is an admin or manager. If they are not, 
+# it filters the listings to only show the ones where created_by matches the user's profile.
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def listing_list(request):
+    # 1. Start with all objects
     queryset = CrmListing.objects.all().order_by('-created_at')
+    
+    # 2. Check User Role
+    user_profile = getattr(request.user, 'profile', None)
+    user_role = getattr(user_profile, 'role', 'user') if user_profile else 'user'
+    user_role = str(user_role).lower()
+
+    # 3. Apply Role-based filtering
+    if user_role not in ['admin', 'manager']:
+        # ✅ Regular users only see listings they created
+        queryset = queryset.filter(created_by=user_profile)
+        
+    # 4. Apply search filters
     queryset = _apply_listing_filters(queryset, request)
     
-    serializer = CrmListingSerializer(queryset, many=True)
+    # 5. Return response
+    serializer = CrmListingSerializer(queryset, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 

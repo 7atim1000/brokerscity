@@ -32,7 +32,6 @@ import DetailRent from "../../components/ar/rent/DetailRent";
 import RentAddEdit from "../../components/ar/rent/RentAddEdit";
 
 const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
-const PRINT_FONT = '"Cairo", "Tajawal", "Segoe UI", "Tahoma", "Arial", sans-serif';
 
 /* =============================================================
    HIDDEN PDF RENDER TARGET FOR RENTS LIST (ADCP Style)
@@ -64,15 +63,14 @@ const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
                 zIndex: -1,
             }}
         >
-            {/* ✅ TOP LOGO & TITLE (Reduced space between them) */}
+            {/* ✅ TOP LOGO & TITLE */}
             <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: "5px" }}>
-                {/* ✅ Increased image scale */}
-                <img src={logo} alt="Logo" crossOrigin="anonymous" style={{ height: "160px", objectFit: "contain" }} />
+                <img className='scale-110' src={logo} alt="Logo" crossOrigin="anonymous" style={{ marginTop: "-25px", height: "160px", objectFit: "contain" }} />
             </div>
 
             {/* ✅ TITLE */}
             <div style={{ textAlign: "center", marginBottom: "20px", marginTop: "-85px" }}>
-                <h1 style={{ fontSize: "26px", fontWeight: "bold", margin: 0, color: "#000" }}>
+                <h1 style={{ fontSize: "23px", fontWeight: "bold", margin: 0, color: "#000" }}>
                     Property List Report (LandLord)
                 </h1>
             </div>
@@ -92,7 +90,6 @@ const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
                     <span>{rents.length}</span>
                 </div>
                 
-                {/* ✅ Total Projected Rent (AED not underlined, Amount underlined) */}
                 <div style={{ display: "flex", marginTop: "8px", alignItems: "center" }}>
                     <span style={{ fontWeight: "bold", width: "150px" }}>Total Projected Rent</span>
                     <span style={{ fontWeight: "bold", fontSize: "15px" }}>
@@ -103,8 +100,17 @@ const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
 
             {/* ✅ TABLE DESIGN */}
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontFamily: "Arial, sans-serif", direction: "ltr" }}>
+                <colgroup>
+                    <col style={{ width: "70px" }} />  {/* Unit # Column */}
+                    <col style={{ width: "220px" }} /> {/* Tenant Name Column */}
+                    <col style={{ width: "120px" }} /> {/* Unit Type Column */}
+                    <col style={{ width: "100px" }} /> {/* Start Date Column */}
+                    <col style={{ width: "100px" }} /> {/* End Date Column */}
+                    <col style={{ width: "120px" }} /> {/* Projected Rent Column */}
+                    <col style={{ width: "120px" }} /> {/* Installment Amt Column */}
+                </colgroup>
                 <thead>
-                    <tr>
+                    <tr style={{ backgroundColor: "#f8f7f5" }}>
                         <th style={thPdf}>Unit #</th>
                         <th style={thPdf}>Tenant Name</th>
                         <th style={thPdf}>Unit Type</th>
@@ -116,10 +122,10 @@ const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
                 </thead>
                 <tbody>
                     {rents.map((r, index) => (
-                        <tr key={r.id} style={{ background: index % 2 === 0 ? "#FFFFFF" : "#F9FAFB" }}>
+                        <tr key={r.id} style={{ backgroundColor: index % 2 === 0 ? "#FFFFFF" : "#F9FAFB" }}>
                             <td style={tdPdf}>{r.unit_display || "—"}</td>
                             <td style={tdPdf}>{r.tenant_name || "—"}</td>
-                            <td style={tdPdf}>{r.unit_type || r.property_type || r.unit_category || "—"}</td>
+                            <td style={tdPdf}>{r.unit_type || "—"}</td>
                             <td style={tdPdf}>{formatDate(r.start_date)}</td>
                             <td style={tdPdf}>{formatDate(r.end_date)}</td>
                             <td style={tdPdf}>{formatAmount(r.unit_price)}</td>
@@ -143,23 +149,28 @@ const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
 });
 PdfRenderTarget.displayName = "PdfRenderTarget";
 
-// ✅ ADCP Style Table Borders
+// ✅ STYLES: Gray-500 borders (#6b7280), middle aligned, centered text
 const thPdf = { 
-    border: "1px solid #000", 
+    border: "1px solid #000",
     padding: "8px 4px", 
-    fontSize: 11, 
+    fontSize: 12, 
     fontWeight: "bold", 
     color: "#000", 
-    textAlign: "center", 
-    background: "#ffffff" 
+    textAlign: "center",         
+    verticalAlign: "middle",     
+    whiteSpace: "nowrap",
+    height: "40px"               
 };
+
 const tdPdf = { 
-    border: "1px solid #000", 
+    border: "1px solid #000",
     padding: "6px 4px", 
-    fontSize: 11, 
+    fontSize: 14,
     color: "#000", 
-    textAlign: "center", 
-    wordBreak: "break-word" 
+    textAlign: "center",         
+    verticalAlign: "middle",     
+    wordBreak: "break-word",
+    height: "40px"               
 };
 
 
@@ -207,7 +218,10 @@ const RentList = () => {
 
             const data = await response.json();
             let rentsData = Array.isArray(data) ? data : (data.results || data.rents || []);
-            rentsData.sort((a, b) => a.id - b.id);
+            
+            // ✅ CHANGED TO DESCENDING ORDER (Newest first)
+            rentsData.sort((a, b) => b.id - a.id); 
+
             setRents(rentsData);
         } catch (error) {
             toast.error("❌ حدث خطأ أثناء جلب العقود");
@@ -273,6 +287,7 @@ const RentList = () => {
     const getUnitDisplay = (r) => r?.unit_display || r?.unit_name?.name || "-";
     const getUnitCategory = (r) => r?.unit_category || "-";
     const getUnitOwner = (r) => r?.unit_owner || "-";
+    const getUnitType = (r) => r?.unit_type || "-"; 
 
     const formatAmount = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const formatInteger = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -351,6 +366,7 @@ const RentList = () => {
         const unit = String(getUnitDisplay(rent)).toLowerCase();
         const category = String(getUnitCategory(rent)).toLowerCase();
         const owner = String(getUnitOwner(rent)).toLowerCase();
+        const type = String(getUnitType(rent)).toLowerCase(); 
         const start = String(rent.start_date || "").toLowerCase();
         const end = String(rent.end_date || "").toLowerCase();
         const status = String(getStatusLabel(rent)).toLowerCase();
@@ -358,6 +374,7 @@ const RentList = () => {
         return (
             tenant.includes(search) || unit.includes(search) ||
             category.includes(search) || owner.includes(search) ||
+            type.includes(search) ||
             start.includes(search) || end.includes(search) ||
             status.includes(search)
         );
@@ -376,7 +393,7 @@ const RentList = () => {
     });
 
     /* =========================================================
-       PDF DOWNLOAD (✅ FIXED MULTI-PAGE LOGIC)
+       PDF DOWNLOAD
     ========================================================= */
     const handleDownloadPDF = async () => {
         if (!filteredRents || filteredRents.length === 0) return toast.warning("لا توجد بيانات لتصديرها");
@@ -409,17 +426,14 @@ const RentList = () => {
             const pageH = doc.internal.pageSize.getHeight();
             const imgData = canvas.toDataURL("image/jpeg", 0.95);
             
-            // ✅ MULTI-PAGE FIX: Calculate the height the image will take up in mm
             const imgHeightInMm = (canvas.height * pageW) / canvas.width;
 
             let heightLeft = imgHeightInMm;
             let position = 0;
 
-            // Add first page
             doc.addImage(imgData, "JPEG", 0, position, pageW, imgHeightInMm, undefined, "FAST");
             heightLeft -= pageH;
 
-            // If there is still more height (meaning content spilled over), add new pages
             while (heightLeft > 0) {
                 position = heightLeft - imgHeightInMm; 
                 doc.addPage();
@@ -427,7 +441,6 @@ const RentList = () => {
                 heightLeft -= pageH;
             }
 
-            // Add footer text to the last page
             doc.setFont("helvetica", "bold");
             doc.setFontSize(7.5);
             doc.setTextColor(164, 125, 82);
@@ -454,6 +467,7 @@ const RentList = () => {
                 const unit = getUnitDisplay(rent);
                 const category = getUnitCategory(rent);
                 const owner = getUnitOwner(rent);
+                const type = getUnitType(rent); 
 
                 return (
                     <div key={rent.id} className={`border rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden hover:-translate-y-1 relative group ${getCardBgColor(rent)}`}>
@@ -477,6 +491,9 @@ const RentList = () => {
                                     </p>
                                     <p className="text-[10px] text-gray-500 mt-0.5 truncate flex items-center gap-1 bg-[#f8f7f5]">
                                         <FiBriefcase /> {owner}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 mt-0.5 truncate flex items-center gap-1 bg-[#f8f7f5]">
+                                        <FiHome /> {type}
                                     </p>
                                 </div>
                             </div>
@@ -549,6 +566,7 @@ const RentList = () => {
                                 <th className="px-4 py-4 text-sm font-bold">الوحدة</th>
                                 <th className="px-4 py-4 text-sm font-bold">التصنيف</th>
                                 <th className="px-4 py-4 text-sm font-bold">المالك</th>
+                                <th className="px-4 py-4 text-sm font-bold">النوع</th>
                                 <th className="px-4 py-4 text-sm font-bold">من تاريخ</th>
                                 <th className="px-4 py-4 text-sm font-bold">إلى تاريخ</th>
                                 <th className="px-4 py-4 text-sm font-bold">سعر الوحدة</th>
@@ -566,6 +584,7 @@ const RentList = () => {
                                     <td className="px-4 py-4 text-sm text-gray-700">{getUnitDisplay(rent)}</td>
                                     <td className="px-4 py-4 text-sm text-gray-700">{getUnitCategory(rent)}</td>
                                     <td className="px-4 py-4 text-sm text-gray-700">{getUnitOwner(rent)}</td>
+                                    <td className="px-4 py-4 text-sm text-gray-700">{getUnitType(rent)}</td>
                                     <td className="px-4 py-4 text-sm text-gray-700" dir="ltr">{rent.start_date}</td>
                                     <td className="px-4 py-4 text-sm text-gray-700" dir="ltr">{rent.end_date}</td>
                                     <td className="px-4 py-4 text-sm font-bold text-[#a47d52]" dir="ltr">{formatAmount(rent.unit_price)}</td>
@@ -808,212 +827,147 @@ export default RentList;
 // const PRINT_FONT = '"Cairo", "Tajawal", "Segoe UI", "Tahoma", "Arial", sans-serif';
 
 // /* =============================================================
-//    HIDDEN PDF RENDER TARGET FOR RENTS LIST
-// ============================================================= */
-// // Start
-// // const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
-// //     const formatDate = (d) => d ? d : "—";
-// //     const formatAmount = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-// //     return (
-// //         <div
-// //             ref={ref}
-// //             dir="rtl"
-// //             lang="ar"
-// //             data-pdf-root="true"
-// //             style={{
-// //                 width: "1123px", // A4 Landscape
-// //                 padding: "25px 30px",
-// //                 background: "#ffffff",
-// //                 boxSizing: "border-box",
-// //                 fontFamily: PRINT_FONT,
-// //                 color: "#1f2937",
-// //                 position: "fixed",
-// //                 left: "-10000px",
-// //                 top: 0,
-// //                 zIndex: -1,
-// //             }}
-// //         >
-// //             {/* HEADER */}
-// //             <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #a47d52", paddingBottom: "10px", marginBottom: "15px" }}>
-// //                 <div style={{ textAlign: "right" }}>
-// //                     <h1 style={{ color: "#a47d52", fontSize: "22px", fontWeight: 900, margin: 0 }}>تقرير عقود الإيجار</h1>
-// //                     <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "#6b7280" }}>Rent Contracts Report</p>
-// //                 </div>
-// //                 <div style={{ textAlign: "center" }}>
-// //                     <img src={logo} alt="Logo" crossOrigin="anonymous" style={{ height: "70px", objectFit: "contain" }} />
-// //                 </div>
-// //                 <div style={{ textAlign: "left", fontSize: "12px", color: "#6b7280" }}>
-// //                     <p style={{ margin: 0 }}>تاريخ الطباعة: {generatedAt}</p>
-// //                     <p style={{ margin: "4px 0 0 0" }}>إجمالي العقود: {rents.length}</p>
-// //                 </div>
-// //             </header>
-
-// //             {/* TABLE */}
-// //             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontFamily: PRINT_FONT, direction: "rtl" }}>
-// //                 <thead>
-// //                     <tr>
-// //                         <th style={thPdf}>#</th>
-// //                         <th style={thPdf}>المستأجر</th>
-// //                         <th style={thPdf}>الوحدة</th>
-// //                         <th style={thPdf}>التصنيف</th>
-// //                         <th style={thPdf}>المالك</th>
-// //                         <th style={thPdf}>تاريخ البدء</th>
-// //                         <th style={thPdf}>تاريخ الانتهاء</th>
-// //                         <th style={thPdf}>سعر الوحدة</th>
-// //                         <th style={thPdf}>قيمة القسط</th>
-// //                     </tr>
-// //                 </thead>
-// //                 <tbody>
-// //                     {rents.map((r, index) => (
-// //                         <tr key={r.id} style={{ background: index % 2 === 0 ? "#FFFFFF" : "#FAF7F0" }}>
-// //                             <td style={tdPdf}>{index + 1}</td>
-// //                             <td style={tdPdf}>{r.tenant_name || "—"}</td>
-// //                             <td style={tdPdf}>{r.unit_display || "—"}</td>
-// //                             <td style={tdPdf}>{r.unit_category || "—"}</td>
-// //                             <td style={tdPdf}>{r.unit_owner || "—"}</td>
-// //                             <td style={tdPdf}>{formatDate(r.start_date)}</td>
-// //                             <td style={tdPdf}>{formatDate(r.end_date)}</td>
-// //                             <td style={tdPdf} dir="ltr">{formatAmount(r.unit_price)}</td>
-// //                             <td style={tdPdf} dir="ltr">{formatAmount(r.installment_amount)}</td>
-// //                         </tr>
-// //                     ))}
-// //                 </tbody>
-// //             </table>
-
-// //             <div style={{ marginTop: "20px", textAlign: "center", fontSize: "10px", color: "#9ca3af" }}>
-// //                 BROKER CITY PROPERTIES
-// //             </div>
-// //         </div>
-// //     );
-// // });
-// // PdfRenderTarget.displayName = "PdfRenderTarget";
-// /* =============================================================
-//    HIDDEN PDF RENDER TARGET FOR RENTS LIST
+//    HIDDEN PDF RENDER TARGET FOR RENTS LIST (ADCP Style)
 // ============================================================= */
 // const PdfRenderTarget = forwardRef(({ rents, generatedAt }, ref) => {
 //     const formatDate = (d) => d ? d : "—";
 //     const formatAmount = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-//     // Calculate totals for the footer
 //     const totalUnitPrice = rents.reduce((sum, r) => sum + Number(r.unit_price || 0), 0);
-//     const totalInstallment = rents.reduce((sum, r) => sum + Number(r.installment_amount || 0), 0);
+    
+//     const uniqueCategories = [...new Set(rents.map(r => r.unit_category).filter(Boolean))].join(", ");
 
 //     return (
 //         <div
 //             ref={ref}
-//             dir="rtl"
-//             lang="ar"
+//             dir="ltr" 
+//             lang="en"
 //             data-pdf-root="true"
 //             style={{
-//                 width: "794px", // ✅ A4 Portrait Width
-//                 padding: "30px 40px",
+//                 width: "1123px", // A4 Landscape
+//                 padding: "15px 50px 40px 50px", 
 //                 background: "#ffffff",
 //                 boxSizing: "border-box",
-//                 fontFamily: PRINT_FONT,
-//                 color: "#1f2937",
+//                 fontFamily: "Arial, sans-serif",
+//                 color: "#000000",
 //                 position: "fixed",
 //                 left: "-10000px",
 //                 top: 0,
 //                 zIndex: -1,
 //             }}
 //         >
-//             {/* ✅ HEADER DESIGN (Matches ADCP Style) */}
-//             <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid #e5e7eb", paddingBottom: "15px", marginBottom: "20px" }}>
-//                 {/* Left Side: Logo (Placeholder for your logo) */}
-//                 <div style={{ width: "100px" }}>
-//                     <img src={logo} alt="Logo" crossOrigin="anonymous" style={{ height: "60px", objectFit: "contain" }} />
+//             {/* ✅ TOP LOGO & TITLE (Reduced space between them) */}
+//             <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: "5px" }}>
+//                 <img className='scale-110' src={logo} alt="Logo" crossOrigin="anonymous" style={{ marginTop: "-25px", height: "160px", objectFit: "contain" }} />
+//             </div>
+
+//             {/* ✅ TITLE */}
+//             <div style={{ textAlign: "center", marginBottom: "20px", marginTop: "-85px" }}>
+//                 <h1 style={{ fontSize: "23px", fontWeight: "bold", margin: 0, color: "#000" }}>
+//                     Property List Report (LandLord)
+//                 </h1>
+//             </div>
+
+//             {/* ✅ PROPERTY SUMMARY DETAILS */}
+//             <div style={{ marginBottom: "25px", fontSize: "14px", lineHeight: "1.8" }}>
+//                 <div style={{ display: "flex" }}>
+//                     <span style={{ fontWeight: "bold", width: "150px" }}>Category</span>
+//                     <span>{uniqueCategories || "—"}</span>
 //                 </div>
-
-//                 {/* Center: Title and Details */}
-//                 <div style={{ textAlign: "center", flex: 1, padding: "0 20px" }}>
-//                     <h1 style={{ color: "#111827", fontSize: "20px", fontWeight: 800, margin: "0 0 5px 0" }}>
-//                         Property List Report (Rent)
-//                     </h1>
-//                     <p style={{ fontSize: "12px", margin: "2px 0", color: "#6b7280" }}>
-//                         Property List Report - إدارة عقود الإيجار
-//                     </p>
-//                     <p style={{ fontSize: "12px", margin: "2px 0", color: "#6b7280", fontWeight: "bold" }}>
-//                         تاريخ الطباعة: {generatedAt} | إجمالي العقود: {rents.length}
-//                     </p>
+//                 <div style={{ display: "flex" }}>
+//                     <span style={{ fontWeight: "bold", width: "150px" }}>Generated On</span>
+//                     <span>{generatedAt}</span>
 //                 </div>
+//                 <div style={{ display: "flex" }}>
+//                     <span style={{ fontWeight: "bold", width: "150px" }}>Total Contracts</span>
+//                     <span>{rents.length}</span>
+//                 </div>
+                
+//                 {/* ✅ Total Projected Rent (AED not underlined, Amount underlined) */}
+//                 <div style={{ display: "flex", marginTop: "8px", alignItems: "center" }}>
+//                     <span style={{ fontWeight: "bold", width: "150px" }}>Total Projected Rent</span>
+//                     <span style={{ fontWeight: "bold", fontSize: "15px" }}>
+//                         AED <span style={{ textDecoration: "underline" }}>{formatAmount(totalUnitPrice)}</span>
+//                     </span>
+//                 </div>
+//             </div>
 
-//                 {/* Right Side: Empty for balance (or you can put dates here) */}
-//                 <div style={{ width: "100px" }}></div>
-//             </header>
-
-//             {/* ✅ TABLE DESIGN */}
-//             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontFamily: PRINT_FONT, direction: "rtl" }}>
+//             {/* ✅ TABLE DESIGN (Fixed class names and styles) */}
+//             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontFamily: "Arial, sans-serif", direction: "ltr" }}>
+//                 <colgroup>
+//                     <col style={{ width: "70px" }} />  {/* Unit # Column (Small) */}
+//                     <col style={{ width: "200px" }} /> {/* Tenant Name Column */}
+//                     <col style={{ width: "120px" }} /> {/* Unit Type Column */}
+//                     <col style={{ width: "100px" }} /> {/* Start Date Column */}
+//                     <col style={{ width: "100px" }} /> {/* End Date Column */}
+//                     <col style={{ width: "120px" }} /> {/* Projected Rent Column */}
+//                     <col style={{ width: "120px" }} /> {/* Installment Amt Column */}
+//                 </colgroup>
 //                 <thead>
 //                     <tr>
-//                         <th style={thPdf}>#</th>
-//                         <th style={thPdf}>المستأجر</th>
-//                         <th style={thPdf}>الوحدة</th>
-//                         <th style={thPdf}>التصنيف</th>
-//                         <th style={thPdf}>المالك</th>
-//                         <th style={thPdf}>تاريخ البدء</th>
-//                         <th style={thPdf}>تاريخ الانتهاء</th>
-//                         <th style={thPdf}>سعر الوحدة</th>
-//                         <th style={thPdf}>قيمة القسط</th>
+//                         <th style={thPdf}>Unit #</th>
+//                         <th style={thPdf}>Tenant Name</th>
+//                         <th style={thPdf}>Unit Type</th>
+//                         <th style={thPdf}>Start Date</th>
+//                         <th style={thPdf}>End Date</th>
+//                         <th style={thPdf}>Projected Rent</th>
+//                         <th style={thPdf}>Installment Amt</th>
 //                     </tr>
 //                 </thead>
 //                 <tbody>
 //                     {rents.map((r, index) => (
-//                         <tr key={r.id} style={{ background: index % 2 === 0 ? "#FFFFFF" : "#F9FAFB" }}>
-//                             <td style={tdPdf}>{index + 1}</td>
-//                             <td style={tdPdf}>{r.tenant_name || "—"}</td>
+//                         <tr key={r.id} style={{ backgroundColor: index % 2 === 0 ? "#FFFFFF" : "#F9FAFB" }}>
 //                             <td style={tdPdf}>{r.unit_display || "—"}</td>
-//                             <td style={tdPdf}>{r.unit_category || "—"}</td>
-//                             <td style={tdPdf}>{r.unit_owner || "—"}</td>
-//                             <td style={tdPdf} dir="ltr">{formatDate(r.start_date)}</td>
-//                             <td style={tdPdf} dir="ltr">{formatDate(r.end_date)}</td>
-//                             <td style={tdPdf} dir="ltr">{formatAmount(r.unit_price)}</td>
-//                             <td style={tdPdf} dir="ltr">{formatAmount(r.installment_amount)}</td>
+//                             <td style={tdPdf}>{r.tenant_name || "—"}</td>
+//                             <td style={tdPdf}>{r.unit_type || "—"}</td>
+//                             <td style={tdPdf}>{formatDate(r.start_date)}</td>
+//                             <td style={tdPdf}>{formatDate(r.end_date)}</td>
+//                             <td style={tdPdf}>{formatAmount(r.unit_price)}</td>
+//                             <td style={tdPdf}>{formatAmount(r.installment_amount)}</td>
 //                         </tr>
 //                     ))}
 //                 </tbody>
 //             </table>
 
-//             {/* ✅ FOOTER (Matches ADCP Style) */}
-//             <div style={{ marginTop: "30px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "#4b5563", borderTop: "1px solid #e5e7eb", paddingTop: "10px" }}>
+//             {/* ✅ FOOTER */}
+//             <div style={{ marginTop: "30px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", color: "#4b5563", borderTop: "1px solid #e5e7eb", paddingTop: "10px" }}>
 //                 <div>
 //                     Generated On: {generatedAt}
 //                 </div>
-//                 <div style={{ fontWeight: "bold", color: "#a47d52" }}>
-//                     BROKER CITY PROPERTIES
-//                 </div>
-//                 <div style={{ textAlign: "left" }}>
-//                     TOTAL: {formatAmount(totalUnitPrice)}
+//                 <div style={{ textAlign: "right", fontWeight: "bold" }}>
+//                     TOTAL: AED {formatAmount(totalUnitPrice)}
 //                 </div>
 //             </div>
 //         </div>
 //     );
 // });
 // PdfRenderTarget.displayName = "PdfRenderTarget";
-// // End
 
-// // const thPdf = { border: "1px solid #ccc", padding: "10px 5px", fontSize: 12, fontWeight: 800, color: "#000", textAlign: "center", background: "#e6d5c0" };
-// // const tdPdf = { border: "1px solid #ccc", padding: "8px 5px", fontSize: 12, color: "#000", textAlign: "center", wordBreak: "break-word" };
-
-
-// // ✅ Updated Styles for the Table (Thin borders, small font, centered)
+// // ✅ FIXED STYLES: Black borders, middle alignment, and height for perfect centering
 // const thPdf = { 
-//     border: "1px solid #d1d5db", 
+//     border: "1px solid #000",       // ✅ Changed from #f8f7f5 to #000
 //     padding: "8px 4px", 
 //     fontSize: 11, 
-//     fontWeight: 800, 
-//     color: "#111827", 
-//     textAlign: "center", 
-//     background: "#f3f4f6" 
+//     fontWeight: "bold", 
+//     color: "#000", 
+//     textAlign: "center",         
+//     verticalAlign: "middle",     
+//     backgroundColor: "#f8f7f5",     // ✅ Background color
+//     whiteSpace: "nowrap",
+//     height: "40px"                  // ✅ Added height for vertical alignment
 // };
+
 // const tdPdf = { 
-//     border: "1px solid #d1d5db", 
+//     border: "1px solid #000",       // ✅ Changed from #f8f7f5 to #000
 //     padding: "6px 4px", 
-//     fontSize: 11, 
-//     color: "#374151", 
-//     textAlign: "center", 
-//     wordBreak: "break-word" 
+//     fontSize: 13, 
+//     color: "#000", 
+//     textAlign: "center",         
+//     verticalAlign: "middle",     
+//     wordBreak: "break-word",
+//     height: "40px"                  // ✅ Added height for vertical alignment
 // };
+
 
 // /* =============================================================
 //    MAIN COMPONENT
@@ -1037,7 +991,6 @@ export default RentList;
 //     const renderRef = useRef(null);
 //     const isGeneratingRef = useRef(false);
 
-//     // ✅ Scroll Ref for Horizontal Arrows
 //     const scrollContainerRef = useRef(null);
 
 //     /* =========================================================
@@ -1060,6 +1013,9 @@ export default RentList;
 
 //             const data = await response.json();
 //             let rentsData = Array.isArray(data) ? data : (data.results || data.rents || []);
+            
+//             console.log("First Rent Data Payload:", rentsData[0]);
+
 //             rentsData.sort((a, b) => a.id - b.id);
 //             setRents(rentsData);
 //         } catch (error) {
@@ -1126,6 +1082,7 @@ export default RentList;
 //     const getUnitDisplay = (r) => r?.unit_display || r?.unit_name?.name || "-";
 //     const getUnitCategory = (r) => r?.unit_category || "-";
 //     const getUnitOwner = (r) => r?.unit_owner || "-";
+//     const getUnitType = (r) => r?.unit_type || "-"; 
 
 //     const formatAmount = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 //     const formatInteger = (a) => Number(a || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -1204,6 +1161,7 @@ export default RentList;
 //         const unit = String(getUnitDisplay(rent)).toLowerCase();
 //         const category = String(getUnitCategory(rent)).toLowerCase();
 //         const owner = String(getUnitOwner(rent)).toLowerCase();
+//         const type = String(getUnitType(rent)).toLowerCase(); 
 //         const start = String(rent.start_date || "").toLowerCase();
 //         const end = String(rent.end_date || "").toLowerCase();
 //         const status = String(getStatusLabel(rent)).toLowerCase();
@@ -1211,6 +1169,7 @@ export default RentList;
 //         return (
 //             tenant.includes(search) || unit.includes(search) ||
 //             category.includes(search) || owner.includes(search) ||
+//             type.includes(search) ||
 //             start.includes(search) || end.includes(search) ||
 //             status.includes(search)
 //         );
@@ -1261,10 +1220,22 @@ export default RentList;
 //             const pageW = doc.internal.pageSize.getWidth();
 //             const pageH = doc.internal.pageSize.getHeight();
 //             const imgData = canvas.toDataURL("image/jpeg", 0.95);
-//             const imgHmm = (canvas.height * pageW) / canvas.width;
-
-//             doc.addImage(imgData, "JPEG", 0, 0, pageW, imgHmm, undefined, "FAST");
             
+//             const imgHeightInMm = (canvas.height * pageW) / canvas.width;
+
+//             let heightLeft = imgHeightInMm;
+//             let position = 0;
+
+//             doc.addImage(imgData, "JPEG", 0, position, pageW, imgHeightInMm, undefined, "FAST");
+//             heightLeft -= pageH;
+
+//             while (heightLeft > 0) {
+//                 position = heightLeft - imgHeightInMm; 
+//                 doc.addPage();
+//                 doc.addImage(imgData, "JPEG", 0, position, pageW, imgHeightInMm, undefined, "FAST");
+//                 heightLeft -= pageH;
+//             }
+
 //             doc.setFont("helvetica", "bold");
 //             doc.setFontSize(7.5);
 //             doc.setTextColor(164, 125, 82);
@@ -1291,6 +1262,7 @@ export default RentList;
 //                 const unit = getUnitDisplay(rent);
 //                 const category = getUnitCategory(rent);
 //                 const owner = getUnitOwner(rent);
+//                 const type = getUnitType(rent); 
 
 //                 return (
 //                     <div key={rent.id} className={`border rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden hover:-translate-y-1 relative group ${getCardBgColor(rent)}`}>
@@ -1314,6 +1286,9 @@ export default RentList;
 //                                     </p>
 //                                     <p className="text-[10px] text-gray-500 mt-0.5 truncate flex items-center gap-1 bg-[#f8f7f5]">
 //                                         <FiBriefcase /> {owner}
+//                                     </p>
+//                                     <p className="text-[10px] text-gray-500 mt-0.5 truncate flex items-center gap-1 bg-[#f8f7f5]">
+//                                         <FiHome /> {type}
 //                                     </p>
 //                                 </div>
 //                             </div>
@@ -1386,6 +1361,7 @@ export default RentList;
 //                                 <th className="px-4 py-4 text-sm font-bold">الوحدة</th>
 //                                 <th className="px-4 py-4 text-sm font-bold">التصنيف</th>
 //                                 <th className="px-4 py-4 text-sm font-bold">المالك</th>
+//                                 <th className="px-4 py-4 text-sm font-bold">النوع</th>
 //                                 <th className="px-4 py-4 text-sm font-bold">من تاريخ</th>
 //                                 <th className="px-4 py-4 text-sm font-bold">إلى تاريخ</th>
 //                                 <th className="px-4 py-4 text-sm font-bold">سعر الوحدة</th>
@@ -1403,6 +1379,7 @@ export default RentList;
 //                                     <td className="px-4 py-4 text-sm text-gray-700">{getUnitDisplay(rent)}</td>
 //                                     <td className="px-4 py-4 text-sm text-gray-700">{getUnitCategory(rent)}</td>
 //                                     <td className="px-4 py-4 text-sm text-gray-700">{getUnitOwner(rent)}</td>
+//                                     <td className="px-4 py-4 text-sm text-gray-700">{getUnitType(rent)}</td>
 //                                     <td className="px-4 py-4 text-sm text-gray-700" dir="ltr">{rent.start_date}</td>
 //                                     <td className="px-4 py-4 text-sm text-gray-700" dir="ltr">{rent.end_date}</td>
 //                                     <td className="px-4 py-4 text-sm font-bold text-[#a47d52]" dir="ltr">{formatAmount(rent.unit_price)}</td>
@@ -1588,7 +1565,7 @@ export default RentList;
 //                 <PdfRenderTarget
 //                     ref={renderRef}
 //                     rents={filteredRents}
-//                     generatedAt={new Date().toLocaleString("ar-EG")}
+//                     generatedAt={new Date().toLocaleString("en-GB")}
 //                 />
 //             )}
 
@@ -1607,3 +1584,4 @@ export default RentList;
 // };
 
 // export default RentList;
+

@@ -30,6 +30,21 @@ const DEFAULT_PERMISSIONS = {
     update_lead_stage: false,
     update_lead_responsible: false,
     delete_lead: false,
+
+    // CRM Listing
+    view_all_listing: false,
+    view_my_listing: false,
+    create_new_listing: false,
+    update_listing: false,
+    delete_listing: false,
+    confirm_listing: false,
+    
+    // CRM Listing Owners
+    view_all_listing_owners: false,
+    view_my_listing_owners: false,
+    create_new_listing_owners: false,
+    update_listing_owners: false,
+    delete_listing_owners: false,
 };
 
 const PermissionsContext = createContext(null);

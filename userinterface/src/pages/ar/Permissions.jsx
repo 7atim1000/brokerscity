@@ -19,12 +19,16 @@ import {
     FaKey,
     FaBullhorn,
     FaAddressCard,
-    // ✅ ADDED: Icons for new Lead columns
+    // ✅ Lead Icons
     FaEye,
     FaUserTag,
     FaPlusCircle,
     FaEdit,
     FaExchangeAlt,
+    // ✅ Listing Icons
+    FaFileAlt,
+    FaRegBuilding,
+    FaCheckCircle,
 } from "react-icons/fa";
 import { MdModeEdit } from "react-icons/md";
 
@@ -238,7 +242,7 @@ const Permissions = () => {
     const canManagePermissionsCount = permissions.filter((p) => p.can_manage_permissions).length;
     const adsCount = permissions.filter((p) => p.ads).length;
     
-    // ✅ ADDED: Leads Stats
+    // Leads Stats
     const leadsCount = permissions.filter((p) => p.leads).length;
     const viewAllLeadCount = permissions.filter((p) => p.view_all_lead).length;
     const viewMyLeadCount = permissions.filter((p) => p.view_my_lead).length;
@@ -247,6 +251,21 @@ const Permissions = () => {
     const updateLeadStageCount = permissions.filter((p) => p.update_lead_stage).length;
     const updateLeadResponsibleCount = permissions.filter((p) => p.update_lead_responsible).length;
     const deleteLeadCount = permissions.filter((p) => p.delete_lead).length;
+
+    // ✅ Listing Stats
+    const viewAllListingCount = permissions.filter((p) => p.view_all_listing).length;
+    const viewMyListingCount = permissions.filter((p) => p.view_my_listing).length;
+    const createNewListingCount = permissions.filter((p) => p.create_new_listing).length;
+    const updateListingCount = permissions.filter((p) => p.update_listing).length;
+    const deleteListingCount = permissions.filter((p) => p.delete_listing).length;
+    const confirmListingCount = permissions.filter((p) => p.confirm_listing).length;
+
+    // ✅ Owner Stats
+    const viewAllListingOwnersCount = permissions.filter((p) => p.view_all_listing_owners).length;
+    const viewMyListingOwnersCount = permissions.filter((p) => p.view_my_listing_owners).length;
+    const createNewListingOwnersCount = permissions.filter((p) => p.create_new_listing_owners).length;
+    const updateListingOwnersCount = permissions.filter((p) => p.update_listing_owners).length;
+    const deleteListingOwnersCount = permissions.filter((p) => p.delete_listing_owners).length;
 
     // =========================================================
     // PERMISSION COLUMNS CONFIG
@@ -261,8 +280,9 @@ const Permissions = () => {
         { key: "can_manage_users", label: "إدارة المستخدمين" },
         { key: "can_manage_permissions", label: "إدارة الصلاحيات" },
         { key: "ads", label: "الإعلانات" },
-        { key: "leads", label: "الليدز (Leads)" },
-        // ✅ ADDED: New CRM Lead Columns
+        { key: "leads", label: "الليدز" },
+        
+        // Lead Columns
         { key: "view_all_lead", label: "عرض كل الليدز" },
         { key: "view_my_lead", label: "عرض ليدزي" },
         { key: "create_new_lead", label: "إنشاء ليد" },
@@ -270,6 +290,21 @@ const Permissions = () => {
         { key: "update_lead_stage", label: "تعديل المرحلة" },
         { key: "update_lead_responsible", label: "تعديل المسؤول" },
         { key: "delete_lead", label: "حذف ليد" },
+
+        // ✅ Listing Columns
+        { key: "view_all_listing", label: "عرض كل العقارات" },
+        { key: "view_my_listing", label: "عرض عقاراتي" },
+        { key: "create_new_listing", label: "إضافة عقار" },
+        { key: "update_listing", label: "تعديل عقار" },
+        { key: "delete_listing", label: "حذف عقار" },
+        { key: "confirm_listing", label: "تأكيد عقار" },
+
+        // ✅ Listing Owners Columns
+        { key: "view_all_listing_owners", label: "عرض كل الملاك" },
+        { key: "view_my_listing_owners", label: "عرض ملاكي" },
+        { key: "create_new_listing_owners", label: "إضافة مالك" },
+        { key: "update_listing_owners", label: "تعديل مالك" },
+        { key: "delete_listing_owners", label: "حذف مالك" },
     ];
 
     // =========================================================
@@ -327,7 +362,6 @@ const Permissions = () => {
             </div>
 
             {/* SUMMARY CARDS */}
-            {/* ✅ UPDATED: Made the grid wrap better on large screens with the new cards */}
             <div className="max-w-full mx-auto px-2 md:px-3 mb-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-4">
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-[#a47d52]">
                     <div>
@@ -417,7 +451,7 @@ const Permissions = () => {
                     <FaAddressCard className="text-teal-500/50" size="24" />
                 </div>
 
-                {/* ✅ ADDED: New Stats Cards for Lead Permissions */}
+                {/* Lead Permissions Cards */}
                 <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between border-r-4 border-orange-500">
                     <div>
                         <p className="text-xs text-gray-500 font-medium">عرض كل الليدز</p>
@@ -624,6 +658,8 @@ const Permissions = () => {
                                         <td colSpan={2} className="px-3 md:px-4 py-4 text-right text-sm font-extrabold text-gray-900 whitespace-nowrap">
                                             الإجمالي
                                         </td>
+                                        
+                                        {/* Standard Columns */}
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{workLogCount}</td>
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{monitoringCount}</td>
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{addMonitorCount}</td>
@@ -635,7 +671,7 @@ const Permissions = () => {
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{adsCount}</td>
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{leadsCount}</td>
                                         
-                                        {/* ✅ ADDED: New Lead Totals in footer */}
+                                        {/* Lead Columns Totals */}
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{viewAllLeadCount}</td>
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{viewMyLeadCount}</td>
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{createNewLeadCount}</td>
@@ -643,6 +679,21 @@ const Permissions = () => {
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{updateLeadStageCount}</td>
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{updateLeadResponsibleCount}</td>
                                         <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{deleteLeadCount}</td>
+
+                                        {/* ✅ Listing Totals */}
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{viewAllListingCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{viewMyListingCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{createNewListingCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{updateListingCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{deleteListingCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{confirmListingCount}</td>
+
+                                        {/* ✅ Owner Totals */}
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{viewAllListingOwnersCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{viewMyListingOwnersCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{createNewListingOwnersCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{updateListingOwnersCount}</td>
+                                        <td className="px-2 md:px-3 py-4 text-center text-sm font-extrabold text-[#a47d52]">{deleteListingOwnersCount}</td>
 
                                         <td className="px-3 md:px-4 py-4 text-center text-sm text-gray-700 whitespace-nowrap">
                                             {totalPermissions} سجل

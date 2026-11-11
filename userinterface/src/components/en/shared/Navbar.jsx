@@ -84,7 +84,7 @@ const DigitalClock = () => {
     return (
         <div
             dir="ltr"
-            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-lg bg-white/25 backdrop-blur-sm border border-white/40 shadow-sm select-none"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-sm bg-white/25 backdrop-blur-sm  shadow-sm select-none"
             title={`Abu Dhabi Time (UTC+4)${synced ? "" : " — local fallback"}`}
         >
             <BsCalendar2Date className="text-white/90 text-[10px] sm:text-xs shrink-0" />
@@ -248,7 +248,7 @@ const Navbar = () => {
     return (
         <nav
             dir="ltr" 
-            className="fixed top-0 left-0 right-0 h-12 sm:h-14 bg-gradient-to-r from-[#f8f7f5] via-[#a47d52] to-[#a47d52] border-b border-[#a47d52]/30 shadow-[0_4px_20px_rgba(164,125,82,0.25)] z-50 px-3 sm:px-5 transition-all duration-300 bg-gradient-to-r from-[#f8f7f5]/10 via-[#a47d52]/80 to-[#a47d52]/10"
+            className="fixed top-0 left-0 right-0 h-12 sm:h-9 bg-gradient-to-r from-[#f8f7f5] via-[#a47d52] to-[#a47d52] border-b border-[#a47d52]/30 shadow-[0_4px_20px_rgba(164,125,82,0.25)] z-50 px-3 sm:px-5 transition-all duration-300 bg-gradient-to-r from-[#f8f7f5]/10 via-[#a47d52]/80 to-[#a47d52]/10"
         >
             <div className="relative h-full flex items-center justify-between gap-3 sm:gap-4 bg-white/20">
                 
@@ -257,9 +257,9 @@ const Navbar = () => {
                     <span className="text-[#f8f7f5] font-[1000] text-[10px] sm:text-base md:text-base tracking-wide scale-110 whitespace-nowrap drop-shadow-[#f8f7f5] [-webkit-text-stroke:0.5px_#f8f7f5]">
                         Broker City Real Estate
                     </span> 
-                    <span className="text-white font-black text-[13px] sm:text-xs tracking-wider whitespace-nowrap scale-110 [-webkit-text-stroke:0.3px_#835802]" style={{ textShadow: "0 1px 2px white" }}>   
+                    {/* <span className="text-white font-black text-[13px] sm:text-xs tracking-wider whitespace-nowrap scale-110 [-webkit-text-stroke:0.3px_#835802]" style={{ textShadow: "0 1px 2px white" }}>   
                         منصة بروكر سيتي العقارية الرقمية
-                    </span>
+                    </span> */}
                 </div>
 
                 {/* CENTER — Logo (absolutely centered) */}
@@ -270,7 +270,7 @@ const Navbar = () => {
                     <img
                         src={logo}
                         alt="Broker City"
-                        className="h-10 sm:h-14 w-auto object-contain scale-165 contrast-125 saturate-125"
+                        className="h-10 sm:h-12 w-auto object-contain scale-140 contrast-125 saturate-125"
                         style={{ filter: "drop-shadow(0 0 1px rgba(0,0,0,0.25)) contrast(1.2) saturate(1.15)" }}
                     />
                 </Link>
@@ -283,10 +283,10 @@ const Navbar = () => {
 
                     <Link
                         to="/ar/dashboard"
-                        className="hidden sm:flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 border border-green-500/40 text-green-500 font-bold text-xs transition-all duration-200 shadow-sm"
+                        className="hidden sm:flex items-center justify-center gap-1.5 px-1 py-0.5 rounded-sm bg-green-500/10 hover:bg-green-500/20 text-green-200 font-bold text-xs transition-all duration-200 shadow-sm"
                         title="Switch to Arabic"
                     >
-                        <FaLanguage size={16} className="text-green-500" />
+                        <FaLanguage size={16} className="text-green-200" />
                         AR
                     </Link>
 
@@ -303,7 +303,7 @@ const Navbar = () => {
                         <>
                             {/* ================== USER PILL ================== */}
                             {!loading && user && (
-                                <div className="flex items-center gap-2 px-2 sm:px-3 py-0.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 shadow-sm hover:bg-white/30 transition-all duration-200">
+                                <div className="flex items-center gap-2 px-2 sm:px-3 py-0.5 rounded-full bg-white/20 backdrop-blur-sm shadow-sm hover:bg-white/30 transition-all duration-200">
                                     <div className="relative shrink-0">
                                         {user.image ? (
                                             <img src={`${import.meta.env.VITE_DJANGO_BASE_URL}${user.image}`} alt={user.username} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-white shadow-sm" />

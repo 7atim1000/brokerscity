@@ -33,7 +33,10 @@ import { RiCustomerService2Line } from "react-icons/ri";
 import { VscCopilotInProgress } from "react-icons/vsc";
 import { MdOutlineRealEstateAgent } from "react-icons/md";
 import { TbBuildingSkyscraper } from "react-icons/tb";
+
 import { FaIdCard } from "react-icons/fa6";
+
+import { FaUserTie, FaBuilding } from "react-icons/fa"; 
 
 export const SidebarMenuLinks = [
     // ==========================================
@@ -66,12 +69,34 @@ export const SidebarMenuLinks = [
             }
         ]
     },
-    {
-        name: "PM Listing",
-        path: "/prmlisting", 
+
+       {
+        name: "PM listing",
+        path: "", 
         icon: TbBuildingSkyscraper,
-        permission: "monitoring",
+        isExpanded: false,
+        // ✅ Added the "my" permissions here as well
+        permission: ["view_all_listing", "view_my_listing", "view_all_listing_owners", "view_my_listing_owners"], 
+        subItems: [
+            {
+                name: "اداره الملاك", 
+                path: "/ar/landlord", 
+                icon: FaUserTie, 
+                permission: ["view_all_listing_owners", "view_my_listing_owners"],
+            },
+            {
+                name: "اداره العقارات",
+                path: "/ar/listing", 
+                icon: TbBuildingSkyscraper,
+                permission: ["view_all_listing", "view_my_listing"],
+            },
+        ]
     },
+    
+
+    
+
+
     {
         name: "PRO",
         path: "/pro", 
