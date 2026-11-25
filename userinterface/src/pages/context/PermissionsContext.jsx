@@ -22,7 +22,7 @@ const DEFAULT_PERMISSIONS = {
     ads: false, 
     leads: false, 
 
-    // ✅ ADDED: Default false for new CRM Lead fields
+    // CRM Lead
     view_all_lead: false,
     view_my_lead: false,
     create_new_lead: false,
@@ -45,6 +45,27 @@ const DEFAULT_PERMISSIONS = {
     create_new_listing_owners: false,
     update_listing_owners: false,
     delete_listing_owners: false,
+
+    // ✅ ADDED: Archive Owners (Pluralized)
+    view_all_archive_owners: false,
+    view_my_archive_owners: false,
+    create_bulk_archive_owners: false,
+    update_bulk_responsibility_archive_owners: false,
+    delete_bulk_archive_owners: false,
+
+    // ✅ ADDED: Archive Properties (Pluralized)
+    view_all_archive_properties: false,
+    view_my_archive_properties: false,
+    create_bulk_archive_properties: false,
+    update_bulk_responsibility_archive_properties: false,
+    delete_bulk_archive_properties: false,
+
+    // ✅ ADDED: Permit Numbers (Pluralized)
+    view_all_permit_numbers: false,
+    create_new_permit_number: false,
+    update_permit_number: false,
+    delete_permit_number: false,
+
 };
 
 const PermissionsContext = createContext(null);
@@ -85,9 +106,8 @@ export function PermissionsProvider({ children }) {
 
             const data = await res.json();
 
-            // ✅ UPDATED: The spread operator (...data) will now automatically 
-            // pick up the new Lead fields from the backend response and merge 
-            // them over the defaults.
+            // ✅ The spread operator (...data) automatically merges 
+            // the new Archive Owner fields from the backend.
             setPermissions({ ...DEFAULT_PERMISSIONS, ...data });
         } catch (err) {
             console.error("Failed to load permissions:", err);

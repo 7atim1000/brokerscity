@@ -36,6 +36,7 @@ import OfferSalesPDF from './pages/OfferSalePdf';
 
 // Monitoring & Management
 import ArMonitor from './pages/ar/Monitor';
+import ArMaintenance from './pages/ar/Maintenance'
 import ArUsers from './pages/ar/Users';
 import ArProfile from './pages/ar/Profile';
 import ArAttendanceReport from './pages/ar/AttendanceReport';
@@ -51,8 +52,11 @@ import AdCreatePage from './pages/ar/AdCreatePage';
 import LeadsDashboard from './pages/ar/LeadsDashboard';
 import OfferSales from './pages/ar/offersale/OfferSales';
 
+
 // CRM Leads
 import CrmLeads from './pages/ar/CrmLeads'; 
+
+
 
 // ==========================================
 // ENGLISH PAGES 
@@ -64,7 +68,11 @@ import Signup from './pages/en/Signup';
 import EnDashboard from './pages/en/Dashboard'; 
 import EnLandLord from './pages/en/LandLord' ;
 import EnListing from './pages/en/Listing' ;
+import EnArchiveOwners from './pages/en/OwnersArchive';
 
+// EnDistribution'
+import EnDistribution from './pages/en/Distribution';
+import EnPermit from './pages/en/Permit';
 
 function App() {
   return (
@@ -143,6 +151,7 @@ function App() {
           <Route path="leadstagesguide" element={<LeadsStagesGuide />} />
 
           <Route path="monitor" element={<ArMonitor />} />
+          <Route path="maintenance" element={<ArMaintenance />} />
           <Route path="property" element={<ArProperty />} />
           <Route path="calledcalls" element={<ArCalledCalls />} />
           <Route path="area" element={<ArArea />} />
@@ -167,7 +176,15 @@ function App() {
           <Route path="dashboard" element={<EnDashboard  />} />
 
           <Route path="landlord" element={<EnLandLord />} />
+          <Route path="archive" element={<EnArchiveOwners />} />
+
           <Route path="listing" element={<EnListing />} />
+          {/**distribution */}
+          <Route path="distribution" element={<EnDistribution />} />
+          {/**permit */}
+          <Route path="permit" element={<EnPermit />} />
+
+
 
           {/* Uncomment these as you build the English pages */}
           {/* <Route path="leads" element={<EnLeads />} /> */}

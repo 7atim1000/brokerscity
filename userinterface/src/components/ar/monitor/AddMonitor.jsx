@@ -6,6 +6,7 @@ const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
 
 // ---------- Agent list ----------
 const AGENTS = [
+    'Wasem / Sales Manager',
     'Zakam Ahmed',
     'Mohammed Alrawi',
     'Amro Ahmed',

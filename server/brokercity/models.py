@@ -1,5 +1,8 @@
 # crm/models.py
+import os
+import uuid
 from django.db import models
+
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from rest_framework.pagination import PageNumberPagination
@@ -11,9 +14,18 @@ from django.utils.translation import gettext_lazy as _
 #from django.db.models import Count
 
 
-import uuid
+# GinIndex
+# from django.contrib.postgres.indexes import GinIndex
+
+
+
+
 from django.utils import timezone
 from datetime import date
+
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
+
 
 
 # Authentication
@@ -87,6 +99,26 @@ class Permission(models.Model):
     update_listing_owners = models.BooleanField(default=False, help_text="Whether this user can edit all lead listing owners")
     delete_listing_owners = models.BooleanField(default=False, help_text="Whether this user can delete all lead listing owners")
     
+    # Archive Owners
+    view_all_archive_owners = models.BooleanField(default=False, help_text="Whether this user can see all archive owner.",)
+    view_my_archive_owners = models.BooleanField(default=False, help_text="Whether this user see his responsibility archive owner")
+    create_bulk_archive_owners = models.BooleanField(default=False, help_text="Whether this user can create bulk archive owner")
+    update_bulk_responsibility_archive_owners = models.BooleanField(default=False, help_text="Whether this user can edit bulk responsibility archive owner")
+    delete_bulk_archive_owners = models.BooleanField(default=False, help_text="Whether this user can delete bulk archive owner")
+    
+    # Archive Properties
+    view_all_archive_properties = models.BooleanField(default=False, help_text="Whether this user can see all archive properties.",)
+    view_my_archive_properties = models.BooleanField(default=False, help_text="Whether this user see his responsibility archive properties")
+    create_bulk_archive_properties = models.BooleanField(default=False, help_text="Whether this user can create bulk archive properties")
+    update_bulk_responsibility_archive_properties = models.BooleanField(default=False, help_text="Whether this user can edit bulk responsibility")
+    delete_bulk_archive_properties = models.BooleanField(default=False, help_text="Whether this user can delete bulk archive properties")
+    
+    # Permit Numbers
+    view_all_permit_numbers = models.BooleanField(default=False, help_text="Whether this user can see all permit numbers.",)
+    create_new_permit_number = models.BooleanField(default=False, help_text="Whether this user can create a new permit number")
+    update_permit_number = models.BooleanField(default=False, help_text="Whether this user can edit permit number")
+    delete_permit_number = models.BooleanField(default=False, help_text="Whether this user can delete permit number")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -118,6 +150,7 @@ class Profile(models.Model):
         ('test_account_listing', 'Test Account Listing'),
         ('user', 'User'),
         ('listing', 'Listing'),
+        ('listing_sales_rent', 'Listing Sales Rent'),
         ('sales_agent', 'Sales Agent'),
         ('leasing_agent', 'Leasing Agent'),
         ('manager', 'Manager'),
@@ -590,7 +623,8 @@ class CrmOwner(models.Model):
     address = models.CharField(_("address"), max_length=255, blank=True, null=True)
 
     # --- No of Units regarding to CrmListing model
-   
+    last_followup_date = models.DateField(null=True,  blank=True, help_text="Date of last communication with the owner")
+
     # --- Audit ---
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -609,21 +643,450 @@ class CrmOwner(models.Model):
         ]
         constraints = [
             models.CheckConstraint(
-                check=~models.Q(phone1=""),
+                # check=~models.Q(phone1=""),
+                condition=~models.Q(phone1=""),
                 name="crmowner_phone1_not_blank",
             ),
             models.CheckConstraint(
-                check=~models.Q(phone2=""),
+                # check=~models.Q(phone2=""),
+                condition=~models.Q(phone2=""),
                 name="crmowner_phone2_not_blank",
             ),
             models.CheckConstraint(
-                check=~models.Q(email=""),
+                # check=~models.Q(email=""),
+                condition=~models.Q(email=""),
                 name="crmowner_email_not_blank",
             ),
         ]
 
     def __str__(self):
         return self.name or self.phone or f"CrmOwner#{self.pk}"
+
+
+
+class OwnersActivity(models.Model):
+    owner = models.ForeignKey(
+        "CrmOwner", on_delete=models.CASCADE,
+        related_name="activities",
+        help_text="The owner this reminder belongs to",
+    )
+    title = models.CharField(
+        max_length=200,
+        help_text="Reminder subject (e.g., 'Call owner re: price')",
+    )
+    description = models.TextField(
+        blank=True, null=True,
+        help_text="What to do / notes",
+    )
+    deadline = models.DateTimeField(
+        help_text="When to remind me to contact the owner",
+    )
+    is_completed = models.BooleanField(
+        default=False,
+        help_text="Check when the reminder has been handled",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Owner reminder"
+        verbose_name_plural = "Owner reminders"
+        ordering = ["deadline"]
+        indexes = [
+            models.Index(fields=["owner", "deadline"]),
+            models.Index(fields=["is_completed", "deadline"]),  # for "my open reminders"
+        ]
+
+    def __str__(self):
+        return f"{self.title} for {self.owner}"
+
+
+
+class ArchiveOwner(models.Model):
+    # ✅ OWNER_TYPE choices (list-of-tuples style)
+    OWNER_TYPE = [
+        ('individual', 'Individual'),
+        ('company', 'Company'),
+    ]
+
+    # --- Type / Identity ---
+    owner_type = models.CharField(_("owner type"),max_length=20, choices=OWNER_TYPE, default='individual', db_index=True,)
+    name = models.CharField(_("owner name"), max_length=200, null=True, blank=True, help_text=_("Owner full name or company name"),)
+    company = models.CharField(_("company"), max_length=200, blank=True, null=True)
+    # --- Contact ---
+    phone = models.CharField(_("phone"), max_length=32, null=True, blank=True,help_text=_("Primary phone / هاتف"),)
+    # --- Property Information ---
+    property_category = models.CharField(null=True, blank=True, max_length=250, help_text="Property Category Commercial/Residential")
+    property_offer = models.CharField(null=True, blank=True, max_length=250, help_text="Offer of property Sale/Rent")
+    sale_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
+    rent_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
+    # ✅ KEPT UNIQUE on Unit and Reference
+    unit_no = models.CharField(unique=True, null=True, blank=True, max_length=250, help_text="Unit number or identifier")
+    refrence_no = models.CharField(unique=True, null=True, blank=True, max_length=250, help_text="Refrence number")
+    
+    municipality = models.CharField(_("municipality"), max_length=255, blank=True, null=True) 
+    municipality_no = models.CharField(_("municipality"), max_length=255, blank=True, null=True) 
+    zone = models.CharField(_("municipality"), max_length=255, blank=True, null=True)
+    plot_no = models.CharField(_("municipality"), max_length=255, blank=True, null=True)
+    land_no = models.CharField(_("municipality"), max_length=255, blank=True, null=True)
+    road_name = models.CharField(_("municipality"), max_length=255, blank=True, null=True)
+    plot_address = models.CharField(_("municipality"), max_length=255, blank=True, null=True)
+    
+    area = models.CharField(_("area"), max_length=255, blank=True, null=True)
+    community = models.CharField(_("community"), max_length=255, blank=True, null=True)
+    sub_community = models.CharField(_("sub community"), max_length=255, blank=True, null=True)
+    property_location = models.URLField(null=True, blank=True, max_length=1000, help_text="Link to property location (e.g., Google Maps URL)")
+   
+    description = models.TextField(blank=True, null=True, help_text="Things to do / Description")
+    remarks = models.CharField(null=True, blank=True, max_length=250, help_text="Remarks")
+    
+    last_communication_date = models.DateField(null=True,  blank=True, help_text="Date of last communication with the owner")
+
+    # --- Assigned ---
+    listing_source = models.CharField(_("listing source"), max_length=255, blank=True, null=True)
+    updated_by = models.CharField(_("Updated by"), max_length=255, blank=True, null=True)
+    responsibility = models.ForeignKey('Profile', on_delete=models.SET_NULL, null=True, blank=True, related_name='responsible_archive_owners', help_text="The person who responsible the owner",)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    
+    
+    created_by = models.ForeignKey(
+        'Profile', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='created_archive_owners', 
+        help_text="The person who entered the owner",
+    )
+    
+    class Meta:
+        verbose_name = _("Archive Owner")
+        verbose_name_plural = _("Archive Owners")
+        ordering = ("-created_at",)
+        
+        indexes = [
+            models.Index(fields=["owner_type"]),
+            models.Index(fields=["name"]),
+            # ⚠️ Removed 'country' index because the field doesn't exist in your model
+        ]
+
+    # class Meta:
+    #     indexes = [
+    #         models.Index(fields=['-created_at'], name='ao_created_idx'),
+    #         models.Index(fields=['last_communication_date'], name='ao_lastcomm_idx'),
+
+    #         GinIndex(name='ao_name_trgm', fields=['name'], opclasses=['gin_trgm_ops']),
+    #         GinIndex(name='ao_company_trgm', fields=['company'], opclasses=['gin_trgm_ops']),
+    #         GinIndex(name='ao_phone_trgm', fields=['phone'], opclasses=['gin_trgm_ops']),
+    #         GinIndex(name='ao_unit_trgm', fields=['unit_no'], opclasses=['gin_trgm_ops']),
+    #         GinIndex(name='ao_ref_trgm', fields=['refrence_no'], opclasses=['gin_trgm_ops']),
+    #         GinIndex(name='ao_area_trgm', fields=['area'], opclasses=['gin_trgm_ops']),
+    #         GinIndex(name='ao_comm_trgm', fields=['community'], opclasses=['gin_trgm_ops']),
+    #         GinIndex(name='ao_subcomm_trgm', fields=['sub_community'], opclasses=['gin_trgm_ops']),
+    #     ]
+        
+        # ⚠️ Commented out because phone1, phone2, and email are not defined in your model.
+        # Uncomment them ONLY after you add those fields back.
+        #
+        # constraints = [
+        #     models.CheckConstraint(
+        #         check=~models.Q(phone1=""),
+        #         name="archive_owner_phone1_not_blank",
+        #     ),
+        #     models.CheckConstraint(
+        #         check=~models.Q(phone2=""),
+        #         name="archive_owner_phone2_not_blank",
+        #     ),
+        #     models.CheckConstraint(
+        #         check=~models.Q(email=""),
+        #         name="archive_owner_email_not_blank",
+        #     ),
+        # ]
+
+    def __str__(self):
+        return self.name or self.phone or f"ArchiveOwner#{self.pk}"
+
+
+    # ad_zone = models.CharField(_("ad_zone"), max_length=255, blank=True, null=True,help_text="Island, External, Internal")
+    # area = models.CharField(_("area"), max_length=255, blank=True, null=True,help_text="Alreem island")
+    # zone = models.CharField(_("zone"), max_length=255, blank=True, null=True,help_text="Marina square / community")
+    # sector = models.CharField(_("sector"), max_length=255, blank=True, null=True, help_text="Sub zone/Ocean square/ subcommunity")
+    
+    # ownership = models.CharField(_("ownership"), max_length=255, blank=True, null=True,help_text="Freehold, Offplan, Private")
+    # project_name = models.CharField(max_length=250, blank=True, null=True, help_text="Project name in offplan")
+
+    # # --- Property Details ------
+    # road_name = models.CharField(_("road name"), max_length=255, blank=True, null=True)
+    # land_no = models.CharField(_("road name"), max_length=255, blank=True, null=True)
+    # plot_no = models.CharField(_("plot number"), max_length=255, blank=True, null=True)
+    # plot_address = models.CharField(_("plot number"), max_length=255, blank=True, null=True)
+
+
+# class ArchiveProperty(models.Model):
+#     phone = models.CharField(_("phone"), max_length=32, null=True, blank=True,help_text=_("Primary phone / هاتف"),)
+#     name = models.CharField(_("owner name"), max_length=200, null=True, blank=True, help_text=_("Owner full name or company name"),)
+    
+#     property_type = models.CharField(null=True, blank=True, max_length=250, help_text="Type of property")
+#     property_category = models.CharField(null=True, blank=True, max_length=250, help_text="Property Category")
+#     property_offer = models.CharField(null=True, blank=True, max_length=250, help_text="Offer of property sale OR rent")
+    
+#     plot_size = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Size of listing")
+    
+#     municipality = models.CharField(_("municipality"), max_length=255, blank=True, null=True)
+#     # البلديه
+#     zone = models.CharField(_("zone"), max_length=255, blank=True, null=True)
+#     # المنطقه
+#     sector = models.CharField(_("sector"), max_length=255, blank=True, null=True)
+#     # الحوض
+#     road_name = models.CharField(_("road name"), max_length=255, blank=True, null=True)
+#     land_no = models.CharField(_("road name"), max_length=255, blank=True, null=True)
+#     # رقم القطعه
+#     plot_no = models.CharField(_("plot number"), max_length=255, blank=True, null=True)
+#     # رقم الارض
+#     plot_address = models.CharField(_("plot number"), max_length=255, blank=True, null=True)
+#     # عنوان القسيمه
+
+class ArchiveProperty(models.Model):
+    # --- Owner Information ---
+    phone = models.CharField(
+        _("phone"), 
+        max_length=32, 
+        null=True, 
+        blank=True,
+        help_text=_("Primary phone / هاتف"),
+    )
+    name = models.CharField(
+        _("owner name"), 
+        max_length=200, 
+        null=True, 
+        blank=True, 
+        help_text=_("Owner full name or company name"),
+    )
+    
+    # --- Property Information ---
+    property_type = models.CharField(
+        null=True, blank=True, max_length=250, 
+        help_text="Type of property"
+    )
+    property_category = models.CharField(
+        null=True, blank=True, max_length=250, 
+        help_text="Property Category"
+    )
+    property_offer = models.CharField(
+        null=True, blank=True, max_length=250, 
+        help_text="Offer of property sale OR rent"
+    )
+    
+    plot_size = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True, 
+        help_text="Size of listing"
+    )
+    sale_price = models.DecimalField(
+        max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, null=True,
+        help_text="Sale price"
+    )
+    rent_price = models.DecimalField(
+        max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, null=True,
+        help_text="Rent price"
+    )
+    
+    # --- Location Details ---
+    municipality = models.CharField(
+        _("municipality"), max_length=255, blank=True, null=True
+    )
+    # البلديه
+    zone = models.CharField(
+        _("zone"), max_length=255, blank=True, null=True
+    )
+    # المنطقه
+    sector = models.CharField(
+        _("sector"), max_length=255, blank=True, null=True
+    )
+    # الحوض
+    road_name = models.CharField(
+        _("road name"), max_length=255, blank=True, null=True
+    )
+    land_no = models.CharField(
+        _("land number"), max_length=255, blank=True, null=True
+    )
+    # رقم الارض
+    
+    plot_no = models.CharField(
+        _("plot number"), max_length=255, blank=True, null=True
+    )
+    # رقم القطعه
+   
+    plot_address = models.CharField(
+        _("plot address"), max_length=255, blank=True, null=True
+    )
+    # عنوان القسيمه
+
+    # --- Description & Notes ---
+    description = models.TextField(
+        blank=True, null=True, help_text="Things to do / Description"
+    )
+    remarks = models.CharField(
+        null=True, blank=True, max_length=250, help_text="Remarks"
+    )
+
+    # --- Assignment / Audit ---
+    responsibility = models.ForeignKey(
+        'Profile', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='responsible_archive_properties', 
+        help_text="The person who is responsible for the property",
+    )
+    
+    listing_source = models.CharField(
+        _("listing source"), max_length=255, blank=True, null=True
+    )
+    updated_by = models.CharField(
+        _("Updated by"), max_length=255, blank=True, null=True
+    )
+    
+    created_by = models.ForeignKey(
+        'Profile', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='created_archive_properties', 
+        help_text="The person who entered the property",
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _("Archive Property")
+        verbose_name_plural = _("Archive Properties")
+        ordering = ("-created_at",)
+        
+        indexes = [
+            models.Index(fields=["phone"]),
+            models.Index(fields=["name"]),
+            models.Index(fields=["property_type"]),
+            models.Index(fields=["property_category"]),
+            models.Index(fields=["property_offer"]),
+        ]
+
+    def __str__(self):
+        return self.name or self.phone or self.plot_no or f"ArchiveProperty#{self.pk}"
+
+
+
+
+# Permit Number
+
+MAX_DEED_SIZE_MB = 10
+
+
+def title_deed_upload_path(instance, filename):
+    """Store as permit_title_deeds/YYYY/MM/<uuid>.<ext>.
+    A random name avoids collisions and problems with Arabic or special characters."""
+    ext = os.path.splitext(filename)[1].lower()
+    return f"permit_title_deeds/%Y/%m/{uuid.uuid4().hex}{ext}"
+
+
+def validate_title_deed_size(f):
+    if f.size > MAX_DEED_SIZE_MB * 1024 * 1024:
+        raise ValidationError(_("File too large. Maximum size is %(mb)s MB."), params={"mb": MAX_DEED_SIZE_MB})
+
+
+OFFER = [
+        ('sale', 'Sale'),
+        ('rent', 'Rent'),
+    ]
+
+class PermitNo(models.Model):
+    managed_by = models.ForeignKey(
+        'Profile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='managed_permit_numbers',
+        help_text="The person responsible for this permit",
+    )
+    title = models.CharField(
+        null=True, blank=True, max_length=250,
+        help_text="Tile and description",
+    )
+    refrence_no = models.CharField(
+        unique=True, null=True, blank=True, max_length=250,
+        help_text="Reference number",
+    )
+    permit_no = models.CharField(
+        unique=True, null=True, blank=True, max_length=250,
+        help_text="Permit number",
+    )
+    permit_status = models.CharField(null=True, blank=True, max_length=250, help_text="Permit status, Owner's approval/paid",)
+    
+    property_offer = models.CharField(choices=OFFER, null=True, blank=True, max_length=250, help_text="Offer of property sale OR rent")
+    price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
+    bedrooms = models.PositiveIntegerField(blank=True, null=True)
+
+    title_deed = models.FileField(
+        upload_to=title_deed_upload_path,
+        null=True,
+        blank=True,
+        validators=[
+            FileExtensionValidator(allowed_extensions=["pdf", "jpg", "jpeg", "png", "webp"]),
+            validate_title_deed_size,
+        ],
+        help_text="Title deed document (PDF or image, max 10 MB)",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    created_by = models.ForeignKey(
+        'Profile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_permit_numbers',
+        help_text="The person who entered the record",
+    )
+
+    class Meta:
+        verbose_name = _("Permit number")
+        verbose_name_plural = _("Permit numbers")
+        ordering = ("-created_at",)
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(refrence_no=""),
+                name="permitno_refrence_no_not_blank",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(permit_no=""),
+                name="permitno_permit_no_not_blank",
+            ),
+        ]
+
+    def __str__(self):
+        return self.permit_no or self.refrence_no or f"PermitNo#{self.pk}"
+
+    def save(self, *args, **kwargs):
+        # unique + nullable: store "" as NULL so two blanks don't collide
+        self.refrence_no = (self.refrence_no or "").strip() or None
+        self.permit_no = (self.permit_no or "").strip() or None
+
+        # When the file is replaced, delete the old one from storage
+        if self.pk:
+            old = PermitNo.objects.filter(pk=self.pk).only("title_deed").first()
+            if old and old.title_deed and old.title_deed != self.title_deed:
+                old.title_deed.delete(save=False)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        deed = self.title_deed
+        super().delete(*args, **kwargs)
+        if deed:
+            deed.delete(save=False)  # remove the file after the row is gone
+
 
 
 
@@ -637,9 +1100,28 @@ class CrmOwner(models.Model):
 #         fields = '__all__'
 #         read_only_fields = ['reference', 'created_at', 'updated_at', 'created_by']
 
+
+
+
+
+MAX_DEED_SIZE_MB = 10
+
+
+def listing_title_deed_upload_path(instance, filename):
+    """Store as permit_title_deeds/YYYY/MM/<uuid>.<ext>.
+    A random name avoids collisions and problems with Arabic or special characters."""
+    ext = os.path.splitext(filename)[1].lower()
+    return f"permit_title_deeds/%Y/%m/{uuid.uuid4().hex}{ext}"
+
+
+def listing_validate_title_deed_size(f):
+    if f.size > MAX_DEED_SIZE_MB * 1024 * 1024:
+        raise ValidationError(_("File too large. Maximum size is %(mb)s MB."), params={"mb": MAX_DEED_SIZE_MB})
+
+
 class CrmListing(models.Model):
 
-    TYPE_CHOICES = [
+    STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('live', 'Live'),
         ('Under Mou', 'Under Mou'),
@@ -649,6 +1131,9 @@ class CrmListing(models.Model):
     CATEGORY = [
         ('residential', 'Residential'),
         ('commercial', 'Commercial'),
+        ('agricultural', 'Agricultural'),
+        ('industrial', 'Industrial'),
+        ('investment', 'Investment'),
     ]
     OFFER = [
         ('sale', 'Sale'),
@@ -687,21 +1172,26 @@ class CrmListing(models.Model):
         help_text="Auto-generated reference"
     )
 
-    # --- Property Details ---
-    title = models.CharField(max_length=200, null=True, blank=True, default=None)
-    property_type = models.CharField(max_length=250, help_text="Type of property")
-    unit_no = models.CharField(unique=True, max_length=250, help_text="Unit number or identifier")
-    tenure = models.CharField(max_length=250, blank=True, null=True, help_text="The tenure of listing")
+    # --- Property Overview ---
+    title = models.CharField(max_length=250, help_text="Unit title", default="")
+    hot_deal = models.BooleanField(default=False, help_text="The Listing is hot deal or not")
+    marketing = models.BooleanField(default=False, help_text="The Listing is need markiting or not")
+
+    #---- Property Category and Type    
+    property_status = models.CharField(choices=STATUS_CHOICES, null=True, blank=True, max_length=250, help_text="Status of property")
+    property_offer = models.CharField(choices=OFFER, null=True, blank=True, max_length=250, help_text="Offer of property sale OR rent")
+    property_category = models.CharField(choices=CATEGORY, null=True, blank=True, max_length=250, help_text="Property Category")
+    property_type = models.CharField(null=True, blank=True, max_length=250, help_text="Type of property")
+
+    unit_no = models.CharField(unique=True, null=True, blank=True, max_length=250, help_text="Unit number or identifier")
     bedrooms = models.PositiveIntegerField(blank=True, null=True)
     bathrooms = models.PositiveIntegerField(blank=True, null=True)
     parking = models.PositiveIntegerField(blank=True, null=True)
     furnished = models.CharField(max_length=250, blank=True, null=True, help_text="Furniture status of listing")
 
     # --- Spaces ----
-    size = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Size of listing")
-    built_up_area = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Built up area of listing")
-    plot_size = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Plot size of listing")
-    project_status = models.CharField(max_length=250, blank=True, null=True, help_text="Project status (e.g. Ready, Off-plan)")
+    plot_size = models.CharField(max_length=250,blank=True, null=True, help_text="Plot size of listing/square fit")
+    built_up_area = models.CharField(max_length=250, blank=True, null=True, help_text="Built up area of listing/مساحه البناء")
     
     # ---- Pricing Sale -------
     sale_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, null=True)
@@ -715,19 +1205,49 @@ class CrmListing(models.Model):
     rent_type = models.CharField(max_length=250, blank=True, null=True, help_text="Type of rent (e.g., Monthly, Yearly)")
     
     # --- Location ------
-    city = models.CharField(max_length=255, blank=True, null=True, help_text="The Listing City")
+    municipality_no = models.CharField(_("municipality_no"), max_length=255, blank=True, null=True)
+    municipality = models.CharField(_("municipality"), max_length=255, blank=True, null=True, help_text="Abudhabi")
+    
+    ad_zone = models.CharField(_("ad_zone"), max_length=255, blank=True, null=True,help_text="Island, External, Internal")
+    area = models.CharField(_("area"), max_length=255, blank=True, null=True,help_text="Alreem island")
+    zone = models.CharField(_("zone"), max_length=255, blank=True, null=True,help_text="Marina square / community")
+    sector = models.CharField(_("sector"), max_length=255, blank=True, null=True, help_text="Sub zone/Ocean square/ subcommunity")
+    
+    ownership = models.CharField(_("ownership"), max_length=255, blank=True, null=True,help_text="Freehold, Offplan, Private")
+    project_name = models.CharField(max_length=250, blank=True, null=True, help_text="Project name in offplan")
+
+    # --- Property Details ------
+    road_name = models.CharField(_("road name"), max_length=255, blank=True, null=True)
+    land_no = models.CharField(_("road name"), max_length=255, blank=True, null=True)
+    plot_no = models.CharField(_("plot number"), max_length=255, blank=True, null=True)
+    plot_address = models.CharField(_("plot number"), max_length=255, blank=True, null=True)
+    
     location_text = models.CharField(max_length=255, blank=True, null=True, help_text="The human-readable location string")
+    location_url = models.URLField(null=True, blank=True, max_length=1000, help_text="Link to property location (e.g., Google Maps URL)")
     
     # --- Description ---
     title_description = models.CharField(max_length=350, blank=True, null=True, help_text="Title of the description")
     description = models.TextField(blank=True, null=True, help_text="Things to do / Details")
+
     notes = models.CharField(max_length=350, blank=True, null=True, help_text="Notes of the description")
 
     # --- Legal & Location Compliance & permit ---
-    emirate = models.CharField(max_length=200, blank=True, null=True, help_text="Emirate of listing")
+    
     permit_type = models.CharField(max_length=200, blank=True, null=True, help_text="Permit type")
-    adrec_permit_no = models.CharField(unique=True, max_length=200, blank=True, null=True, help_text="ADREC Permit No.")
+    permit_no = models.CharField(unique=True, max_length=200, blank=True, null=True, help_text="Permit No.")
+    permit_status = models.CharField(unique=True, max_length=200, blank=True, null=True, help_text="Permit Status/paid/approval/....")
+    title_deed = models.FileField(
+        upload_to=listing_title_deed_upload_path,
+        null=True,
+        blank=True,
+        validators=[
+            FileExtensionValidator(allowed_extensions=["pdf", "jpg", "jpeg", "png", "webp"]),
+            listing_validate_title_deed_size,
+        ],
+        help_text="Title deed document (PDF or image, max 10 MB)",
+    )
     issue_expiry = models.DateField(null=True, blank=True)
+    property_finder = models.BooleanField(default=False, help_text="The Listing is inserted in PF")
     
     # --- Amenities (Boolean Fields) ---
     central_ac = models.BooleanField(default=False)
@@ -768,6 +1288,7 @@ class CrmListing(models.Model):
     updated_at = models.DateTimeField(auto_now=True, help_text="Date and time when the listing was last updated")
     updated_by = models.ForeignKey('Profile', on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_listings', help_text="The person who updated the listing")
     
+
     class Meta:
         verbose_name = _("CRM Listing")
         verbose_name_plural = _("CRM Listings")
@@ -799,6 +1320,10 @@ class ListingImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.listing.reference} - {self.id}"
+
+
+
+
 
 # Solution	Free Tier / Quota	Credit Card Required?	Notes
 # OpenStreetMap + Leaflet	Completely Free (Nominatim geocoding has no hard monthly quota, but requires compliance with fair use policies)	❌ Not Required	No API Key needed, directly call public services 
@@ -1575,7 +2100,7 @@ class Unit(models.Model):
     status = models.CharField(
         max_length=100,
         choices=STATUS_CHOICES,
-        default="available",   # ✅ fixed default
+        default="occupied",   # ✅ fixed default
         blank=True,
         null=True,
     )
@@ -1833,6 +2358,20 @@ class MonthlyPayment(models.Model):
 
 
 
+
+
+class Maintenance(models.Model):
+    date = models.DateField(null=True, blank=True)
+    location = models.CharField(max_length=500, help_text="Maintenance location", null=True, blank=True)
+    notes = models.CharField(max_length=500, help_text="Maintenance notes", null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("Maintenance")
+        verbose_name_plural = _("Maintenances")
+        ordering = ("-date",)
+
+    def __str__(self):
+        return f"Maintenance on {self.date} at {self.location or 'Unknown'}"
 
 #######################################################
 #######################################################

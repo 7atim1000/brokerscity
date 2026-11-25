@@ -8,7 +8,7 @@ from .models import (
     # People
     Customer, Owner, Developer,
     # Property
-    Building, Unit, Rental, Rent, MonthlyPayment, 
+    Building, Unit, Rental, Rent, MonthlyPayment, Maintenance, 
     # Misc
     WhatsAppMessage, Slider, Offersale, OfferInstallment, OfferFee, PaymentPlan,
     # Monitoring
@@ -16,7 +16,8 @@ from .models import (
     PropertyWantedArea, AdLead, LandingPageConfig, 
 
     # CRM | # Assuming you have Comment and Activity models
-    Lead, Comment, Activity, CrmOwner, CrmListing, ListingImage
+    Lead, Comment, Activity, CrmOwner, CrmListing, ListingImage,
+    ArchiveOwner, PermitNo, ArchiveProperty
 
 )
 
@@ -91,6 +92,24 @@ class PermissionSerializer(serializers.ModelSerializer):
             "create_new_listing_owners",
             "update_listing_owners",
             "delete_listing_owners",
+
+            "view_all_archive_owners",
+            "view_my_archive_owners",
+            "create_bulk_archive_owners",
+            "update_bulk_responsibility_archive_owners",
+            "delete_bulk_archive_owners",
+
+            "view_all_archive_properties",
+            "view_my_archive_properties",
+            "create_bulk_archive_properties",
+            "update_bulk_responsibility_archive_properties",
+            "delete_bulk_archive_properties",
+
+            # Permit number
+            "view_all_permit_numbers",
+            "create_new_permit_number",
+            "update_permit_number",
+            "delete_permit_number",
 
             "created_at",
             "updated_at",
@@ -754,6 +773,248 @@ class CrmOwnerSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"phone": "Phone is required for individual owners."})
 
         return attrs
+
+# Archive Owner
+
+# class ArchiveOwnerSerializer(serializers.ModelSerializer):
+#     # ✅ Custom field to display the responsible person's name
+#     responsibility_name = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = ArchiveOwner
+#         # ✅ Explicitly listing all fields ensures the new fields are included 
+#         # in both GET responses and POST/PATCH requests.
+        
+#         # fields List
+#         fields = [
+#     'id',
+#     'owner_type',
+#     'name',
+#     'company',
+#     'phone',
+    
+#     # Property Information
+#     'property_category',
+#     'property_offer',
+#     'sale_price',
+#     'rent_price',
+#     'unit_no',
+#     'refrence_no',
+    
+#     # Location Details
+#     'municipality',
+#     'municipality_no',
+#     'zone',
+#     'plot_no',
+#     'land_no',
+#     'road_name',
+#     'plot_address',
+#     'area',
+#     'community',
+#     'sub_community',
+   
+#     # Description & Notes
+#     'description',
+#     'property_location',
+#     'remarks',
+#     'last_communication_date',
+    
+#     # Assigned
+#     'listing_source',
+#     'updated_by',
+#     'responsibility',
+#     #'responsibility_name',  # Custom field (SerializerMethodField)
+    
+#     # Audit Fields
+#     'created_by',
+#     # 'created_by_name',      # ✅ ADDED: Custom field (SerializerMethodField) to show who created it
+#     'created_at',
+#     'updated_at',
+# ]
+        
+#         # ✅ Prevent the frontend from overriding auto-generated / audit fields
+#         read_only_fields = [
+#             'id', 
+#             'created_at', 
+#             'updated_at', 
+#             'created_by', 
+#             'updated_by',
+#         ]
+
+#     def get_responsibility_name(self, obj):
+#         """
+#         Safely fetches the full name of the assigned user by navigating 
+#         through the Profile -> User relationship.
+#         """
+#         try:
+#             profile = obj.responsibility
+#             if not profile:
+#                 return "Unassigned"
+            
+#             # Access the standard Django User model linked via OneToOneField
+#             user = getattr(profile, 'user', None)
+#             if not user:
+#                 return "Unassigned"
+
+#             first_name = getattr(user, 'first_name', '') or ''
+#             last_name = getattr(user, 'last_name', '') or ''
+#             username = getattr(user, 'username', '') or ''
+            
+#             full_name = f"{first_name} {last_name}".strip()
+#             return full_name if full_name else username
+
+#         except Exception as e:
+#             print(f"Error fetching responsibility_name: {e}")
+#             return "Unassigned"
+
+#     def validate(self, attrs):
+#         """
+#         Custom validation to provide clean error messages to the frontend.
+#         """
+#         owner_type = attrs.get('owner_type', getattr(self.instance, 'owner_type', 'individual'))
+#         company = attrs.get('company', getattr(self.instance, 'company', None))
+#         phone = attrs.get('phone', getattr(self.instance, 'phone', None))
+
+#         if owner_type == 'company' and not company:
+#             raise serializers.ValidationError(
+#                 {"company": "Company name is required for company owners."}
+#             )
+        
+#         if owner_type == 'individual' and not phone:
+#             raise serializers.ValidationError(
+#                 {"phone": "Phone is required for individual owners."}
+#             )
+
+#         return attrs
+
+class ArchiveOwnerSerializer(serializers.ModelSerializer):
+    # ✅ Custom fields
+    responsibility_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ArchiveOwner
+        fields = [
+            'id',
+            'owner_type',
+            'name',
+            'company',
+            'phone',
+            
+            # Property Information
+            'property_category',
+            'property_offer',
+            'sale_price',
+            'rent_price',
+            'unit_no',
+            'refrence_no',
+            
+            # Location Details
+            'municipality',
+            'municipality_no',
+            'zone',
+            'plot_no',
+            'land_no',
+            'road_name',
+            'plot_address',
+            'area',
+            'community',
+            'sub_community',
+           
+            # Description & Notes
+            'description',
+            'property_location',
+            'remarks',
+            'last_communication_date',
+            
+            # Assigned
+            'listing_source',
+            'updated_by',
+            'responsibility',
+            'responsibility_name',  # ✅ UNCOMMENTED
+            
+            # Audit Fields
+            'created_by',
+            'created_by_name',      # ✅ UNCOMMENTED
+            'created_at',
+            'updated_at',
+        ]
+        
+        read_only_fields = [
+            'id', 
+            'created_at', 
+            'updated_at', 
+            'created_by', 
+            'updated_by',
+        ]
+
+    def get_responsibility_name(self, obj):
+        try:
+            profile = obj.responsibility
+            if not profile:
+                return "Unassigned"
+            
+            user = getattr(profile, 'user', None)
+            if not user:
+                return "Unassigned"
+
+            first_name = getattr(user, 'first_name', '') or ''
+            last_name = getattr(user, 'last_name', '') or ''
+            username = getattr(user, 'username', '') or ''
+            
+            full_name = f"{first_name} {last_name}".strip()
+            return full_name if full_name else username
+
+        except Exception as e:
+            print(f"Error fetching responsibility_name: {e}")
+            return "Unassigned"
+
+    def get_created_by_name(self, obj):
+        try:
+            profile = obj.created_by
+            if not profile:
+                return "Unknown"
+            
+            user = getattr(profile, 'user', None)
+            if not user:
+                return "Unknown"
+
+            first_name = getattr(user, 'first_name', '') or ''
+            last_name = getattr(user, 'last_name', '') or ''
+            username = getattr(user, 'username', '') or ''
+            
+            full_name = f"{first_name} {last_name}".strip()
+            return full_name if full_name else username
+
+        except Exception as e:
+            print(f"Error fetching created_by_name: {e}")
+            return "Unknown"
+
+    def validate(self, attrs):
+        """
+        Custom validation to provide clean error messages to the frontend.
+        """
+        owner_type = attrs.get('owner_type', getattr(self.instance, 'owner_type', 'individual'))
+        company = attrs.get('company', getattr(self.instance, 'company', None))
+        phone = attrs.get('phone', getattr(self.instance, 'phone', None))
+        name = attrs.get('name', getattr(self.instance, 'name', None))
+
+        if owner_type == 'company' and not company:
+            raise serializers.ValidationError(
+                {"company": "Company name is required for company owners."}
+            )
+        
+        # ✅ RELAXED VALIDATION: If they have a name or company, we allow it 
+        # even if phone is missing (since bulk Excel imports often lack perfect phones)
+        if owner_type == 'individual' and not phone and not name:
+            raise serializers.ValidationError(
+                {"phone": "Phone (or name) is required for individual owners."}
+            )
+
+        return attrs
+
+        
+                
 #########################
 # CRM Listing Parent and Image Child
 #########################
@@ -798,6 +1059,204 @@ class CrmListingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"rent_price": "Rent price is required for rental listings."})
             
         return attrs
+
+
+
+#Based on the model you provided, your PermitNoSerializer is referencing fields that do not exist in the updated PermitNo model. Specifically, the model no longer has:
+class PermitNoSerializer(serializers.ModelSerializer):
+    # read-only helpers for the frontend
+    managed_by_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+    title_deed_url = serializers.SerializerMethodField()
+    title_deed_name = serializers.SerializerMethodField()
+    title_deed_is_pdf = serializers.SerializerMethodField()
+
+    # send clear_title_deed=true (multipart or JSON) to remove the stored file
+    clear_title_deed = serializers.BooleanField(write_only=True, required=False, default=False)
+
+    class Meta:
+        model = PermitNo
+        fields = [
+            "id", "managed_by", "managed_by_name",
+            "title", "refrence_no", "permit_no", "permit_status",
+            "property_offer",  # ✅ ADDED
+            "price",           # ✅ ADDED
+            "bedrooms",           # ✅ ADDED
+            "title_deed", "title_deed_url", "title_deed_name", "title_deed_is_pdf",
+            "clear_title_deed",
+            "created_by", "created_by_name", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_by", "created_at", "updated_at"]
+
+    # ---------- read helpers ----------
+    @staticmethod
+    def _profile_name(profile):
+        if not profile:
+            return None
+        user = getattr(profile, "user", None)
+        if user:
+            full = f"{user.first_name} {user.last_name}".strip()
+            return full or user.get_username()
+        return str(profile)
+
+    def get_managed_by_name(self, obj):
+        return self._profile_name(obj.managed_by)
+
+    def get_created_by_name(self, obj):
+        return self._profile_name(obj.created_by)
+
+    def get_title_deed_url(self, obj):
+        if not obj.title_deed:
+            return None
+        request = self.context.get("request")
+        url = obj.title_deed.url
+        return request.build_absolute_uri(url) if request else url
+
+    def get_title_deed_name(self, obj):
+        return obj.title_deed.name.rsplit("/", 1)[-1] if obj.title_deed else None
+
+    def get_title_deed_is_pdf(self, obj):
+        return bool(obj.title_deed) and obj.title_deed.name.lower().endswith(".pdf")
+
+    # ---------- validation ----------
+    # multipart forms send "" for empty fields; store NULL so unique fields don't collide
+    def validate_refrence_no(self, value):
+        return (value or "").strip() or None
+
+    def validate_permit_no(self, value):
+        return (value or "").strip() or None
+
+    def validate_permit_status(self, value):
+        return (value or "").strip() or None
+
+    def validate_title(self, value):
+        return (value or "").strip() or None
+
+    def validate_property_offer(self, value): # ✅ ADDED
+        return (value or "").strip() or None
+
+    def validate_price(self, value): # ✅ ADDED
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Price cannot be negative.")
+        return value
+
+    # ---------- write ----------
+    def create(self, validated_data):
+        validated_data.pop("clear_title_deed", None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        clear = validated_data.pop("clear_title_deed", False)
+        # clear only when no new file is being uploaded; the model's save() removes the old file
+        if clear and "title_deed" not in validated_data:
+            validated_data["title_deed"] = None
+        return super().update(instance, validated_data)
+
+        
+
+class ArchivePropertySerializer(serializers.ModelSerializer):
+    # ✅ Custom field to display the responsible person's name
+    responsibility_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ArchiveProperty
+        # ✅ Explicitly listing all fields ensures they are included in GET/POST/PATCH
+        fields = [
+            'id',
+            'phone',
+            'name',
+            
+            # Property Information
+            'property_type',
+            'property_category',
+            'property_offer',
+            'plot_size',
+            'sale_price',
+            'rent_price',
+            
+            # Location Details
+            'municipality',
+            'zone',
+            'sector',
+            'road_name',
+            'land_no',
+            'plot_no',
+            'plot_address',
+            
+            # Description & Notes
+            'description',
+            'remarks',
+            
+            # Assignment
+            'responsibility',
+            'responsibility_name', # Custom field
+            'listing_source',
+            'updated_by',
+            
+            # Audit Fields
+            'created_by',
+            'created_at',
+            'updated_at',
+        ]
+        
+        # ✅ Prevent the frontend from overriding auto-generated / audit fields
+        read_only_fields = [
+            'id', 
+            'created_at', 
+            'updated_at', 
+            'created_by', 
+            'updated_by',
+        ]
+
+    def get_responsibility_name(self, obj):
+        """
+        Safely fetches the full name of the assigned user by navigating 
+        through the Profile -> User relationship.
+        """
+        try:
+            profile = obj.responsibility
+            if not profile:
+                return "Unassigned"
+            
+            # Access the standard Django User model linked via OneToOneField
+            user = getattr(profile, 'user', None)
+            if not user:
+                return "Unassigned"
+
+            first_name = getattr(user, 'first_name', '') or ''
+            last_name = getattr(user, 'last_name', '') or ''
+            username = getattr(user, 'username', '') or ''
+            
+            full_name = f"{first_name} {last_name}".strip()
+            return full_name if full_name else username
+
+        except Exception as e:
+            print(f"Error fetching responsibility_name: {e}")
+            return "Unassigned"
+
+    def validate(self, attrs):
+        """
+        Custom validation to provide clean error messages to the frontend.
+        """
+        # Example business rules (customize as needed for properties)
+        # You can check if a property has a price if the offer is 'sale' or 'rent'
+        
+        property_offer = attrs.get('property_offer', getattr(self.instance, 'property_offer', None))
+        sale_price = attrs.get('sale_price', getattr(self.instance, 'sale_price', None))
+        rent_price = attrs.get('rent_price', getattr(self.instance, 'rent_price', None))
+
+        if property_offer == 'sale' and not sale_price:
+            raise serializers.ValidationError(
+                {"sale_price": "Sale price is required when the offer is 'sale'."}
+            )
+        
+        if property_offer == 'rent' and not rent_price:
+            raise serializers.ValidationError(
+                {"rent_price": "Rent price is required when the offer is 'rent'."}
+            )
+
+        return attrs
+
 
 ############################################################
 # End Crm Listing
@@ -2221,6 +2680,7 @@ class RentSerializer(serializers.ModelSerializer):
     unit_owner = serializers.SerializerMethodField()
     # Added new 
     unit_type = serializers.SerializerMethodField()
+    unit_kind = serializers.SerializerMethodField()
 
     class Meta:
         model = Rent
@@ -2241,6 +2701,7 @@ class RentSerializer(serializers.ModelSerializer):
             "unit_category", # ✅ Added
             "unit_owner",    # ✅ Added
             "unit_type",    # ✅ Added
+            "unit_kind",
             "created_at",
             "updated_at",
         ]
@@ -2255,6 +2716,7 @@ class RentSerializer(serializers.ModelSerializer):
             "unit_category", # ✅ Added
             "unit_owner",    # ✅ Added
             "unit_type", # ✅ ADD THIS LINE
+            "unit_kind"
             "created_at",
             "updated_at",
         ]
@@ -2286,6 +2748,12 @@ class RentSerializer(serializers.ModelSerializer):
         # ✅ This fetches the 'type' from the related Unit model
         if obj.unit_name and obj.unit_name.type:
             return obj.unit_name.type
+        return "—"
+    
+    def get_unit_kind(self, obj):
+        # ✅ This fetches the 'kind' from the related Unit model
+        if obj.unit_name and obj.unit_name.kind:
+            return obj.unit_name.kind
         return "—"
 
 
@@ -2498,10 +2966,6 @@ class RentSerializer(serializers.ModelSerializer):
 #         return value
 
 
-from rest_framework import serializers
-from decimal import Decimal
-from .models import MonthlyPayment
-
 class MonthlyPaymentSerializer(serializers.ModelSerializer):
     # Read-only convenience fields pulled from the related Unit via Rent
     unit_id = serializers.SerializerMethodField()
@@ -2681,6 +3145,26 @@ class SliderSerializer(serializers.ModelSerializer):
             field: {'required': False, 'allow_null': True}
             for field in fields if field != 'id'
         }
+
+
+
+
+class MaintenanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Maintenance
+        fields = [
+            "id",
+            "date",
+            "location",
+            "notes",
+        ]
+
+    # Optional: Clean empty strings to None for nullable fields
+    def validate_location(self, value):
+        return (value or "").strip() or None
+
+    def validate_notes(self, value):
+        return (value or "").strip() or None
 
 
 #================================================

@@ -8,14 +8,14 @@ urlpatterns = [
 
     # path('', views.home),
     # Backup databse
-    path("admin/database-backup/", views.database_backup_view, name="database-backup" ),
+    path("admin/database-backup/", views.database_backup_view, name="database-backup"),
 
     # ===================================
     # CRM
     # ===================================
-      ####################################
+    #####################################
     # Profile — Status endpoints
-    ####################################
+    #####################################
     path('profile/status/',     views.profile_status_view,     name='profile_status'),
     # to keep the user's status online.
     path('profile/heartbeat/',  views.profile_heartbeat_view,  name='profile_heartbeat'),
@@ -175,32 +175,86 @@ urlpatterns = [
     # Delete
   path('landlord/<int:pk>/delete/', views.landlord_delete, name='owner-delete'),
     
-  #### Listing Parent and Child Listing Image
-    # ==========================================
-    # CRM LISTING ENDPOINTS
-    # ==========================================
-    
-    # List all
-    path('crmlistings/', views.listing_list, name='listing-list'),
-    
-    # Create (Handles FormData / File Uploads)
-    path('crmlistings/create/', views.listing_create, name='listing-create'),
-    
-    # Detail
-    path('crmlistings/<int:pk>/', views.listing_detail, name='listing-detail'),
-    
-    # Update (Handles FormData / File Uploads)
-    path('crmlistings/<int:pk>/update/', views.listing_update, name='listing-update'),
-    
-    # Delete Listing (Auto-deletes child images)
-    path('crmlistings/<int:pk>/delete/', views.listing_delete, name='listing-delete'),
+  
+  # ==========================================
+  # ARCHIVE OWNER ENDPOINTS
+  # ==========================================
 
-    # ==========================================
-    # LISTING IMAGE ENDPOINTS
-    # ==========================================
+  # List all (with role-based filtering)
+  path('archive-owners/', views.archive_owner_list, name='archive-owner-list'),
     
-    # Delete a single gallery image
-    path('crmlisting-images/<int:pk>/delete/', views.listing_image_delete, name='listing-image-delete'),
+  # Bulk Create (Upload Excel/CSV)
+  path('archive-owners/bulk-create/', views.archive_owner_bulk_create, name='archive-owner-bulk-create'),
+    
+  # Bulk Delete (Delete all or by IDs)
+  path('archive-owners/bulk-delete/', views.archive_owner_bulk_delete, name='archive-owner-bulk-delete'),
+    
+  # Bulk Update (Assign responsibility)
+  path('archive-owners/bulk-assign/', views.archive_owner_bulk_assign, name='archive-owner-bulk-assign'),
+  
+
+  # ==========================================
+  # Permit Numbers ENDPOINTS
+  # ==========================================
+  # Permit Numbers
+  path('permit-numbers/', views.permit_list, name='permit-list'),
+
+  # Create
+  path('permit-numbers/create/', views.permit_create, name='permit-create'),
+
+  # Update
+  path('permit-numbers/<int:pk>/update/', views.permit_update, name='permit-update'),
+
+  # Delete
+  path('permit-numbers/<int:pk>/delete/', views.permit_delete, name='permit-delete'),
+
+
+  # ==========================================
+# Archive Properties ENDPOINTS
+# ==========================================
+# List & Search
+path('archive-properties/', views.archive_property_list, name='archive-property-list'),
+
+# Bulk Actions (Custom)
+path('archive-properties/bulk-create/', views.archive_property_bulk_create, name='archive-property-bulk-create'),
+path('archive-properties/bulk-delete/', views.archive_property_bulk_delete, name='archive-property-bulk-delete'),
+path('archive-properties/bulk-assign/', views.archive_property_bulk_assign, name='archive-property-bulk-assign'),
+
+# Detail (Single Record)
+# path('archive-properties/<int:pk>/', views.archive_property_detail, name='archive-property-detail'),
+
+# Update (Single Record)
+# path('archive-properties/<int:pk>/update/', views.archive_property_update, name='archive-property-update'),
+
+# Delete (Single Record)
+# path('archive-properties/<int:pk>/delete/', views.archive_property_delete, name='archive-property-delete'),
+
+  #### Listing Parent and Child Listing Image
+  # ==========================================
+  # CRM LISTING ENDPOINTS
+  # ==========================================
+    
+  # List all
+  path('crmlistings/', views.listing_list, name='listing-list'),
+    
+  # Create (Handles FormData / File Uploads)
+  path('crmlistings/create/', views.listing_create, name='listing-create'),
+    
+  # Detail
+  path('crmlistings/<int:pk>/', views.listing_detail, name='listing-detail'),
+    
+  # Update (Handles FormData / File Uploads)
+  path('crmlistings/<int:pk>/update/', views.listing_update, name='listing-update'),
+    
+  # Delete Listing (Auto-deletes child images)
+  path('crmlistings/<int:pk>/delete/', views.listing_delete, name='listing-delete'),
+
+  # ==========================================
+  # LISTING IMAGE ENDPOINTS
+  # ==========================================
+    
+  # Delete a single gallery image
+  path('crmlisting-images/<int:pk>/delete/', views.listing_image_delete, name='listing-image-delete'),
 
   #########################
   # End CRM & LISTINg
@@ -386,7 +440,11 @@ urlpatterns = [
     path("monthly-payments/<int:pk>/update/", views.update_monthly_payment, name="update_monthly_payment", ),
     path("monthly-payments/<int:pk>/delete/", views.delete_monthly_payment, name="delete_monthly_payment", ),
 
-
+     # Maintenance URLs
+    path('maintenances/', views.maintenance_list, name='maintenance-list'),
+    path('maintenances/create/', views.maintenance_create, name='maintenance-create'),
+    path('maintenances/<int:pk>/delete/', views.maintenance_delete, name='maintenance-delete'),
+    
     ###########################################################    # website
     ###########################################################
     path('sliders/', views.SliderListCreateView.as_view(), name='slider-list-create'),
@@ -441,6 +499,8 @@ urlpatterns = [
     # Cold Calls 
     path('cold-calls/', views.PropertyColdCallsListCreateView.as_view(), name='cold-calls-list-create'),
     # `${BASE}/api/cold-calls/${confirmDelete.id}/delete/`,
+    # ✅ Delete endpoint
+    path('property-cold-calls/<int:pk>/delete/', views.PropertyColdCallDeleteView.as_view(), name='delete-cold-call'),
 
     # Location and Area
     path('wanted-areas/', views.PropertyWantedAreaListCreateView.as_view(), name='wanted-areas-list-create'),

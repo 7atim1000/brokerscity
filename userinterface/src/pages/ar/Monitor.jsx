@@ -183,7 +183,7 @@ const PdfRenderTarget = forwardRef(
                         }}
                     >
                         <FiCalendar style={{ color: '#a47d52' }} size={22} />
-                        <span>FROM 26/Oct/2026 TO 31/Oct/2026</span>
+                        <span>FROM 09/NOV/2026 TO 14/NOV/2026</span>
                     </p>
 
                     <p

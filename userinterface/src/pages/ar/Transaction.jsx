@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -64,7 +65,10 @@ const formatDate = (value) => {
     }
 };
 
-const Transactions = () => {
+
+
+
+const Transaction = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showAddWithdrawModal, setShowAddWithdrawModal] = useState(false);
@@ -881,21 +885,51 @@ const Transactions = () => {
             />
 
             {/* ================= HEADER ================= */}
-            <div className="no-print flex flex-col shadow-lg justify-between items-center max-w-full mx-auto px-4 md:px-3 mb-5 gap-4 bg-white rounded-lg py-4">
-                <div className="flex items-center gap-4 text-center">
-                    <div>
-                        <h2 className="text-xl sm:text-2xl font-extrabold text-gray-800 tracking-wide">
-                            المعاملات المالية
-                        </h2>
-                        <p className="text-sm sm:text-base text-gray-600 mt-1">
-                            إدارة المعاملات المالية (إيداع / سحب)
-                        </p>
-                    </div>
+            {/* Same design/colors/arrangement as the Archive Properties header:
+                title block on one side, action buttons on the other (stacked on small screens).
+                Direction stays RTL (inherited from the page), so the title sits on the right. */}
+            <div className="no-print flex flex-col xl:flex-row justify-between items-center max-w-full mx-auto px-4 md:px-3 mb-6 md:mb-8 gap-4">
+                <div className="text-center xl:text-start">
+                    <h2 className="text-3xl md:text-4xl font-extrabold text-gray-800 tracking-wide flex items-center justify-center xl:justify-start gap-3">
+                        <MdAccountBalanceWallet className="text-[#4285F4]" /> المعاملات المالية
+                    </h2>
+                    <p className="text-sm sm:text-base text-gray-600 mt-2">
+                        إدارة المعاملات المالية (إيداع / سحب)
+                    </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 w-full lg:flex lg:flex-row lg:w-auto lg:gap-3">
+                <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 w-full xl:w-auto">
+                    {/* PDF button — white button with RED icon */}
                     <button
-                        className="bg-green-600 cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-green-700 hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto"
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-bold text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={handleDownloadPdf}
+                        disabled={isExporting || isGeneratingPdf || isGeneratingExcel}
+                    >
+                        <FaFilePdf className="text-red-600" />
+                        {isGeneratingPdf
+                            ? 'جارٍ إنشاء PDF...'
+                            : isExporting && pendingExportAction === 'pdf'
+                                ? 'جارٍ التجهيز...'
+                                : 'PDF'}
+                    </button>
+
+                    {/* Excel button — white button with GREEN icon */}
+                    <button
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-bold text-gray-700 hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={handleDownloadExcel}
+                        disabled={isExporting || isGeneratingPdf || isGeneratingExcel}
+                    >
+                        <FaFileExcel className="text-green-600" />
+                        {isGeneratingExcel
+                            ? 'جارٍ إنشاء Excel...'
+                            : isExporting && pendingExportAction === 'excel'
+                                ? 'جارٍ التجهيز...'
+                                : 'Excel'}
+                    </button>
+
+                    {/* Deposit — navy primary button (same as "Import" in the Archive header) */}
+                    <button
+                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all duration-300 whitespace-nowrap cursor-pointer bg-[#1e3a8a] text-white hover:bg-[#172554] hover:shadow-lg hover:-translate-y-0.5"
                         onClick={() => {
                             setSelectedTransaction(null);
                             setShowAddDepositModal(true);
@@ -904,40 +938,15 @@ const Transactions = () => {
                         + إيداع
                     </button>
 
+                    {/* Withdraw — gold primary button (same as "Add Owner" in the Archive header) */}
                     <button
-                        className="bg-[#a47d52] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#8a6a44] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto"
+                        className="flex items-center justify-center gap-2 px-6 md:px-8 py-3 rounded-lg font-bold text-sm md:text-base transition-all duration-300 whitespace-nowrap cursor-pointer bg-[#a47d52] text-white hover:bg-[#8a6a44] hover:shadow-lg hover:-translate-y-0.5"
                         onClick={() => {
                             setSelectedTransaction(null);
                             setShowAddWithdrawModal(true);
                         }}
                     >
                         - سحب
-                    </button>
-
-                    <button
-                        className="flex items-center justify-center gap-2 bg-[#E5322D] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#b8241f] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
-                        onClick={handleDownloadPdf}
-                        disabled={isExporting || isGeneratingPdf || isGeneratingExcel}
-                    >
-                        {isGeneratingPdf
-                            ? 'جارٍ إنشاء PDF...'
-                            : isExporting && pendingExportAction === 'pdf'
-                                ? 'جارٍ التجهيز...'
-                                : 'PDF'}
-                        <FaFilePdf className="inline" />
-                    </button>
-
-                    <button
-                        className="flex items-center justify-center gap-2 bg-[#1D6F42] cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-[#155330] hover:text-white hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
-                        onClick={handleDownloadExcel}
-                        disabled={isExporting || isGeneratingPdf || isGeneratingExcel}
-                    >
-                        {isGeneratingExcel
-                            ? 'جارٍ إنشاء Excel...'
-                            : isExporting && pendingExportAction === 'excel'
-                                ? 'جارٍ التجهيز...'
-                                : 'Excel'}
-                        <FaFileExcel className="inline" />
                     </button>
                 </div>
             </div>
@@ -1334,7 +1343,14 @@ const tdStyle = {
     textAlign: 'center',
 };
 
-export default Transactions;
+
+
+export default Transaction;
+
+
+
+
+
 
 // import React, { useState, useEffect, useMemo } from 'react';
 // import { toast, ToastContainer } from 'react-toastify';
@@ -1762,11 +1778,6 @@ export default Transactions;
 //     // =========================================================
 //     // ✅ ENHANCED: PDF generation — much clearer output,
 //     //    readable without manual zoom.
-//     //    Key improvements:
-//     //      • scale 4 (vs 2) for crisp text
-//     //      • JPEG with high quality to keep file size sane
-//     //      • Auto-fit to page width so nothing looks tiny
-//     //      • Manual pagination using the element's own height
 //     // =========================================================
 //     const generatePdf = async () => {
 //         const element = document.querySelector('.print-area');
@@ -2236,12 +2247,6 @@ export default Transactions;
 //                     </div>
 //                 </div>
 
-//                 {/*
-//                   ✅ Buttons grid:
-//                   - Mobile (< sm): 2 columns × 2 rows (each button takes half the row)
-//                   - Tablet (sm to md): 2 columns × 2 rows (still paired, more space per button)
-//                   - Laptop+ (lg+): single row, 4 across (unchanged desktop design)
-//                 */}
 //                 <div className="grid grid-cols-2 gap-3 w-full lg:flex lg:flex-row lg:w-auto lg:gap-3">
 //                     <button
 //                         className="bg-green-600 cursor-pointer text-white px-4 sm:px-6 py-3 rounded-sm font-extrabold text-sm md:text-base uppercase tracking-wide transition-all duration-300 hover:bg-green-700 hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap w-full lg:w-auto"
@@ -2292,10 +2297,6 @@ export default Transactions;
 //             </div>
 
 //             {/* ================= SUMMARY CARDS ================= */}
-//             {/*
-//               ✅ UPDATED: now shows GLOBAL totals (all pages from DB, honoring filters),
-//               NOT just the current page.
-//             */}
 //             <div className="no-print max-w-full mx-auto px-4 md:px-3 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
 //                 <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex items-center justify-between border-r-4 border-green-500">
 //                     <div className="min-w-0">
@@ -2526,7 +2527,8 @@ export default Transactions;
 //                 </div>
 //             </div>
 
-//             {/* ================= PRINT / PDF VIEW (unchanged) ================= */}
+//             {/* ================= PRINT / PDF VIEW ================= */}
+//             {/* ✅ Fonts enlarged here only — nothing else changed */}
 //             <div className="print-area">
 //                 <table dir="ltr"
 //                     style={{ direction: 'ltr', width: '100%', borderCollapse: 'collapse', fontFamily: 'Calibri, Arial, sans-serif' }}>
@@ -2544,13 +2546,13 @@ export default Transactions;
 //                         <tr>
 //                             <th colSpan={11} style={{ padding: '4px 6px 10px', border: '1px solid #000', borderTop: 'none', background: '#FFFFFF' }}>
 //                                 <div style={{ textAlign: 'center' }}>
-//                                     <div style={{ fontSize: 18, fontWeight: 800, color: '#000' }}>
+//                                     <div style={{ fontSize: 26, fontWeight: 800, color: '#000' }}>
 //                                         {COMPANY_NAME_EN} — {COMPANY_NAME_AR}
 //                                     </div>
-//                                     <div style={{ fontSize: 14, fontWeight: 700, color: '#000', marginTop: 4 }}>
+//                                     <div style={{ fontSize: 20, fontWeight: 700, color: '#000', marginTop: 6 }}>
 //                                         Accounting Worksheet — ورقة عمل المحاسبة
 //                                     </div>
-//                                     <div style={{ fontSize: 11, fontWeight: 400, color: '#333', marginTop: 2 }}>
+//                                     <div style={{ fontSize: 15, fontWeight: 400, color: '#333', marginTop: 4 }}>
 //                                         Generated: {printGeneratedAt}
 //                                     </div>
 //                                 </div>
@@ -2577,22 +2579,28 @@ export default Transactions;
 //                                 <td style={tdStyle}>{t.transaction_no}</td>
 //                                 <td style={tdStyle}>{t.document_no}</td>
 //                                 <td style={tdStyle}>{t.type === 'withdraw' ? (t.person_receipt || '-') : (t.person_deliver || '-')}</td>
-//                                 <td style={{ ...tdStyle, textAlign: 'right', maxWidth: 220 }}>{t.statement || '-'}</td>
+//                                 <td style={{ ...tdStyle, textAlign: 'right', maxWidth: 260 }}>{t.statement || '-'}</td>
 //                                 <td style={tdStyle}>{t.account_to || '-'}</td>
 //                                 <td style={{ ...tdStyle, color: '#1a7a1a', fontWeight: 700 }}>{t.type === 'deposit' ? formatMoney(t.amount) : ''}</td>
 //                                 <td style={{ ...tdStyle, color: '#b30000', fontWeight: 700 }}>{t.type === 'withdraw' ? formatMoney(t.amount) : ''}</td>
-//                                 <td style={{ ...tdStyle, fontWeight: 700 }}>{formatMoney(t.runningBalance)}</td>
+//                                 <td style={{ ...tdStyle, fontWeight: 800, fontSize: 18 }}>{formatMoney(t.runningBalance)}</td>
 //                             </tr>
 //                         ))}
 //                     </tbody>
 //                     <tfoot>
 //                         <tr className="bg-[#e6d5c0] border-t-2 border-[#BF9000]">
-//                             <td colSpan={7} style={{ ...tdStyle, fontWeight: 800, textAlign: 'right' }}>
+//                             <td colSpan={7} style={{ ...tdStyle, fontWeight: 800, textAlign: 'right', fontSize: 18 }}>
 //                                 Gross Total — المجموع الكلي
 //                             </td>
-//                             <td style={{ ...tdStyle, fontWeight: 800, color: '#1a7a1a' }}>{formatMoney(printTotals.totalIncome)}</td>
-//                             <td style={{ ...tdStyle, fontWeight: 800, color: '#b30000' }}>{formatMoney(printTotals.totalExpense)}</td>
-//                             <td style={{ ...tdStyle, fontWeight: 800 }}>{formatMoney(printTotals.balance)}</td>
+//                             <td style={{ ...tdStyle, fontWeight: 800, color: '#1a7a1a', fontSize: 20 }}>
+//                                 {formatMoney(printTotals.totalIncome)}
+//                             </td>
+//                             <td style={{ ...tdStyle, fontWeight: 800, color: '#b30000', fontSize: 20 }}>
+//                                 {formatMoney(printTotals.totalExpense)}
+//                             </td>
+//                             <td style={{ ...tdStyle, fontWeight: 800, fontSize: 22 }}>
+//                                 {formatMoney(printTotals.balance)}
+//                             </td>
 //                         </tr>
 //                     </tfoot>
 //                 </table>
@@ -2661,10 +2669,11 @@ export default Transactions;
 //     );
 // };
 
+// // ✅ Fonts enlarged — cell text, header text, and footer text all bigger
 // const thStyle = {
 //     border: '1px solid #000',
-//     padding: '8px 6px',
-//     fontSize: 11,
+//     padding: '10px 8px',
+//     fontSize: 15,
 //     fontWeight: 700,
 //     color: '#000',
 //     textAlign: 'center',
@@ -2673,10 +2682,14 @@ export default Transactions;
 
 // const tdStyle = {
 //     border: '1px solid #ccc',
-//     padding: '6px',
-//     fontSize: 10.5,
+//     padding: '9px 8px',
+//     fontSize: 14,
 //     color: '#000',
 //     textAlign: 'center',
 // };
 
 // export default Transactions;
+
+
+
+

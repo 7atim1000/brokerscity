@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
+
 import { 
     MdDeleteForever, 
     MdModeEdit, 
@@ -21,7 +23,8 @@ import {
     FaPlus, 
     FaBed, 
     FaBath, 
-    FaVectorSquare 
+    FaVectorSquare, 
+    FaFire 
 } from 'react-icons/fa';
 
 import AddEditListing from "../../components/en/listing/AddEditListing";
@@ -48,6 +51,9 @@ const Listing = () => {
 
     // View Mode State (Cards vs Table)
     const [viewMode, setViewMode] = useState("cards"); 
+    
+    // ✅ Filter State
+    const [activeFilter, setActiveFilter] = useState("all");
 
     // Permissions
     const canViewAll = permissions?.view_all_listing === true;
@@ -185,8 +191,32 @@ const Listing = () => {
     };
 
     // =========================================================
-    // HELPERS
+    // HELPERS & FILTERING
     // =========================================================
+    
+    // ✅ Calculate Counts for the Filter Bar (Using New Field Names)
+    const counts = useMemo(() => {
+        return {
+            all: listings.length,
+            draft: listings.filter(l => l.property_status === 'draft' || !l.property_status).length,
+            live: listings.filter(l => l.property_status?.toLowerCase() === 'live').length,
+            sale: listings.filter(l => l.property_offer === 'sale').length,
+            rent: listings.filter(l => l.property_offer === 'rent').length,
+            hot_deal: listings.filter(l => l.hot_deal === true).length,
+        };
+    }, [listings]);
+
+    // ✅ Apply Filter (Using New Field Names)
+    const filteredListings = useMemo(() => {
+        if (activeFilter === 'all') return listings;
+        if (activeFilter === 'draft') return listings.filter(l => l.property_status === 'draft' || !l.property_status);
+        if (activeFilter === 'live') return listings.filter(l => l.property_status?.toLowerCase() === 'live');
+        if (activeFilter === 'sale') return listings.filter(l => l.property_offer === 'sale');
+        if (activeFilter === 'rent') return listings.filter(l => l.property_offer === 'rent');
+        if (activeFilter === 'hot_deal') return listings.filter(l => l.hot_deal === true);
+        return listings;
+    }, [listings, activeFilter]);
+
     const formatAmount = (amount) => {
         if (!amount) return "0";
         return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount);
@@ -231,11 +261,11 @@ const Listing = () => {
     }
 
     return (
-        <div dir="ltr" className="min-h-screen bg-white py-10 px-5 md:py-12 md:px-8 lg:py-8 lg:px-6 font-sans">
+        <div dir="ltr" className="min-h-screen bg-white py-2 px-5 md:py-2 md:px-8 lg:py-2 lg:px-6 font-sans">
             <ToastContainer position="top-right" theme="light" />
             
             {/* HEADER */}
-            <div className="flex flex-col sm:flex-row justify-between items-center max-w-full mx-auto mb-6 md:mb-8 gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-center max-w-full mx-auto mb-2 md:mb-5 gap-4">
                 <div className="text-center sm:text-left">
                     <h2 className="text-3xl md:text-4xl font-extrabold text-gray-800 tracking-wide flex items-center justify-center sm:justify-start gap-3">
                         <FiLayers className="text-[#4285F4]" />
@@ -260,14 +290,14 @@ const Listing = () => {
                     <div className="flex bg-[#f8f7f5] p-1.5 rounded-lg border border-gray-200 shadow-sm">
                         <button 
                             onClick={() => setViewMode("cards")} 
-                            className={`p-2 rounded-md transition-all ${viewMode === "cards" ? "bg-white text-[#4285F4] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                            className={`p-2 cursor-pointer rounded-md transition-all ${viewMode === "cards" ? "bg-white text-[#4285F4] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                             title="Card View"
                         >
                             <FiGrid size={18} />
                         </button>
                         <button 
                             onClick={() => setViewMode("table")} 
-                            className={`p-2 rounded-md transition-all ${viewMode === "table" ? "bg-white text-[#4285F4] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                            className={`p-2 cursor-pointer rounded-md transition-all ${viewMode === "table" ? "bg-white text-[#4285F4] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                             title="Table View"
                         >
                             <FiList size={18} />
@@ -275,7 +305,7 @@ const Listing = () => {
                     </div>
 
                     <button 
-                        className={`flex items-center justify-center gap-2 px-6 md:px-8 py-3 rounded-lg font-bold text-sm md:text-base transition-all duration-300 whitespace-nowrap flex-1 sm:flex-none ${
+                        className={`flex cursor-pointer items-center justify-center gap-2 px-6 md:px-8 py-3 rounded-lg font-bold text-sm md:text-base transition-all duration-300 whitespace-nowrap flex-1 sm:flex-none ${
                             canCreate 
                                 ? "bg-[#4285F4] text-white hover:bg-blue-600 hover:shadow-lg hover:-translate-y-0.5" 
                                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -288,26 +318,61 @@ const Listing = () => {
                 </div>
             </div>
 
-            <hr className="border-t-2 border-gray-100 max-w-full mx-auto mb-8" />
+            {/* ✅ FILTER BAR */}
+            <div className="max-w-full mx-auto mb-4 overflow-x-auto custom-scrollbar flex items-center gap-3 pb-2">
+                {[
+                    { id: 'all', label: 'All', count: counts.all, color: 'purple' },
+                    { id: 'draft', label: 'Draft', count: counts.draft, color: 'blue' },
+                    { id: 'live', label: 'Live', count: counts.live, color: 'green' },
+                    { id: 'sale', label: 'Sale', count: counts.sale, color: 'indigo' },
+                    { id: 'rent', label: 'Rent', count: counts.rent, color: 'orange' },
+                    { id: 'hot_deal', label: 'Hot Deal', count: counts.hot_deal, color: 'red' },
+                ].map((filter) => {
+                    const isActive = activeFilter === filter.id;
+                    
+                    // Color mapping for the dot
+                    let dotColor = "bg-gray-400";
+                    if (filter.id === 'all') dotColor = "bg-purple-500";
+                    if (filter.id === 'draft') dotColor = "bg-blue-400";
+                    if (filter.id === 'live') dotColor = "bg-green-500";
+                    if (filter.id === 'sale') dotColor = "bg-indigo-500";
+                    if (filter.id === 'rent') dotColor = "bg-orange-500";
+                    if (filter.id === 'hot_deal') dotColor = "bg-red-500";
+
+                    return (
+                        <button
+                            key={filter.id}
+                            onClick={() => setActiveFilter(filter.id)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 font-bold text-sm transition-all whitespace-nowrap ${
+                                isActive 
+                                    ? "bg-purple-50 border-purple-200 text-purple-700 shadow-sm" 
+                                    : "bg-white border-gray-100 text-gray-600 hover:border-gray-200 hover:bg-gray-50"
+                            }`}
+                        >
+                            <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`}></span>
+                            {filter.label}
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                isActive ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-600"
+                            }`}>
+                                {filter.count.toLocaleString()}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            <hr className="border-t-2 border-gray-100 max-w-full mx-auto mb-6" />
 
             {/* EMPTY STATE */}
-            {listings.length === 0 ? (
+            {filteredListings.length === 0 ? (
                 <div className="flex flex-col justify-center items-center gap-4 p-10 text-center bg-[#f8f7f5] rounded-2xl border border-gray-100 max-w-3xl mx-auto shadow-sm">
                     <span className="text-6xl">🏠</span>
                     <h3 className="text-2xl font-extrabold text-gray-800">
-                        {canViewAll ? "No Listings Found" : "You haven't created any Listings yet"}
+                        No Listings Found for this filter
                     </h3>
                     <p className="text-gray-500">
-                        {canViewAll ? "There are no listings registered in the system." : "Start by adding your first property listing."}
+                        Try changing your filter or add a new listing.
                     </p>
-                    <button 
-                        className={`mt-4 px-8 py-3 rounded-lg font-bold transition-all ${
-                            canCreate ? "bg-[#4285F4] text-white hover:bg-blue-600 hover:scale-105" : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        }`}
-                        onClick={handleOpenCreate}
-                    >
-                        Add Listing
-                    </button>
                 </div>
             ) : viewMode === "cards" ? (
                 
@@ -315,7 +380,7 @@ const Listing = () => {
                    CARD VIEW
                 ========================================= */
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-full mx-auto animate-fadeIn">
-                    {listings.map((listing) => (
+                    {filteredListings.map((listing) => (
                         <div 
                             key={listing.id} 
                             className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1 relative group flex flex-col"
@@ -356,8 +421,8 @@ const Listing = () => {
                                 />
                                 
                                 {/* Status Badge */}
-                                <div className={`absolute top-3 left-3 text-[10px] uppercase font-bold px-2.5 py-1 rounded border shadow-sm ${getStatusColor(listing.status)}`}>
-                                    {listing.status || "Draft"}
+                                <div className={`absolute top-3 left-3 text-[10px] uppercase font-bold px-2.5 py-1 rounded border shadow-sm ${getStatusColor(listing.property_status)}`}>
+                                    {listing.property_status || "Draft"}
                                 </div>
 
                                 {/* Reference Badge */}
@@ -368,27 +433,34 @@ const Listing = () => {
 
                             {/* Content Area */}
                             <div className="p-5 flex flex-col flex-1">
-                                <h3 
-                                    className="text-lg font-bold text-gray-800 mb-1 truncate hover:text-[#4285F4] cursor-pointer transition-colors" 
-                                    title={listing.title || 'Untitled Listing'}
-                                    onClick={() => handleOpenDetails(listing)}
-                                >
-                                    {listing.title || 'Untitled Listing'}
-                                </h3>
+                                <div className="flex justify-between items-start gap-2 mb-1">
+                                    <h3 
+                                        className="text-lg font-bold text-gray-800 truncate hover:text-[#4285F4] cursor-pointer transition-colors" 
+                                        title={listing.title || 'Untitled Listing'}
+                                        onClick={() => handleOpenDetails(listing)}
+                                    >
+                                        {listing.title || 'Untitled Listing'}
+                                    </h3>
+                                    
+                                    {/* ✅ Only Hot Deal Icon next to Title */}
+                                    {listing.hot_deal && (
+                                        <FaFire className="text-red-500 animate-pulse shrink-0 mt-1" size={20} title="Hot Deal" />
+                                    )}
+                                </div>
                                 <p className="text-xs text-gray-500 flex items-center gap-1 mb-4 truncate">
                                     <FiMapPin size={12} /> {listing.location_text || "Location not specified"}
                                 </p>
 
-                                {/* Specs */}
+                                {/* Specs with Colored Icons */}
                                 <div className="flex items-center gap-2 mb-4">
-                                    <span className="text-[11px] bg-[#f8f7f5] text-gray-600 px-2 py-1 rounded font-bold flex items-center gap-1">
-                                        <FaBed size={12} /> {listing.bedrooms || 0} bd
+                                    <span className="text-[11px] bg-[#f8f7f5] text-gray-700 px-2 py-1 rounded font-bold flex items-center gap-1">
+                                        <FaBed className="text-[#4285F4]" size={14} /> {listing.bedrooms || 0} bd
                                     </span>
-                                    <span className="text-[11px] bg-[#f8f7f5] text-gray-600 px-2 py-1 rounded font-bold flex items-center gap-1">
-                                        <FaBath size={12} /> {listing.bathrooms || 0} ba
+                                    <span className="text-[11px] bg-[#f8f7f5] text-gray-700 px-2 py-1 rounded font-bold flex items-center gap-1">
+                                        <FaBath className="text-[#10B981]" size={14} /> {listing.bathrooms || 0} ba
                                     </span>
-                                    <span className="text-[11px] bg-[#f8f7f5] text-gray-600 px-2 py-1 rounded font-bold flex items-center gap-1">
-                                        <FaVectorSquare size={12} /> {listing.size || 0} sqft
+                                    <span className="text-[11px] bg-[#f8f7f5] text-gray-700 px-2 py-1 rounded font-bold flex items-center gap-1">
+                                        <FaVectorSquare className="text-[#8B5CF6]" size={14} /> {listing.size || 0} sqft
                                     </span>
                                 </div>
 
@@ -429,10 +501,10 @@ const Listing = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {listings.map((listing) => (
+                                {filteredListings.map((listing) => (
                                     <tr key={listing.id} className="hover:bg-gray-50 transition-colors">
                                         {/* Property */}
-                                        <td className="px-6 py-4">
+                                        <td className="px-2 py-1">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
                                                     <img 
@@ -442,7 +514,12 @@ const Listing = () => {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-gray-800 truncate max-w-[200px]">{listing.title || 'Untitled'}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-gray-800 truncate max-w-[200px]">{listing.title || 'Untitled'}</p>
+                                                        {listing.hot_deal && (
+                                                            <FaFire className="text-red-500 animate-pulse" size={20} title="Hot Deal" />
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs text-gray-500 truncate max-w-[200px]">{listing.location_text || 'No location'}</p>
                                                 </div>
                                             </div>
@@ -450,16 +527,21 @@ const Listing = () => {
                                         
                                         {/* Status */}
                                         <td className="px-6 py-4">
-                                            <span className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded border ${getStatusColor(listing.status)}`}>
-                                                {listing.status || "Draft"}
+                                            <span className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded border ${getStatusColor(listing.property_status)}`}>
+                                                {listing.property_status || "Draft"}
                                             </span>
                                         </td>
                                         
                                         {/* Details */}
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1 text-xs text-gray-600">
-                                                <span className="flex items-center gap-1"><FaBed className="text-gray-400" /> {listing.bedrooms || 0} Beds | <FaBath className="text-gray-400" /> {listing.bathrooms || 0} Baths</span>
-                                                <span className="flex items-center gap-1"><FaVectorSquare className="text-gray-400" /> {listing.size || 0} sqft</span>
+                                                <span className="flex items-center gap-1">
+                                                    <FaBed className="text-[#4285F4]" /> {listing.bedrooms || 0} Beds | 
+                                                    <FaBath className="text-[#10B981]" /> {listing.bathrooms || 0} Baths
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <FaVectorSquare className="text-[#8B5CF6]" /> {listing.size || 0} sqft
+                                                </span>
                                             </div>
                                         </td>
                                         
@@ -576,6 +658,7 @@ const Listing = () => {
     );
 };
 
-
-
 export default Listing;
+
+
+

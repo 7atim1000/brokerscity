@@ -130,14 +130,14 @@ const PdfRenderTarget = forwardRef(
                             fontFamily: PRINT_FONT,
                         }}
                     >
-                        From 26/10/2026  To  31/10/2026
+                        From 09/11/2026  To  14/11/2026
                     </p>
                 </header>
 
                 {/* ================= TABLE ================= */}
                 <main data-pdf-block="body">
                     <table
-                        style={{
+                        sty  le={{
                             width: "100%",
                             borderCollapse: "collapse",
                             tableLayout: "fixed",

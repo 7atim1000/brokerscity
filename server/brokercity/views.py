@@ -2,12 +2,13 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
-from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, PaymentPlan, Monitor, Rent, MonthlyPayment, get_or_create_today_log, Property, Permission, PropertyColdCalls, PropertyWantedArea, AdLead, LandingPageConfig, Lead,  CrmOwner, CrmListing, ListingImage
+from .models import Profile, CashBox, Bank, Transaction, Account, AccountCategory, Customer, WhatsAppMessage, Owner, Building, Unit, Slider, Rental, Developer, Offersale, PaymentPlan, Monitor, Rent, MonthlyPayment, get_or_create_today_log, Property, Permission, PropertyColdCalls, PropertyWantedArea, AdLead, LandingPageConfig, Lead,  CrmOwner, CrmListing, ListingImage, ArchiveOwner, PermitNo, ArchiveProperty, Maintenance 
 from rest_framework.response import Response
 from rest_framework import status, generics, filters
 from django.shortcuts import render, get_object_or_404
 
 from django.db.models import Q, Count
+from django.shortcuts import get_object_or_404
 
 # image upload: 
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -61,6 +62,18 @@ from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
+################
+# Openpy xl | Bulk Create | pip install pandas openpyxl
+################
+import pandas as pd
+from collections import Counter
+from django.db import transaction
+from rest_framework import serializers, status
+from rest_framework.parsers import FormParser, MultiPartParser
+from django.db.models import Q, CharField
+# For search
+from django.db.models.functions import Cast
+from rest_framework import generics, filters
 
 from .serializers import (
     UserSerializer,
@@ -102,7 +115,7 @@ from .serializers import (
     UnitSerializer,
     RentalSerializer,
     RentSerializer, MonthlyPaymentSerializer,
-
+    MaintenanceSerializer,
     # Website
     SliderSerializer,
     
@@ -131,6 +144,11 @@ from .serializers import (
 
     # CRM Listing
     CrmOwnerSerializer,
+    CrmListingSerializer,
+    ArchiveOwnerSerializer,
+
+    PermitNoSerializer,
+    ArchivePropertySerializer,
     
     )
 
@@ -315,6 +333,23 @@ def my_permissions(request):
             "create_new_listing_owners": False,
             "update_listing_owners": False,
             "delete_listing_owners": False,
+
+            "view_all_archive_owners": False,
+            "view_my_archive_owners": False,
+            "create_bulk_archive_owners": False,
+            "update_bulk_responsibility_archive_owners": False,
+            "delete_bulk_archive_owners": False,
+
+            "view_all_archive_properties": False,
+            "view_my_archive_properties": False,
+            "create_bulk_archive_properties": False,
+            "update_bulk_responsibility_archive_properties": False,
+            "delete_bulk_archive_properties": False,
+
+            "view_all_permit_numbers": False,
+            "create_new_permit_number": False,
+            "update_permit_number": False,
+            "delete_permit_number": False,
             
         })
 
@@ -353,6 +388,12 @@ def my_permissions(request):
         "create_new_listing_owners": perm.create_new_listing_owners,
         "update_listing_owners": perm.update_listing_owners,
         "delete_listing_owners": perm.delete_listing_owners,
+
+        "view_all_archive_owners": perm.view_all_archive_owners,
+        "view_my_archive_owners": perm.view_my_archive_owners,
+        "create_bulk_archive_owners": perm.create_bulk_archive_owners,
+        "update_bulk_responsibility_archive_owners": perm.update_bulk_responsibility_archive_owners,
+        "delete_bulk_archive_owners": perm.delete_bulk_archive_owners,
        
     })
 
@@ -4009,6 +4050,60 @@ def delete_rental(request, pk):
 
 
 
+
+# ==========================================
+# Maintenance
+# ==========================================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def maintenance_list(request):
+    queryset = Maintenance.objects.all().order_by('-date')
+    
+    # Optional search filter by location or notes
+    search = request.query_params.get('search')
+    if search:
+        queryset = queryset.filter(location__icontains=search) | queryset.filter(notes__icontains=search)
+        
+    serializer = MaintenanceSerializer(queryset, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ==========================================
+# CREATE VIEW
+# ==========================================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def maintenance_create(request):
+    serializer = MaintenanceSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {
+                "message": "Maintenance record created successfully.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+        
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==========================================
+# DELETE VIEW
+# ==========================================
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def maintenance_delete(request, pk):
+    try:
+        obj = Maintenance.objects.get(pk=pk)
+    except Maintenance.DoesNotExist:
+        return Response({"error": "Maintenance record not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    obj.delete()
+    return Response({"message": "Maintenance record deleted successfully."}, status=status.HTTP_200_OK)
+
+
 ############################WEBSITE###########################
 ##############################################################
 class SliderListCreateView(generics.ListCreateAPIView):
@@ -4622,6 +4717,60 @@ class PropertyColdCallsListCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+
+
+class PropertyColdCallDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        """
+        Delete a specific PropertyColdCall record by ID.
+        """
+        try:
+            # Find the record by Primary Key (pk)
+            record = PropertyColdCalls.objects.get(pk=pk)
+            
+            # Optional: Check if the user has permission to delete this record
+            # For example, only the agent who created it or an admin can delete it
+            user_profile = getattr(request.user, 'profile', None)
+            user_role = getattr(user_profile, 'role', 'user') if user_profile else 'user'
+            
+            # if user_role not in ['admin', 'manager'] and record.agent != user_profile:
+            #     return Response(
+            #         {"error": "You do not have permission to delete this record."}, 
+            #         status=status.HTTP_403_FORBIDDEN
+            #     )
+
+            # Delete the record
+            record.delete()
+            
+            return Response(
+                {"message": "Record deleted successfully."}, 
+                status=status.HTTP_204_NO_CONTENT
+            )
+
+        except PropertyColdCalls.DoesNotExist:
+            return Response(
+                {"error": "Record not found."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to delete record: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# If you prefer function-based views, you can use this instead:)            
+# @api_view(['DELETE'])
+# @permission_classes([IsAuthenticated])
+# def delete_cold_call(request, pk):
+#     try:
+#         record = PropertyColdCalls.objects.get(pk=pk)
+#         record.delete()
+#         return Response({"message": "Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+#     except PropertyColdCalls.DoesNotExist:
+#         return Response({"error": "Record not found"}, status=status.HTTP_404_NOT_FOUND)
         
 # ========================================================
 # Property Wanted Locations and Area
@@ -4893,6 +5042,8 @@ def monitor_detail(request, pk):
     serializer = MonitorSerializer(obj)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+
 ######################################
 # CRM LISTING
 ######################################
@@ -5046,13 +5197,1318 @@ def landlord_delete(request, pk):
 
 
 # ==========================================
-# CRUD VIEWS
+# Archive Owner Views
 # ==========================================
+
+# Reusing or creating a filter helper for search
+
+# Reusing or creating a filter helper for search
+# from django.db.models.functions import Cast
+# from django.db.models import CharField
+
+logger = logging.getLogger(__name__)
+
+
+def _apply_archive_owner_filters(queryset, request):
+    search = request.query_params.get('search')
+    area = request.query_params.get('area')
+    community = request.query_params.get('community')
+    sub_community = request.query_params.get('sub_community')
+    responsibility_id = request.query_params.get('responsibility')
+    last_comm_date = request.query_params.get('last_communication_date')
+    start_date = request.query_params.get('start_date')
+
+    # 1. General Text Search
+    if search:
+        queryset = queryset.annotate(
+            date_str=Cast('last_communication_date', output_field=CharField())
+        ).filter(
+            Q(name__icontains=search) | 
+            Q(company__icontains=search) | 
+            Q(phone__icontains=search) |
+            Q(unit_no__icontains=search) |
+            Q(refrence_no__icontains=search) |
+            Q(area__icontains=search) |
+            Q(community__icontains=search) |
+            Q(sub_community__icontains=search) |
+            Q(date_str__icontains=search)
+        )
+    
+    # 2. Specific Area Filters
+    if area:
+        queryset = queryset.filter(area__icontains=area)
+    if community:
+        queryset = queryset.filter(community__icontains=community)
+    if sub_community:
+        queryset = queryset.filter(sub_community__icontains=sub_community)
+
+    # 3. Responsibility Filter
+    if responsibility_id:
+        if responsibility_id == 'unassigned':
+            # ✅ Handle the "Unassigned" case
+            queryset = queryset.filter(responsibility__isnull=True)
+        else:
+            try:
+                queryset = queryset.filter(responsibility_id=int(responsibility_id))
+            except ValueError:
+                pass 
+    
+    # 4. Exact Date Filter
+    if last_comm_date:
+        queryset = queryset.filter(last_communication_date=last_comm_date)
+        
+    # 5. Date Range Filter
+    if start_date:
+        queryset = queryset.filter(last_communication_date__gte=start_date)
+    
+    # 6. Property Category & Offer Filters
+    prop_cat = request.query_params.get('property_category')
+    if prop_cat:
+        queryset = queryset.filter(property_category__icontains=prop_cat)
+        
+    prop_offer = request.query_params.get('property_offer')
+    if prop_offer:
+        queryset = queryset.filter(property_offer__icontains=prop_offer)
+
+    return queryset
+
+
+
+class ArchiveOwnerPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 500
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def archive_owner_list(request):
+    queryset = ArchiveOwner.objects.select_related('responsibility__user').order_by('-created_at')
+
+    user_profile = getattr(request.user, 'profile', None)
+    user_role = str(getattr(user_profile, 'role', 'user') if user_profile else 'user').lower()
+    if user_role not in ['admin', 'manager']:
+        queryset = queryset.filter(responsibility=user_profile)
+
+    queryset = _apply_archive_owner_filters(queryset, request)
+
+    paginator = ArchiveOwnerPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    serializer = ArchiveOwnerSerializer(page, many=True, context={'request': request})
+    return paginator.get_paginated_response(serializer.data)
+
+# @api_view(['GET'])
+# @permission_classes([IsAuthenticated])
+# def archive_owner_list(request):
+#     # 1. Start with all objects
+#     queryset = ArchiveOwner.objects.select_related('responsibility__user').all().order_by('-created_at')
+    
+#     # 2. Check User Role
+#     user_profile = getattr(request.user, 'profile', None)
+#     user_role = getattr(user_profile, 'role', 'user') if user_profile else 'user'
+#     user_role = str(user_role).lower()
+
+#     # 3. Apply Role-based filtering
+#     if user_role not in ['admin', 'manager']:
+#         queryset = queryset.filter(responsibility=user_profile)
+        
+#     # 4. Apply search filters
+#     queryset = _apply_archive_owner_filters(queryset, request)
+    
+#     # 5. Return response
+#     serializer = ArchiveOwnerSerializer(queryset, many=True, context={'request': request})
+#     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+#############################
+# Bulk Insert | pandas | delete | update
+############################
+# ... (Keep your _apply_archive_owner_filters and archive_owner_list views exactly as they are) ...
+
+#############################
+# Bulk Insert | pandas | delete | update
+############################
+
+BATCH_SIZE = 500
+MAX_ERRORS_RETURNED = 100
+
+PLACEHOLDER_NAMES = {"0", "-", "n/a", "na", "none", "null"}
+
+def _clean(value):
+    """NaN / empty -> None, everything else -> stripped string."""
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip()
+    return text or None
+
+def _to_date(value):
+    """Return a date or None."""
+    value = _clean(value)
+    if value is None:
+        return None
+    parsed = pd.to_datetime(value, errors="coerce")
+    return None if pd.isna(parsed) else parsed.date()
+
+def _to_decimal(value):
+    """Convert to decimal or None."""
+    value = _clean(value)
+    if value is None:
+        return None
+    try:
+        clean_value = str(value).replace(",", "").replace("AED", "").strip()
+        return float(clean_value)
+    except ValueError:
+        return None
+
+def _to_truncated_string(value, max_length=500):
+    """✅ FIX: Safely truncate strings, handling None values."""
+    val = _clean(value)
+    if val is None:
+        return None
+    return val[:max_length]
+
+def _validation_message(exc):
+    """First human-readable message of a DRF ValidationError."""
+    detail = exc.detail
+    first = next(iter(detail.values()), "Invalid data") if isinstance(detail, dict) else detail
+    if isinstance(first, (list, tuple)):
+        first = first[0] if first else "Invalid data"
+    return str(first)
+
+def _db_message(exc):
+    """Readable, short version of a database exception."""
+    lines = [line.strip() for line in str(exc).splitlines() if line.strip()]
+    return " ".join(lines[:2])[:300] or exc.__class__.__name__
+
+
+# OLD DATA BULK
+# @api_view(["POST"])
+# @permission_classes([IsAuthenticated])
+# @parser_classes([MultiPartParser, FormParser])
+# def archive_owner_bulk_create(request):
+#     # 1. Validate file
+#     file_obj = request.FILES.get("file")
+#     if not file_obj:
+#         return Response(
+#             {"error": "No file uploaded. Please upload an Excel or CSV file."},
+#             status=status.HTTP_400_BAD_REQUEST,
+#         )
+
+#     try:
+#         # 2. Read file. dtype=str keeps phone numbers as text
+#         filename = file_obj.name.lower()
+#         if filename.endswith(".csv"):
+#             df = pd.read_csv(file_obj, dtype=str)
+#         elif filename.endswith((".xls", ".xlsx")):
+#             df = pd.read_excel(file_obj, dtype=str)
+#         else:
+#             return Response(
+#                 {"error": "Unsupported file format. Please upload .xlsx, .xls, or .csv"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+#         records = df.to_dict("records")
+
+#         user_profile = getattr(request.user, "profile", None)
+#         rules = ArchiveOwnerSerializer()
+
+#         # ✅ FETCH EXISTING UNIQUE VALUES FROM DATABASE
+#         # This prevents the IntegrityError by pre-checking duplicates
+#         existing_unit_nos = set(
+#             ArchiveOwner.objects.exclude(unit_no__isnull=True).values_list('unit_no', flat=True)
+#         )
+#         existing_ref_nos = set(
+#             ArchiveOwner.objects.exclude(refrence_no__isnull=True).values_list('refrence_no', flat=True)
+#         )
+        
+#         # Track values seen in the current file to prevent duplicates within the file itself
+#         seen_unit_nos = set()
+#         seen_ref_nos = set()
+
+#         success_count = 0
+#         error_count = 0
+#         skipped_count = 0
+#         errors = []
+
+#         # 3. Validate + build model objects in memory
+#         objects, row_numbers, row_labels = [], [], []
+#         for index, row in enumerate(records):
+#             row_num = index + 2
+
+#             name = _clean(row.get("name"))
+#             if name and name.lower() in PLACEHOLDER_NAMES:
+#                 name = None
+#             company = _clean(row.get("company"))
+
+#             phone = _clean(row.get("phone"))
+#             if phone:
+#                 phone = phone.replace(" ", "").split("/")[0]
+
+#             if not phone and not name and not company:
+#                 skipped_count += 1
+#                 continue
+
+#             owner_type_raw = _clean(row.get("owner_type"))
+#             owner_type = "company" if owner_type_raw and "comp" in owner_type_raw.lower() else "individual"
+#             label = name or company or phone
+
+#             # Validate using the Serializer rules
+#             try:
+#                 rules.validate({"owner_type": owner_type, "company": company, "phone": phone})
+#             except serializers.ValidationError as exc:
+#                 error_count += 1
+#                 errors.append({"row": row_num, "owner": label, "error": _validation_message(exc)})
+#                 continue
+
+#             # ✅ CHECK FOR DUPLICATE UNIT_NO AND REFRENCE_NO
+#             unit_no = _clean(row.get("unit_no"))
+#             refrence_no = _clean(row.get("refrence_no"))
+
+#             # Check Unit No
+#             if unit_no:
+#                 if unit_no in existing_unit_nos or unit_no in seen_unit_nos:
+#                     error_count += 1
+#                     errors.append({"row": row_num, "owner": label, "error": f"Unit Number '{unit_no}' already exists."})
+#                     continue # 👈 THIS IS THE GRACEFUL SKIP
+#                 seen_unit_nos.add(unit_no) # Track for within-file duplicates
+
+#             # Check Reference No
+#             if refrence_no:
+#                 if refrence_no in existing_ref_nos or refrence_no in seen_ref_nos:
+#                     error_count += 1
+#                     errors.append({"row": row_num, "owner": label, "error": f"Reference Number '{refrence_no}' already exists."})
+#                     continue # 👈 THIS IS THE GRACEFUL SKIP
+#                 seen_ref_nos.add(refrence_no) # Track for within-file duplicates
+
+#             # ✅ Build model object safely
+#             objects.append(
+#                 ArchiveOwner(
+#                     owner_type=owner_type,
+#                     name=name,
+#                     company=company,
+#                     phone=phone,
+                    
+#                     property_category=_clean(row.get("property_category")),
+#                     property_offer=_clean(row.get("property_offer")),
+#                     sale_price=_to_decimal(row.get("sale_price")),
+#                     rent_price=_to_decimal(row.get("rent_price")),
+                    
+#                     unit_no=unit_no,
+#                     refrence_no=refrence_no,
+                    
+#                     area=_clean(row.get("area")),
+#                     community=_clean(row.get("community")),
+#                     sub_community=_clean(row.get("sub_community")),
+#                     description=_clean(row.get("description")),
+                    
+#                     # Safely truncate the URL to 500 chars
+#                     property_location=_to_truncated_string(row.get("property_location"), max_length=500),
+                    
+#                     remarks=_clean(row.get("remarks")),
+#                     last_communication_date=_to_date(row.get("last_communication_date")),
+
+#                     created_by=user_profile,
+#                     updated_by=user_profile.id,
+#                 )
+#             )
+#             row_numbers.append(row_num)
+#             row_labels.append(label)
+
+#         # 4. Insert in batches
+#         for start in range(0, len(objects), BATCH_SIZE):
+#             chunk = objects[start:start + BATCH_SIZE]
+#             chunk_rows = row_numbers[start:start + BATCH_SIZE]
+#             chunk_labels = row_labels[start:start + BATCH_SIZE]
+#             try:
+#                 with transaction.atomic():
+#                     ArchiveOwner.objects.bulk_create(chunk, batch_size=BATCH_SIZE)
+#                 success_count += len(chunk)
+#             except Exception as batch_exc:
+#                 logger.warning(
+#                     "Bulk insert of rows %s-%s failed (%s: %s) - retrying row by row",
+#                     chunk_rows[0], chunk_rows[-1], batch_exc.__class__.__name__, _db_message(batch_exc),
+#                 )
+#                 same_error_in_a_row = 0
+#                 last_key = None
+#                 last_message = None
+#                 for obj, row_num, label in zip(chunk, chunk_rows, chunk_labels):
+#                     if same_error_in_a_row >= 25:
+#                         error_count += 1
+#                         errors.append({"row": row_num, "owner": label, "error": last_message})
+#                         continue
+#                     try:
+#                         with transaction.atomic():
+#                             obj.save()
+#                         success_count += 1
+#                         same_error_in_a_row = 0
+#                         last_key = None
+#                     except Exception as e:
+#                         message = _db_message(e)
+#                         key = message.split(" DETAIL")[0]
+#                         same_error_in_a_row = same_error_in_a_row + 1 if key == last_key else 1
+#                         last_key, last_message = key, message
+#                         error_count += 1
+#                         errors.append({"row": row_num, "owner": label, "error": message})
+
+#         # 5. Summary
+#         errors.sort(key=lambda item: item["row"])
+#         error_summary = [
+#             {"error": message, "count": count}
+#             for message, count in Counter(item["error"] for item in errors).most_common(5)
+#         ]
+        
+#         message = (
+#             f"Import completed. Imported: {success_count}, Failed: {error_count}, "
+#             f"Skipped (empty): {skipped_count}"
+#         )
+
+#         return Response(
+#             {
+#                 "message": message,
+#                 "total_rows": len(records),
+#                 "success_count": success_count,
+#                 "error_count": error_count,
+#                 "skipped_count": skipped_count,
+#                 "error_summary": error_summary,
+#                 "errors": errors[:MAX_ERRORS_RETURNED],
+#             },
+#             status=status.HTTP_200_OK,
+#         )
+
+#     except Exception as e:
+#         logger.exception("Failed to process file")
+#         return Response(
+#             {"error": f"Failed to process file: {str(e)}"},
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#         )
+
+
+
+import pandas as pd
+from django.db import transaction
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework import status, serializers
+from collections import Counter
+import logging
+
+logger = logging.getLogger(__name__)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def archive_owner_bulk_create(request):
+    # 1. Validate file
+    file_obj = request.FILES.get("file")
+    if not file_obj:
+        return Response(
+            {"error": "No file uploaded. Please upload an Excel or CSV file."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        # 2. Read file dynamically
+        filename = file_obj.name.lower()
+        if filename.endswith(".csv"):
+            # For CSV, find the header row first
+            raw_df = pd.read_csv(file_obj, dtype=str, header=None)
+        elif filename.endswith((".xls", ".xlsx")):
+            raw_df = pd.read_excel(file_obj, dtype=str, header=None)
+        else:
+            return Response(
+                {"error": "Unsupported file format. Please upload .xlsx, .xls, or .csv"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ✅ DYNAMIC HEADER DETECTION
+        # Scan the first 20 rows to find the row that actually contains "phone" or "name"
+        header_row_index = 0
+        for i in range(min(20, len(raw_df))):
+            row_values = [str(val).strip().lower() for val in raw_df.iloc[i].values if pd.notna(val)]
+            if "phone" in row_values or "name" in row_values:
+                header_row_index = i
+                break
+
+        # Re-read the file using the detected header row
+        if filename.endswith(".csv"):
+            file_obj.seek(0)
+            df = pd.read_csv(file_obj, dtype=str, header=header_row_index)
+        else:
+            file_obj.seek(0)
+            df = pd.read_excel(file_obj, dtype=str, header=header_row_index)
+
+        # Clean headers (lowercase, replace spaces with underscores)
+        df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+        records = df.to_dict("records")
+
+        user_profile = getattr(request.user, "profile", None)
+        rules = ArchiveOwnerSerializer()
+
+        # ✅ FETCH EXISTING UNIQUE VALUES FROM DATABASE
+        existing_unit_nos = set(
+            ArchiveOwner.objects.exclude(unit_no__isnull=True).values_list('unit_no', flat=True)
+        )
+        existing_ref_nos = set(
+            ArchiveOwner.objects.exclude(refrence_no__isnull=True).values_list('refrence_no', flat=True)
+        )
+        
+        seen_unit_nos = set()
+        seen_ref_nos = set()
+
+        success_count = 0
+        error_count = 0
+        skipped_count = 0
+        errors = []
+
+        # 3. Validate + build model objects in memory
+        objects, row_numbers, row_labels = [], [], []
+        
+        for index, row in enumerate(records):
+            # Calculate the actual Excel row number for error reporting
+            row_num = index + header_row_index + 2
+
+            name = _clean(row.get("name"))
+            if name and name.lower() in PLACEHOLDER_NAMES:
+                name = None
+            company = _clean(row.get("company"))
+
+            phone = _clean(row.get("phone"))
+            if phone:
+                phone = phone.replace(" ", "").split("/")[0]
+
+            if not phone and not name and not company:
+                skipped_count += 1
+                continue
+
+            owner_type_raw = _clean(row.get("owner_type"))
+            owner_type = "company" if owner_type_raw and "comp" in owner_type_raw.lower() else "individual"
+            label = name or company or phone
+
+            # ✅ HANDLE DUPLICATES GRACEFULLY (Skip instead of error)
+            unit_no = _clean(row.get("unit_no"))
+            refrence_no = _clean(row.get("refrence_no"))
+
+            # Check Unit No
+            if unit_no:
+                if unit_no in existing_unit_nos or unit_no in seen_unit_nos:
+                    skipped_count += 1
+                    errors.append({"row": row_num, "owner": label, "error": f"Skipped: Unit Number '{unit_no}' already exists."})
+                    continue 
+                seen_unit_nos.add(unit_no)
+
+            # Check Reference No
+            if refrence_no:
+                if refrence_no in existing_ref_nos or refrence_no in seen_ref_nos:
+                    skipped_count += 1
+                    errors.append({"row": row_num, "owner": label, "error": f"Skipped: Reference Number '{refrence_no}' already exists."})
+                    continue 
+                seen_ref_nos.add(refrence_no)
+
+            # Validate using the Serializer rules
+            try:
+                rules.validate({"owner_type": owner_type, "company": company, "phone": phone})
+            except serializers.ValidationError as exc:
+                error_count += 1
+                errors.append({"row": row_num, "owner": label, "error": _validation_message(exc)})
+                continue
+
+            # ✅ Build model object safely
+            objects.append(
+                ArchiveOwner(
+                    owner_type=owner_type,
+                    name=name,
+                    company=company,
+                    phone=phone,
+                    
+                    property_category=_clean(row.get("property_category")),
+                    property_offer=_clean(row.get("property_offer")),
+                    sale_price=_to_decimal(row.get("sale_price")),
+                    rent_price=_to_decimal(row.get("rent_price")),
+                    
+                    unit_no=unit_no,
+                    refrence_no=refrence_no,
+                    
+                    area=_clean(row.get("area")),
+                    community=_clean(row.get("community")),
+                    sub_community=_clean(row.get("sub_community")),
+                    
+                    # Location fields
+                    municipality=_clean(row.get("municipality")),
+                    municipality_no=_clean(row.get("municipality_no")),
+                    zone=_clean(row.get("zone")),
+                    plot_no=_clean(row.get("plot_no")),
+                    land_no=_clean(row.get("land_no")),
+                    road_name=_clean(row.get("road_name")),
+                    plot_address=_clean(row.get("plot_address")),
+                    
+                    description=_clean(row.get("description")),
+                    property_location=_to_truncated_string(row.get("property_location"), max_length=500),
+                    remarks=_clean(row.get("remarks")),
+                    last_communication_date=_to_date(row.get("last_communication_date")),
+
+                    created_by=user_profile,
+                    updated_by=user_profile.id,
+                )
+            )
+            row_numbers.append(row_num)
+            row_labels.append(label)
+
+        # 4. Insert in batches
+        for start in range(0, len(objects), BATCH_SIZE):
+            chunk = objects[start:start + BATCH_SIZE]
+            chunk_rows = row_numbers[start:start + BATCH_SIZE]
+            chunk_labels = row_labels[start:start + BATCH_SIZE]
+            try:
+                with transaction.atomic():
+                    ArchiveOwner.objects.bulk_create(chunk, batch_size=BATCH_SIZE)
+                success_count += len(chunk)
+            except Exception as batch_exc:
+                logger.warning(
+                    "Bulk insert of rows %s-%s failed (%s: %s) - retrying row by row",
+                    chunk_rows[0], chunk_rows[-1], batch_exc.__class__.__name__, _db_message(batch_exc),
+                )
+                same_error_in_a_row = 0
+                last_key = None
+                last_message = None
+                for obj, row_num, label in zip(chunk, chunk_rows, chunk_labels):
+                    if same_error_in_a_row >= 25:
+                        error_count += 1
+                        errors.append({"row": row_num, "owner": label, "error": last_message})
+                        continue
+                    try:
+                        with transaction.atomic():
+                            obj.save()
+                        success_count += 1
+                        same_error_in_a_row = 0
+                        last_key = None
+                    except Exception as e:
+                        message = _db_message(e)
+                        key = message.split(" DETAIL")[0]
+                        same_error_in_a_row = same_error_in_a_row + 1 if key == last_key else 1
+                        last_key, last_message = key, message
+                        error_count += 1
+                        errors.append({"row": row_num, "owner": label, "error": message})
+
+        # 5. Summary
+        errors.sort(key=lambda item: item["row"])
+        error_summary = [
+            {"error": message, "count": count}
+            for message, count in Counter(item["error"] for item in errors).most_common(5)
+        ]
+        
+        message = (
+            f"Import completed. Imported: {success_count}, Failed: {error_count}, "
+            f"Skipped (empty/duplicate): {skipped_count}"
+        )
+
+        return Response(
+            {
+                "message": message,
+                "total_rows": len(records),
+                "success_count": success_count,
+                "error_count": error_count,
+                "skipped_count": skipped_count,
+                "error_summary": error_summary,
+                "errors": errors[:MAX_ERRORS_RETURNED],
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    except Exception as e:
+        logger.exception("Failed to process file")
+        return Response(
+            {"error": f"Failed to process file: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+        
+        
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def archive_owner_bulk_delete(request):
+    # 1. Check User Role
+    user_profile = getattr(request.user, 'profile', None)
+    user_role = getattr(user_profile, 'role', 'user') if user_profile else 'user'
+    user_role = str(user_role).lower()
+
+    # 2. Get the IDs from the request payload
+    ids_to_delete = request.data.get('ids', [])
+
+    if not ids_to_delete:
+        return Response(
+            {"error": "No record IDs provided for deletion."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        # 3. Filter ONLY the selected IDs
+        queryset = ArchiveOwner.objects.filter(id__in=ids_to_delete)
+
+        # 4. Optional: If you want non-admins to only delete their own records
+        if user_role not in ['admin', 'manager']:
+            queryset = queryset.filter(responsibility=user_profile)
+
+        # 5. Count how many records will be deleted
+        count = queryset.count()
+
+        if count == 0:
+            return Response(
+                {"message": "No matching records found to delete."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 6. Perform the delete
+        queryset.delete()
+
+        return Response(
+            {
+                "message": f"Successfully deleted {count} archived owners.",
+                "deleted_count": count
+            }, 
+            status=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to delete records: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+        
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def archive_owner_bulk_assign(request):
+    # ... same as before ...
+    user_profile = getattr(request.user, 'profile', None)
+    if not user_profile:
+        return Response({"error": "User profile not found."}, status=status.HTTP_403_FORBIDDEN)
+
+    ids_to_update = request.data.get('ids', [])
+    responsibility_id = request.data.get('responsibility_id')
+
+    if not ids_to_update or not isinstance(ids_to_update, list):
+        return Response({"error": "Please provide a list of 'ids' to update."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not responsibility_id:
+        return Response({"error": "Please provide a 'responsibility_id'."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        target_profile = Profile.objects.get(id=responsibility_id)
+    except Profile.DoesNotExist:
+        return Response({"error": "The selected Profile (responsibility) does not exist."}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        queryset = ArchiveOwner.objects.filter(id__in=ids_to_update)
+        count = queryset.count()
+        
+        if count == 0:
+            return Response({"error": "No matching records found to update."}, status=status.HTTP_404_NOT_FOUND)
+
+        queryset.update(responsibility=target_profile, updated_by=user_profile.id)
+        return Response({"message": f"Successfully reassigned {count} records.", "updated_count": count}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": f"Failed to update records: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#================================
+# Archive Properties views 
+#================================
+# =========================================================
+# SEARCH / FILTER HELPER
+# =========================================================
+def _apply_archive_property_filters(queryset, request):
+    search = request.query_params.get('search')
+    municipality = request.query_params.get('municipality')
+    zone = request.query_params.get('zone')
+    sector = request.query_params.get('sector')
+    responsibility_id = request.query_params.get('responsibility')
+    
+    # 1. General Text Search
+    if search:
+        queryset = queryset.filter(
+            Q(name__icontains=search) | 
+            Q(phone__icontains=search) |
+            Q(property_type__icontains=search) |
+            Q(property_category__icontains=search) |
+            Q(property_offer__icontains=search) |
+            Q(municipality__icontains=search) |
+            Q(zone__icontains=search) |
+            Q(sector__icontains=search) |
+            Q(road_name__icontains=search) |
+            Q(land_no__icontains=search) |
+            Q(plot_no__icontains=search) |
+            Q(plot_address__icontains=search)
+        )
+    
+    # 2. Location Filters
+    if municipality:
+        queryset = queryset.filter(municipality__icontains=municipality)
+    if zone:
+        queryset = queryset.filter(zone__icontains=zone)
+    if sector:
+        queryset = queryset.filter(sector__icontains=sector)
+
+    # 3. Responsibility Filter
+    if responsibility_id:
+        if responsibility_id == 'unassigned':
+            queryset = queryset.filter(responsibility__isnull=True)
+        else:
+            try:
+                queryset = queryset.filter(responsibility_id=int(responsibility_id))
+            except ValueError:
+                pass 
+    
+    # 4. Property Category & Offer Filters
+    prop_cat = request.query_params.get('property_category')
+    if prop_cat:
+        queryset = queryset.filter(property_category__icontains=prop_cat)
+        
+    prop_offer = request.query_params.get('property_offer')
+    if prop_offer:
+        queryset = queryset.filter(property_offer__icontains=prop_offer)
+
+    return queryset
+
+
+# =========================================================
+# LIST VIEW
+# =========================================================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def archive_property_list(request):
+    # 1. Start with all objects
+    queryset = ArchiveProperty.objects.select_related('responsibility__user').all().order_by('-created_at')
+    
+    # 2. Check User Role
+    user_profile = getattr(request.user, 'profile', None)
+    user_role = getattr(user_profile, 'role', 'user') if user_profile else 'user'
+    user_role = str(user_role).lower()
+
+    # 3. Apply Role-based filtering
+    if user_role not in ['admin', 'manager']:
+        queryset = queryset.filter(responsibility=user_profile)
+        
+    # 4. Apply search filters
+    queryset = _apply_archive_property_filters(queryset, request)
+    
+    # 5. Return response
+    serializer = ArchivePropertySerializer(queryset, many=True, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# =========================================================
+# BULK INSERT | PANDAS | DELETE | UPDATE
+# =========================================================
+BATCH_SIZE = 500
+MAX_ERRORS_RETURNED = 100
+
+def _clean(value):
+    """NaN / empty -> None, everything else -> stripped string."""
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip()
+    return text or None
+
+def _to_decimal(value):
+    """Convert to decimal or None."""
+    value = _clean(value)
+    if value is None:
+        return None
+    try:
+        clean_value = str(value).replace(",", "").replace("AED", "").strip()
+        return float(clean_value)
+    except ValueError:
+        return None
+
+def _to_truncated_string(value, max_length=500):
+    """Safely truncate strings, handling None values."""
+    val = _clean(value)
+    if val is None:
+        return None
+    return val[:max_length]
+
+def _validation_message(exc):
+    """First human-readable message of a DRF ValidationError."""
+    detail = exc.detail
+    first = next(iter(detail.values()), "Invalid data") if isinstance(detail, dict) else detail
+    if isinstance(first, (list, tuple)):
+        first = first[0] if first else "Invalid data"
+    return str(first)
+
+def _db_message(exc):
+    """Readable, short version of a database exception."""
+    lines = [line.strip() for line in str(exc).splitlines() if line.strip()]
+    return " ".join(lines[:2])[:300] or exc.__class__.__name__
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def archive_property_bulk_create(request):
+    # 1. Validate file
+    file_obj = request.FILES.get("file")
+    if not file_obj:
+        return Response(
+            {"error": "No file uploaded. Please upload an Excel or CSV file."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        # 2. Read file. dtype=str keeps phone numbers as text
+        filename = file_obj.name.lower()
+        if filename.endswith(".csv"):
+            df = pd.read_csv(file_obj, dtype=str)
+        elif filename.endswith((".xls", ".xlsx")):
+            df = pd.read_excel(file_obj, dtype=str)
+        else:
+            return Response(
+                {"error": "Unsupported file format. Please upload .xlsx, .xls, or .csv"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+        records = df.to_dict("records")
+
+        user_profile = getattr(request.user, "profile", None)
+        rules = ArchivePropertySerializer()
+
+        success_count = 0
+        error_count = 0
+        skipped_count = 0
+        errors = []
+
+        # 3. Validate + build model objects in memory
+        objects, row_numbers, row_labels = [], [], []
+        for index, row in enumerate(records):
+            row_num = index + 2
+
+            name = _clean(row.get("name"))
+            phone = _clean(row.get("phone"))
+            if phone:
+                phone = phone.replace(" ", "").split("/")[0]
+
+            # Skip completely empty rows
+            if not phone and not name:
+                skipped_count += 1
+                continue
+
+            label = name or phone or "Unknown"
+
+            # Validate using the Serializer rules
+            try:
+                rules.validate({
+                    "property_offer": _clean(row.get("property_offer")),
+                    "sale_price": _to_decimal(row.get("sale_price")),
+                    "rent_price": _to_decimal(row.get("rent_price")),
+                })
+            except serializers.ValidationError as exc:
+                error_count += 1
+                errors.append({"row": row_num, "owner": label, "error": _validation_message(exc)})
+                continue
+
+            # ✅ Build model object safely
+            objects.append(
+                ArchiveProperty(
+                    name=name,
+                    phone=phone,
+                    property_type=_clean(row.get("property_type")),
+                    property_category=_clean(row.get("property_category")),
+                    property_offer=_clean(row.get("property_offer")),
+                    plot_size=_to_decimal(row.get("plot_size")),
+                    sale_price=_to_decimal(row.get("sale_price")),
+                    rent_price=_to_decimal(row.get("rent_price")),
+                    
+                    municipality=_clean(row.get("municipality")),
+                    zone=_clean(row.get("zone")),
+                    sector=_clean(row.get("sector")),
+                    road_name=_clean(row.get("road_name")),
+                    land_no=_clean(row.get("land_no")),
+                    plot_no=_clean(row.get("plot_no")),
+                    plot_address=_clean(row.get("plot_address")),
+                    
+                    description=_clean(row.get("description")),
+                    remarks=_clean(row.get("remarks")),
+                    
+                    created_by=user_profile,
+                    updated_by=user_profile.id,
+                )
+            )
+            row_numbers.append(row_num)
+            row_labels.append(label)
+
+        # 4. Insert in batches
+        for start in range(0, len(objects), BATCH_SIZE):
+            chunk = objects[start:start + BATCH_SIZE]
+            chunk_rows = row_numbers[start:start + BATCH_SIZE]
+            chunk_labels = row_labels[start:start + BATCH_SIZE]
+            try:
+                with transaction.atomic():
+                    ArchiveProperty.objects.bulk_create(chunk, batch_size=BATCH_SIZE)
+                success_count += len(chunk)
+            except Exception as batch_exc:
+                logger.warning(
+                    "Bulk insert of rows %s-%s failed (%s: %s) - retrying row by row",
+                    chunk_rows[0], chunk_rows[-1], batch_exc.__class__.__name__, _db_message(batch_exc),
+                )
+                same_error_in_a_row = 0
+                last_key = None
+                last_message = None
+                for obj, row_num, label in zip(chunk, chunk_rows, chunk_labels):
+                    if same_error_in_a_row >= 25:
+                        error_count += 1
+                        errors.append({"row": row_num, "owner": label, "error": last_message})
+                        continue
+                    try:
+                        with transaction.atomic():
+                            obj.save()
+                        success_count += 1
+                        same_error_in_a_row = 0
+                        last_key = None
+                    except Exception as e:
+                        message = _db_message(e)
+                        key = message.split(" DETAIL")[0]
+                        same_error_in_a_row = same_error_in_a_row + 1 if key == last_key else 1
+                        last_key, last_message = key, message
+                        error_count += 1
+                        errors.append({"row": row_num, "owner": label, "error": message})
+
+        # 5. Summary
+        errors.sort(key=lambda item: item["row"])
+        error_summary = [
+            {"error": message, "count": count}
+            for message, count in Counter(item["error"] for item in errors).most_common(5)
+        ]
+        
+        message = (
+            f"Import completed. Imported: {success_count}, Failed: {error_count}, "
+            f"Skipped (empty): {skipped_count}"
+        )
+
+        return Response(
+            {
+                "message": message,
+                "total_rows": len(records),
+                "success_count": success_count,
+                "error_count": error_count,
+                "skipped_count": skipped_count,
+                "error_summary": error_summary,
+                "errors": errors[:MAX_ERRORS_RETURNED],
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    except Exception as e:
+        logger.exception("Failed to process file")
+        return Response(
+            {"error": f"Failed to process file: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# =========================================================
+# BULK DELETE
+# =========================================================
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def archive_property_bulk_delete(request):
+    # 1. Check User Role
+    user_profile = getattr(request.user, 'profile', None)
+    user_role = getattr(user_profile, 'role', 'user') if user_profile else 'user'
+    user_role = str(user_role).lower()
+
+    # 2. Get the IDs from the request payload
+    ids_to_delete = request.data.get('ids', [])
+
+    if not ids_to_delete:
+        return Response(
+            {"error": "No record IDs provided for deletion."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        # 3. Filter ONLY the selected IDs
+        queryset = ArchiveProperty.objects.filter(id__in=ids_to_delete)
+
+        # 4. Optional: If you want non-admins to only delete their own records
+        if user_role not in ['admin', 'manager']:
+            queryset = queryset.filter(responsibility=user_profile)
+
+        # 5. Count how many records will be deleted
+        count = queryset.count()
+
+        if count == 0:
+            return Response(
+                {"message": "No matching records found to delete."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 6. Perform the delete
+        queryset.delete()
+
+        return Response(
+            {
+                "message": f"Successfully deleted {count} archived properties.",
+                "deleted_count": count
+            }, 
+            status=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to delete records: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# =========================================================
+# BULK ASSIGN RESPONSIBILITY
+# =========================================================
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def archive_property_bulk_assign(request):
+    # 1. Get User Profile (Used for 'updated_by' tracking)
+    user_profile = getattr(request.user, 'profile', None)
+    if not user_profile:
+        return Response(
+            {"error": "User profile not found."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # 2. Validate incoming data
+    ids_to_update = request.data.get('ids', [])
+    responsibility_id = request.data.get('responsibility_id')
+
+    if not ids_to_update or not isinstance(ids_to_update, list):
+        return Response(
+            {"error": "Please provide a list of 'ids' to update."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if not responsibility_id:
+        return Response(
+            {"error": "Please provide a 'responsibility_id'."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # 3. Validate that the target Profile exists
+    try:
+        target_profile = Profile.objects.get(id=responsibility_id)
+    except Profile.DoesNotExist:
+        return Response(
+            {"error": "The selected Profile (responsibility) does not exist."}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    try:
+        # 4. Filter the queryset
+        queryset = ArchiveProperty.objects.filter(id__in=ids_to_update)
+        
+        # Count how many are actually being updated
+        count = queryset.count()
+        
+        if count == 0:
+            return Response(
+                {"error": "No matching records found to update."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 5. Perform the update on all selected rows
+        queryset.update(
+            responsibility=target_profile,
+            updated_by=user_profile.id
+        )
+
+        return Response(
+            {
+                "message": f"Successfully reassigned {count} properties.",
+                "updated_count": count
+            }, 
+            status=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to update records: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+
+
+
+
+# Permit Number
+FILE_PARSERS = (MultiPartParser, FormParser, JSONParser)  # needed for title_deed upload
+
+# ==========================================
+# HELPERS
+# ==========================================
+def _get_profile_and_role(request):
+    profile = getattr(request.user, 'profile', None)
+    role = str(getattr(profile, 'role', 'user')).lower() if profile else 'user'
+    return profile, role
+
+
+def _permit_queryset(request):
+    """Admin / manager see everything. Everyone else sees only what they created."""
+    profile, role = _get_profile_and_role(request)
+    qs = PermitNo.objects.select_related(
+        'managed_by', 'managed_by__user', 'created_by', 'created_by__user'
+    ).order_by('-created_at')
+    if role not in ['admin', 'manager']:
+        qs = qs.filter(created_by=profile)
+    return qs
+
+
+def _clean_permit_payload(data):
+    """Multipart forms send "" for empty fields -> convert to None.
+    Keeps real uploaded files untouched and drops an empty title_deed."""
+    cleaned = {}
+    for key in data.keys():
+        value = data.get(key)
+        if key == 'title_deed':
+            if hasattr(value, 'read'):      # a real uploaded file
+                cleaned[key] = value
+            continue                        # "", "null" etc. -> ignore, keep the stored file
+        if isinstance(value, str):
+            value = value.strip()
+            if value == '' or value.lower() == 'null':
+                value = None
+        cleaned[key] = value
+    return cleaned
+
+
+def _apply_permit_filters(queryset, request):
+    params = request.query_params
+
+    search = (params.get('search') or '').strip()
+    if search:
+        queryset = queryset.filter(
+            Q(permit_no__icontains=search)
+            | Q(refrence_no__icontains=search)
+            | Q(title__icontains=search)
+            | Q(permit_status__icontains=search)
+            | Q(property_offer__icontains=search)  # ✅ ADDED: search by offer
+        )
+
+    managed_by = params.get('managed_by')
+    if managed_by:
+        queryset = queryset.filter(managed_by_id=managed_by)
+
+    permit_status = params.get('permit_status')
+    if permit_status:
+        queryset = queryset.filter(permit_status=permit_status)
+        
+    # ✅ ADDED: Filter by property offer
+    property_offer = params.get('property_offer')
+    if property_offer:
+        queryset = queryset.filter(property_offer=property_offer)
+
+    # ✅ ADDED: Filter by min and max price
+    min_price = params.get('min_price')
+    if min_price:
+        queryset = queryset.filter(price__gte=min_price)
+
+    max_price = params.get('max_price')
+    if max_price:
+        queryset = queryset.filter(price__lte=max_price)
+
+
+
+    return queryset
+
+
+# ==========================================
+# LIST VIEW
+# ==========================================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def permit_list(request):
+    queryset = _apply_permit_filters(_permit_queryset(request), request)
+    serializer = PermitNoSerializer(queryset, many=True, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ==========================================
+# CREATE VIEW
+# ==========================================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes(FILE_PARSERS)
+def permit_create(request):
+    payload = _clean_permit_payload(request.data)
+
+    serializer = PermitNoSerializer(data=payload, context={'request': request})
+    if serializer.is_valid():
+        # ✅ Auto-assign created_by
+        profile = getattr(request.user, 'profile', None)
+        serializer.save(created_by=profile)
+
+        return Response(
+            {
+                "message": "Permit record created successfully.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    print("Permit create validation errors:", serializer.errors)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==========================================
+# UPDATE VIEW
+# ==========================================
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+@parser_classes(FILE_PARSERS)
+def permit_update(request, pk):
+    try:
+        obj = _permit_queryset(request).get(pk=pk)
+    except PermitNo.DoesNotExist:
+        return Response({"error": "Permit record not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    payload = _clean_permit_payload(request.data)
+    partial = request.method == 'PATCH'
+
+    serializer = PermitNoSerializer(obj, data=payload, partial=partial, context={'request': request})
+    if serializer.is_valid():
+        serializer.save()
+
+        return Response(
+            {
+                "message": "Permit record updated successfully.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    print("Permit update validation errors:", serializer.errors)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==========================================
+# DELETE VIEW
+# ==========================================
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def permit_delete(request, pk):
+    try:
+        obj = _permit_queryset(request).get(pk=pk)
+    except PermitNo.DoesNotExist:
+        return Response({"error": "Permit record not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    obj.delete()  # the model's delete() also removes the file from storage
+    return Response({"message": "Permit record deleted successfully."}, status=status.HTTP_200_OK)
+    
 
 ##################
 # CRM Listing Parent and Child images
-##################
-
+##################  
 # ==========================================
 # HELPER FUNCTIONS
 # ==========================================
@@ -5133,6 +6589,7 @@ def listing_create(request):
 # It checks if the logged-in user is an admin or manager. If they are not, 
 # it filters the listings to only show the ones where created_by matches the user's profile.
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def listing_list(request):
@@ -5149,14 +6606,35 @@ def listing_list(request):
         # ✅ Regular users only see listings they created
         queryset = queryset.filter(created_by=user_profile)
         
-    # 4. Apply search filters
-    queryset = _apply_listing_filters(queryset, request)
+    # 4. Apply search filters (if you have any text search)
+    queryset = _apply_listing_filters(queryset, request) # Assuming this is defined elsewhere
+
+    # ✅ 5. Apply Frontend Filter Bar logic
+    filter_type = request.query_params.get('filter')
     
-    # 5. Return response
+    if filter_type == 'draft':
+        # Handles 'draft' string or null
+        queryset = queryset.filter(Q(property_status='draft') | Q(property_status__isnull=True))
+        
+    elif filter_type == 'live':
+        queryset = queryset.filter(property_status__iexact='live')
+        
+    elif filter_type == 'sale':
+        # ✅ Updated to use property_offer
+        queryset = queryset.filter(property_offer__iexact='sale')
+        
+    elif filter_type == 'rent':
+        # ✅ Updated to use property_offer
+        queryset = queryset.filter(property_offer__iexact='rent')
+        
+    elif filter_type == 'hot_deal':
+        queryset = queryset.filter(hot_deal=True)
+    
+    # 6. Return response
     serializer = CrmListingSerializer(queryset, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
-
+    
 # ---------- DETAIL ----------
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -5171,6 +6649,51 @@ def listing_detail(request, pk):
 
 
 # ---------- UPDATE ----------
+# @api_view(['PUT', 'PATCH'])
+# @permission_classes([IsAuthenticated])
+# @parser_classes([MultiPartParser, FormParser])
+# def listing_update(request, pk):
+#     try:
+#         listing = CrmListing.objects.get(pk=pk)
+#     except CrmListing.DoesNotExist:
+#         return Response({"error": "Listing not found."}, status=status.HTTP_404_NOT_FOUND)
+
+#     payload = _clean_payload(request.data)
+#     partial = request.method == 'PATCH'
+    
+#     serializer = CrmListingSerializer(listing, data=payload, partial=partial)
+#     if serializer.is_valid():
+#         profile = getattr(request.user, 'profile', None)
+#         serializer.save(updated_by=profile)
+
+#         # ✅ Handle adding NEW images if they were uploaded
+#         images = request.FILES.getlist('gallery_images')
+#         for image in images:
+#             ListingImage.objects.create(listing=listing, image=image)
+
+#         return Response(
+#             {
+#                 "message": "Listing updated successfully.",
+#                 "data": CrmListingSerializer(listing).data,
+#             },
+#             status=status.HTTP_200_OK,
+#         )
+
+#     print("Listing update validation errors:", serializer.errors)
+#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# (Assuming you already have this helper function above your views)
+def _clean_payload(data):
+    """Normalize empty strings to None to prevent validation errors."""
+    cleaned = data.copy()
+    for key, value in cleaned.items():
+        if value == "":
+            # ✅ Dates and numbers must be None (null), not empty strings
+            if key in ["issue_expiry", "sale_price", "sale_price_sqft", "service_charge", "rent_price", "rent_price_yearly"]:
+                cleaned[key] = None
+    return cleaned
+
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -5180,15 +6703,19 @@ def listing_update(request, pk):
     except CrmListing.DoesNotExist:
         return Response({"error": "Listing not found."}, status=status.HTTP_404_NOT_FOUND)
 
+    # 1. Clean the incoming FormData (multipart/form-data)
     payload = _clean_payload(request.data)
     partial = request.method == 'PATCH'
     
+    # 2. Validate and Save
     serializer = CrmListingSerializer(listing, data=payload, partial=partial)
+    
     if serializer.is_valid():
         profile = getattr(request.user, 'profile', None)
+        # ✅ Save and automatically set updated_by
         serializer.save(updated_by=profile)
 
-        # ✅ Handle adding NEW images if they were uploaded
+        # ✅ Handle adding NEW gallery images if they were uploaded
         images = request.FILES.getlist('gallery_images')
         for image in images:
             ListingImage.objects.create(listing=listing, image=image)
@@ -5201,7 +6728,10 @@ def listing_update(request, pk):
             status=status.HTTP_200_OK,
         )
 
-    print("Listing update validation errors:", serializer.errors)
+    # ❌ If we reach here, validation failed. Print the exact error.
+    print("❌ Listing update validation errors:", serializer.errors)
+    
+    # Return the exact errors to the frontend so it can display the toast
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

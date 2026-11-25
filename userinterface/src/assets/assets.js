@@ -37,6 +37,28 @@ import { TbBuildingSkyscraper } from "react-icons/tb";
 import { FaIdCard } from "react-icons/fa6";
 
 import { FaUserTie, FaBuilding } from "react-icons/fa"; 
+import { GiArchiveRegister } from "react-icons/gi";
+
+import DistributionIcon from "./DistributionIcon"; 
+
+// function DistributionIcon({ className = "h-6 w-6" }) {
+//   return (
+//     <span className={`relative inline-block ${className}`}>
+//       {/* back card 1 */}
+//       <GiCard3Spades
+//         className="absolute inset-0 h-full w-full -rotate-12 -translate-x-1 text-current opacity-60"
+//         aria-hidden="true"
+//       />
+//       {/* back card 2 */}
+//       <GiCard3Spades
+//         className="absolute inset-0 h-full w-full rotate-12 translate-x-1 text-current opacity-60"
+//         aria-hidden="true"
+//       />
+//       {/* front card (the real icon) */}
+//       <GiCard3Spades className="relative h-full w-full text-current" />
+//     </span>
+//   );
+// }
 
 export const SidebarMenuLinks = [
     // ==========================================
@@ -90,10 +112,27 @@ export const SidebarMenuLinks = [
                 icon: TbBuildingSkyscraper,
                 permission: ["view_all_listing", "view_my_listing"],
             },
+            {
+                name: "الارشيف",
+                path: "/ar/archive", 
+                icon: GiArchiveRegister,
+                // permission: ["view_all_listing", "view_my_listing"],
+                permission: ["view_all_archive_owners", "view_my_archive_owners"],
+            },
+            {
+                name: "التوزيع اليومي",
+                path: "/ar/distribution", 
+                icon:  DistributionIcon,
+                permission: ["view_all_archive_properties", "view_my_archive_properties"],
+            },
+            {
+                name: "تصاريح المضمون",
+                path: "/ar/permit", 
+                icon:  GiArchiveRegister,
+                permission: ["view_all_permit_numbers"],
+            },
         ]
     },
-    
-
     
 
 

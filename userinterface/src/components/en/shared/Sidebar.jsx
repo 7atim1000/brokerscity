@@ -97,6 +97,9 @@ function Sidebar({ onHoverChange }) {
             "الخزينه النقديه": "Cash",
             "اداره الملاك": "Owners",
             "اداره العقارات": "Listing",
+            "الارشيف" : "Archive",
+            "التوزيع اليومي": "Distribution",
+            "تصاريح المضمون": "Permit Numbers"
         };
         return translations[name] || name;
     };
